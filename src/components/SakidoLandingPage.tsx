@@ -8,98 +8,110 @@ gsap.registerPlugin(ScrollTrigger);
 /**
  * =========================================================================
  * FEATURE CALLOUT FRAME RANGES (0 to 239)
- * 6 Main Product Sections with expanded duration for parts 1 to 6.
+ * 6 Main Product Sections perfectly synchronized across 240 frames.
  * =========================================================================
  */
 const FEATURE_CALLOUTS = [
   {
     id: 'notes',
+    step: 1,
     category: '01 / ORGANIZER',
     title: 'Notes',
     text: 'Write notes by course and semester.',
     align: 'left',
-    startFrame: 22,
-    peakStart: 30,
-    peakEnd: 52,
-    endFrame: 58,
+    startFrame: 20,
+    peakStart: 28,
+    peakEnd: 50,
+    endFrame: 56,
   },
   {
     id: 'calendar',
+    step: 2,
     category: '02 / SCHEDULE',
     title: 'Calendar',
     text: 'See your classes and deadlines. Connect Google Calendar if you want.',
     align: 'right',
-    startFrame: 58,
-    peakStart: 66,
-    peakEnd: 88,
-    endFrame: 94,
+    startFrame: 56,
+    peakStart: 64,
+    peakEnd: 86,
+    endFrame: 92,
   },
   {
     id: 'tasks-grades',
+    step: 3,
     category: '03 / ACADEMICS',
     title: 'Tasks & grades',
     text: 'Track assignments and calculate your grade.',
     align: 'left',
-    startFrame: 94,
-    peakStart: 102,
-    peakEnd: 124,
-    endFrame: 130,
+    startFrame: 92,
+    peakStart: 100,
+    peakEnd: 122,
+    endFrame: 128,
   },
   {
     id: 'knowledge-inbox',
+    step: 4,
     category: '04 / KNOWLEDGE',
     title: 'Knowledge Inbox',
     text: "Save a link — a video, article, or PDF — so you don't lose it. Share a YouTube link and it plays right on the page.",
     align: 'right',
-    startFrame: 130,
-    peakStart: 138,
-    peakEnd: 160,
-    endFrame: 166,
+    startFrame: 128,
+    peakStart: 136,
+    peakEnd: 158,
+    endFrame: 164,
   },
   {
     id: 'chat',
+    step: 5,
     category: '05 / COMMUNITY',
     title: 'Chat',
     text: 'Message people at your university, or join the global chat.',
     align: 'left',
-    startFrame: 166,
-    peakStart: 174,
-    peakEnd: 196,
-    endFrame: 202,
+    startFrame: 164,
+    peakStart: 172,
+    peakEnd: 194,
+    endFrame: 200,
   },
   {
     id: 'dashboard',
+    step: 6,
     category: '06 / OVERVIEW',
     title: 'Dashboard',
     text: "Opens to today's classes and what's due next.",
     align: 'right',
-    startFrame: 202,
-    peakStart: 210,
+    startFrame: 200,
+    peakStart: 208,
     peakEnd: 232,
     endFrame: 239,
   },
 ];
+
+/** Smoothstep interpolation helper (0 -> 1 -> 0 with smooth ease derivatives) */
+function smoothstep(t: number): number {
+  const clamped = Math.max(0, Math.min(1, t));
+  return clamped * clamped * (3 - 2 * clamped);
+}
 
 /** Helper to calculate opacity for callout at a given frame index */
 function getCalloutOpacity(frame: number, start: number, peakStart: number, peakEnd: number, end: number): number {
   if (frame < start || frame > end) return 0;
   if (frame >= peakStart && frame <= peakEnd) return 1;
   if (frame < peakStart) {
-    return (frame - start) / (peakStart - start);
+    return smoothstep((frame - start) / (peakStart - start));
   }
-  return (end - frame) / (end - peakEnd);
+  return smoothstep((end - frame) / (end - peakEnd));
 }
 
 /** Helper to calculate vertical offset during fade in/out */
 function getCalloutY(frame: number, start: number, peakStart: number, peakEnd: number, end: number): number {
-  if (frame < start || frame > end) return 24;
+  if (frame < start || frame > end) return 20;
   if (frame >= peakStart && frame <= peakEnd) return 0;
   if (frame < peakStart) {
-    const p = (frame - start) / (peakStart - start);
-    return (1 - p) * 24;
+    const p = smoothstep((frame - start) / (peakStart - start));
+    return (1 - p) * 20;
   }
-  const p = (end - frame) / (end - peakEnd);
-  return (1 - p) * -24;
+  const p = smoothstep((end - frame) / (end - peakEnd));
+  return (1 - p) * -20;
 }
 
 export const SakidoLandingPage: React.FC = () => {
@@ -110,13 +122,13 @@ export const SakidoLandingPage: React.FC = () => {
   const [displayFrame, setDisplayFrame] = useState<number>(0);
   const [preloadProgress, setPreloadProgress] = useState<number>(0);
 
-  // GSAP Ticker for buttery smooth frame interpolation
+  // GSAP Ticker for fluid frame interpolation
   useEffect(() => {
     const updateFrame = () => {
       setDisplayFrame((prev) => {
         const diff = targetFrame - prev;
-        if (Math.abs(diff) < 0.01) return targetFrame;
-        return prev + diff * 0.22;
+        if (Math.abs(diff) < 0.005) return targetFrame;
+        return prev + diff * 0.32;
       });
     };
 
@@ -124,7 +136,7 @@ export const SakidoLandingPage: React.FC = () => {
     return () => gsap.ticker.remove(updateFrame);
   }, [targetFrame]);
 
-  // GSAP ScrollTrigger pinning & scroll mapping
+  // Refined GSAP ScrollTrigger pinning & scroll mapping with section snap
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -133,11 +145,18 @@ export const SakidoLandingPage: React.FC = () => {
       ScrollTrigger.create({
         trigger: container,
         start: 'top top',
-        end: '+=6000', // Pinned scroll track length
+        end: '+=6500', // Pinned scroll track length for generous breathing room
         pin: pinnedRef.current,
-        scrub: 0.8,
+        anticipatePin: 1,
+        scrub: 0.3, // Ultra-responsive scroll tracking
+        snap: {
+          snapTo: [0, 0.163, 0.314, 0.464, 0.615, 0.766, 0.920, 1.0],
+          duration: { min: 0.15, max: 0.4 },
+          delay: 0.12,
+          ease: 'power2.out',
+        },
         onUpdate: (self) => {
-          const frame = Math.min(239, self.progress * 239);
+          const frame = Math.min(239, Math.max(0, self.progress * 239));
           setTargetFrame(frame);
         },
       });
@@ -147,21 +166,16 @@ export const SakidoLandingPage: React.FC = () => {
   }, []);
 
   // Compute hero title opacity (Frame 0 to 20)
-  const heroOpacity = Math.max(0, 1 - displayFrame / 20);
+  const heroOpacity = Math.max(0, 1 - displayFrame / 18);
   const heroY = (1 - heroOpacity) * -24;
+
+  // Active section indicator index (1-6, or 0 if hero)
+  const activeSection = FEATURE_CALLOUTS.find(
+    (c) => displayFrame >= c.startFrame && displayFrame <= c.endFrame
+  )?.step || 0;
 
   return (
     <div className="bg-black text-white min-h-screen font-sans selection:bg-white selection:text-black">
-      {/* Subtle Preloading Progress Line */}
-      {preloadProgress < 100 && (
-        <div className="fixed top-0 left-0 right-0 z-50 h-[2px] bg-zinc-900 pointer-events-none transition-opacity duration-500">
-          <div
-            className="h-full bg-white transition-all duration-200"
-            style={{ width: `${preloadProgress}%` }}
-          />
-        </div>
-      )}
-
       {/* Main GSAP Pinned Scroll Track */}
       <div ref={scrollContainerRef} className="relative w-full bg-black">
         <div
@@ -222,7 +236,7 @@ export const SakidoLandingPage: React.FC = () => {
                   className={`absolute top-1/2 -translate-y-1/2 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg transition-all duration-300 ${
                     isLeft
                       ? 'left-8 sm:left-14 md:left-20 lg:left-28 text-left'
-                      : 'right-8 sm:right-14 md:right-20 lg:right-28 text-right'
+                      : 'right-12 sm:right-20 md:right-28 lg:right-36 text-right'
                   }`}
                   style={{
                     opacity,
@@ -273,6 +287,7 @@ export const SakidoLandingPage: React.FC = () => {
     </div>
   );
 };
+
 
 
 
