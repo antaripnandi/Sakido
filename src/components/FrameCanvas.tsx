@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 
 interface FrameCanvasProps {
   currentFrame: number; // 0 to totalFrames - 1
@@ -6,6 +6,10 @@ interface FrameCanvasProps {
   className?: string;
   onPreloadProgress?: (progress: number) => void;
 }
+
+// Global cache and in-flight deduplication to prevent duplicate requests or cancelled image loads
+const globalImageCache = new Map<number, HTMLImageElement>();
+const inFlightPromises = new Map<number, Promise<HTMLImageElement | null>>();
 
 export const FrameCanvas: React.FC<FrameCanvasProps> = ({
   currentFrame,
@@ -15,12 +19,15 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imagesRef = useRef<(HTMLImageElement | null)[]>(new Array(totalFrames).fill(null));
-  const [loadedCount, setLoadedCount] = useState<number>(0);
+  const onPreloadProgressRef = useRef(onPreloadProgress);
 
-  // Preload frame images smoothly in priority order
+  useEffect(() => {
+    onPreloadProgressRef.current = onPreloadProgress;
+  }, [onPreloadProgress]);
+
+  // Preload frame images smoothly in priority order with strict deduplication
   useEffect(() => {
     let isMounted = true;
-    let completed = 0;
 
     const getFrameUrl = (index: number) => {
       const numStr = String(index + 1).padStart(3, '0');
@@ -29,60 +36,63 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
       return `${prefix}frames/ezgif-frame-${numStr}.jpg`;
     };
 
-    const loadSingleFrame = (index: number, attempt = 0): Promise<void> => {
-      return new Promise((resolve) => {
-        if (!isMounted || imagesRef.current[index]) {
-          resolve();
-          return;
-        }
+    const loadSingleFrame = (index: number): Promise<HTMLImageElement | null> => {
+      if (globalImageCache.has(index)) {
+        return Promise.resolve(globalImageCache.get(index)!);
+      }
 
-        let resolved = false;
+      if (inFlightPromises.has(index)) {
+        return inFlightPromises.get(index)!;
+      }
+
+      const promise = new Promise<HTMLImageElement | null>((resolve) => {
         const img = new Image();
 
-        const handleSuccess = () => {
-          if (resolved || !isMounted) return;
-          resolved = true;
-          imagesRef.current[index] = img;
-          completed++;
-          setLoadedCount(completed);
-          if (onPreloadProgress) {
-            onPreloadProgress(Math.min(100, Math.round((completed / totalFrames) * 100)));
-          }
-          if ('decode' in img) {
-            img.decode().catch(() => {});
-          }
-          resolve();
+        const cleanupAndResolve = (resultImg: HTMLImageElement | null) => {
+          inFlightPromises.delete(index);
+          resolve(resultImg);
         };
 
-        const handleError = () => {
-          if (resolved || !isMounted) return;
-          if (attempt < 2) {
-            // Retry twice after 200ms
-            setTimeout(() => {
-              loadSingleFrame(index, attempt + 1).then(resolve);
-            }, 200);
+        img.onload = () => {
+          if (img.naturalWidth > 0) {
+            globalImageCache.set(index, img);
+            cleanupAndResolve(img);
           } else {
-            resolved = true;
-            completed++;
-            setLoadedCount(completed);
-            resolve();
+            cleanupAndResolve(null);
           }
         };
 
-        // Attach event listeners BEFORE setting img.src to prevent missing fast CDN/cache loads
-        img.onload = handleSuccess;
-        img.onerror = handleError;
+        img.onerror = () => {
+          cleanupAndResolve(null);
+        };
+
         img.src = getFrameUrl(index);
 
         if (img.complete && img.naturalWidth > 0) {
-          handleSuccess();
+          globalImageCache.set(index, img);
+          cleanupAndResolve(img);
         }
       });
+
+      inFlightPromises.set(index, promise);
+      return promise;
     };
 
     const preloadAll = async () => {
-      // 1. Immediately load frame 0 so visual appears instantly
-      await loadSingleFrame(0);
+      const updateProgress = () => {
+        if (onPreloadProgressRef.current && isMounted) {
+          onPreloadProgressRef.current(
+            Math.min(100, Math.round((globalImageCache.size / totalFrames) * 100))
+          );
+        }
+      };
+
+      // 1. Immediately load frame 0
+      const firstImg = await loadSingleFrame(0);
+      if (isMounted) {
+        imagesRef.current[0] = firstImg;
+        updateProgress();
+      }
 
       // 2. Load keyframes (every 5th frame) to give instant scroll coverage
       const keyframeIndices: number[] = [];
@@ -90,24 +100,41 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
         if (i !== 0) keyframeIndices.push(i);
       }
 
-      // Concurrently load keyframes in batches of 8
-      const batchSize = 8;
+      const batchSize = 6;
       for (let i = 0; i < keyframeIndices.length; i += batchSize) {
         if (!isMounted) return;
         const batch = keyframeIndices.slice(i, i + batchSize);
-        await Promise.all(batch.map((idx) => loadSingleFrame(idx)));
+        await Promise.all(
+          batch.map(async (idx) => {
+            const img = await loadSingleFrame(idx);
+            if (isMounted) {
+              imagesRef.current[idx] = img;
+              updateProgress();
+            }
+          })
+        );
       }
 
       // 3. Load all remaining frames
       const remainingIndices: number[] = [];
       for (let i = 0; i < totalFrames; i++) {
-        if (!imagesRef.current[i]) remainingIndices.push(i);
+        if (!globalImageCache.has(i) && !inFlightPromises.has(i)) {
+          remainingIndices.push(i);
+        }
       }
 
       for (let i = 0; i < remainingIndices.length; i += batchSize) {
         if (!isMounted) return;
         const batch = remainingIndices.slice(i, i + batchSize);
-        await Promise.all(batch.map((idx) => loadSingleFrame(idx)));
+        await Promise.all(
+          batch.map(async (idx) => {
+            const img = await loadSingleFrame(idx);
+            if (isMounted) {
+              imagesRef.current[idx] = img;
+              updateProgress();
+            }
+          })
+        );
       }
     };
 
@@ -116,7 +143,7 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [totalFrames, onPreloadProgress]);
+  }, [totalFrames]);
 
   // Draw frame on canvas with high quality cover scaling
   const drawFrame = useCallback(
@@ -152,17 +179,19 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
       const safeIndex = Math.max(0, Math.min(maxIndex, Math.round(frameIdx)));
 
       // Retrieve image or closest available loaded neighbor for seamless continuity
-      let img = imagesRef.current[safeIndex];
+      let img = imagesRef.current[safeIndex] || globalImageCache.get(safeIndex) || null;
       if (!img || !img.complete || img.naturalWidth === 0) {
         for (let offset = 1; offset < 60; offset++) {
           const prevIdx = safeIndex - offset;
-          if (prevIdx >= 0 && imagesRef.current[prevIdx]?.complete && imagesRef.current[prevIdx]!.naturalWidth > 0) {
-            img = imagesRef.current[prevIdx];
+          const prevImg = (prevIdx >= 0 && (imagesRef.current[prevIdx] || globalImageCache.get(prevIdx))) || null;
+          if (prevImg?.complete && prevImg.naturalWidth > 0) {
+            img = prevImg;
             break;
           }
           const nextIdx = safeIndex + offset;
-          if (nextIdx < totalFrames && imagesRef.current[nextIdx]?.complete && imagesRef.current[nextIdx]!.naturalWidth > 0) {
-            img = imagesRef.current[nextIdx];
+          const nextImg = (nextIdx < totalFrames && (imagesRef.current[nextIdx] || globalImageCache.get(nextIdx))) || null;
+          if (nextImg?.complete && nextImg.naturalWidth > 0) {
+            img = nextImg;
             break;
           }
         }
@@ -211,13 +240,13 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
     [totalFrames]
   );
 
-  // Redraw smoothly on animation frame updates or when new images finish loading
+  // Redraw smoothly on animation frame updates
   useEffect(() => {
     let animId = requestAnimationFrame(() => {
       drawFrame(currentFrame);
     });
     return () => cancelAnimationFrame(animId);
-  }, [currentFrame, drawFrame, loadedCount]);
+  }, [currentFrame, drawFrame]);
 
   // Handle window resize
   useEffect(() => {

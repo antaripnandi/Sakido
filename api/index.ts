@@ -17,8 +17,8 @@ app.set('trust proxy', 1);
 app.use(express.json());
 
 // Apply global API monitoring and rate limiting to all serverless routes
-app.use('/api', monitoringMiddleware);
-app.use('/api', apiRateLimiter);
+app.use(monitoringMiddleware);
+app.use(apiRateLimiter);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
