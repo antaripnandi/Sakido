@@ -1,14 +1,31 @@
 import express from 'express';
 import dotenv from 'dotenv';
 import { getSupabaseAdmin } from '../src/lib/supabaseServer.js';
+import {
+  monitoringMiddleware,
+  apiRateLimiter,
+  getApiMetrics,
+} from '../src/middleware/apiMonitoring.js';
 
 dotenv.config();
 
 const app = express();
+
+// Trust Vercel proxy headers for express-rate-limit IP detection
+app.set('trust proxy', 1);
+
 app.use(express.json());
+
+// Apply global API monitoring and rate limiting to all serverless routes
+app.use('/api', monitoringMiddleware);
+app.use('/api', apiRateLimiter);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/api/metrics', (req, res) => {
+  res.json(getApiMetrics());
 });
 
 app.get('/api/supabase/status', async (req, res) => {

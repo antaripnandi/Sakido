@@ -3,6 +3,11 @@ import path from 'path';
 import dotenv from 'dotenv';
 import { createServer as createViteServer } from 'vite';
 import { getSupabaseAdmin } from './src/lib/supabaseServer.js';
+import {
+  monitoringMiddleware,
+  apiRateLimiter,
+  getApiMetrics,
+} from './src/middleware/apiMonitoring.js';
 
 dotenv.config();
 
@@ -10,18 +15,27 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  app.set('trust proxy', 1);
   app.use(express.json());
+
+  // Apply API monitoring & rate limiting to all /api routes
+  app.use('/api', monitoringMiddleware);
+  app.use('/api', apiRateLimiter);
 
   // Health check endpoint
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
+  // API Monitoring Metrics endpoint
+  app.get('/api/metrics', (req, res) => {
+    res.json(getApiMetrics());
+  });
+
   // Supabase Backend Status & Test Endpoint
   app.get('/api/supabase/status', async (req, res) => {
     try {
       const supabase = getSupabaseAdmin();
-      // Execute a light query or RPC to verify connectivity
       const { data, error } = await supabase.auth.getSession();
 
       res.json({

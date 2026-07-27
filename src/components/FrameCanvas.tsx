@@ -17,50 +17,101 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
   const imagesRef = useRef<(HTMLImageElement | null)[]>(new Array(totalFrames).fill(null));
   const [loadedCount, setLoadedCount] = useState<number>(0);
 
-  // Preload frame images from /frames/ folder in priority order
+  // Preload frame images smoothly in priority order
   useEffect(() => {
     let isMounted = true;
-    let count = 0;
+    let completed = 0;
 
-    const loadFrame = (index: number) => {
-      const i = index + 1;
-      const numStr = String(i).padStart(3, '0');
-      const img = new Image();
+    const getFrameUrl = (index: number) => {
+      const numStr = String(index + 1).padStart(3, '0');
+      const baseUrl = (import.meta as any).env?.BASE_URL || '/';
+      const prefix = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+      return `${prefix}frames/ezgif-frame-${numStr}.jpg`;
+    };
 
-      const handleLoad = () => {
-        if (!isMounted) return;
-        imagesRef.current[index] = img;
-        count++;
-        setLoadedCount(count);
-        const progress = Math.min(100, Math.round((count / totalFrames) * 100));
-        if (onPreloadProgress) onPreloadProgress(progress);
-
-        if ('decode' in img) {
-          img.decode().catch(() => {});
+    const loadSingleFrame = (index: number, attempt = 0): Promise<void> => {
+      return new Promise((resolve) => {
+        if (!isMounted || imagesRef.current[index]) {
+          resolve();
+          return;
         }
-      };
 
-      const handleError = () => {
+        let resolved = false;
+        const img = new Image();
+
+        const handleSuccess = () => {
+          if (resolved || !isMounted) return;
+          resolved = true;
+          imagesRef.current[index] = img;
+          completed++;
+          setLoadedCount(completed);
+          if (onPreloadProgress) {
+            onPreloadProgress(Math.min(100, Math.round((completed / totalFrames) * 100)));
+          }
+          if ('decode' in img) {
+            img.decode().catch(() => {});
+          }
+          resolve();
+        };
+
+        const handleError = () => {
+          if (resolved || !isMounted) return;
+          if (attempt < 2) {
+            // Retry twice after 200ms
+            setTimeout(() => {
+              loadSingleFrame(index, attempt + 1).then(resolve);
+            }, 200);
+          } else {
+            resolved = true;
+            completed++;
+            setLoadedCount(completed);
+            resolve();
+          }
+        };
+
+        // Attach event listeners BEFORE setting img.src to prevent missing fast CDN/cache loads
+        img.onload = handleSuccess;
+        img.onerror = handleError;
+        img.src = getFrameUrl(index);
+
+        if (img.complete && img.naturalWidth > 0) {
+          handleSuccess();
+        }
+      });
+    };
+
+    const preloadAll = async () => {
+      // 1. Immediately load frame 0 so visual appears instantly
+      await loadSingleFrame(0);
+
+      // 2. Load keyframes (every 5th frame) to give instant scroll coverage
+      const keyframeIndices: number[] = [];
+      for (let i = 0; i < totalFrames; i += 5) {
+        if (i !== 0) keyframeIndices.push(i);
+      }
+
+      // Concurrently load keyframes in batches of 8
+      const batchSize = 8;
+      for (let i = 0; i < keyframeIndices.length; i += batchSize) {
         if (!isMounted) return;
-        count++;
-        setLoadedCount(count);
-        const progress = Math.min(100, Math.round((count / totalFrames) * 100));
-        if (onPreloadProgress) onPreloadProgress(progress);
-      };
+        const batch = keyframeIndices.slice(i, i + batchSize);
+        await Promise.all(batch.map((idx) => loadSingleFrame(idx)));
+      }
 
-      img.onload = handleLoad;
-      img.onerror = handleError;
-      img.src = `/frames/ezgif-frame-${numStr}.jpg`;
+      // 3. Load all remaining frames
+      const remainingIndices: number[] = [];
+      for (let i = 0; i < totalFrames; i++) {
+        if (!imagesRef.current[i]) remainingIndices.push(i);
+      }
 
-      if (img.complete && img.naturalWidth > 0) {
-        handleLoad();
+      for (let i = 0; i < remainingIndices.length; i += batchSize) {
+        if (!isMounted) return;
+        const batch = remainingIndices.slice(i, i + batchSize);
+        await Promise.all(batch.map((idx) => loadSingleFrame(idx)));
       }
     };
 
-    // Load all 240 frames
-    for (let i = 0; i < totalFrames; i++) {
-      loadFrame(i);
-    }
+    preloadAll();
 
     return () => {
       isMounted = false;
@@ -103,7 +154,7 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
       // Retrieve image or closest available loaded neighbor for seamless continuity
       let img = imagesRef.current[safeIndex];
       if (!img || !img.complete || img.naturalWidth === 0) {
-        for (let offset = 1; offset < 40; offset++) {
+        for (let offset = 1; offset < 60; offset++) {
           const prevIdx = safeIndex - offset;
           if (prevIdx >= 0 && imagesRef.current[prevIdx]?.complete && imagesRef.current[prevIdx]!.naturalWidth > 0) {
             img = imagesRef.current[prevIdx];
@@ -160,7 +211,7 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
     [totalFrames]
   );
 
-  // Redraw smoothly on animation frame updates
+  // Redraw smoothly on animation frame updates or when new images finish loading
   useEffect(() => {
     let animId = requestAnimationFrame(() => {
       drawFrame(currentFrame);
@@ -183,6 +234,3 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
     </div>
   );
 };
-
-
-
