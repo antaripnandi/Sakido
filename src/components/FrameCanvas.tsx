@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 
 interface FrameCanvasProps {
   currentFrame: number; // 0 to totalFrames - 1
@@ -6,10 +6,6 @@ interface FrameCanvasProps {
   className?: string;
   onPreloadProgress?: (progress: number) => void;
 }
-
-// Global cache and in-flight deduplication to prevent duplicate requests or cancelled image loads
-const globalImageCache = new Map<number, HTMLImageElement>();
-const inFlightPromises = new Map<number, Promise<HTMLImageElement | null>>();
 
 export const FrameCanvas: React.FC<FrameCanvasProps> = ({
   currentFrame,
@@ -19,131 +15,57 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imagesRef = useRef<(HTMLImageElement | null)[]>(new Array(totalFrames).fill(null));
-  const onPreloadProgressRef = useRef(onPreloadProgress);
+  const [loadedCount, setLoadedCount] = useState<number>(0);
 
-  useEffect(() => {
-    onPreloadProgressRef.current = onPreloadProgress;
-  }, [onPreloadProgress]);
-
-  // Preload frame images smoothly in priority order with strict deduplication
+  // Preload frame images from /frames/ folder in priority order
   useEffect(() => {
     let isMounted = true;
+    let count = 0;
 
-    const getFrameUrl = (index: number) => {
-      const numStr = String(index + 1).padStart(3, '0');
-      const baseUrl = (import.meta as any).env?.BASE_URL || '/';
-      const prefix = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
-      return `${prefix}frames/ezgif-frame-${numStr}.jpg`;
-    };
+    const loadFrame = (index: number) => {
+      const i = index + 1;
+      const numStr = String(i).padStart(3, '0');
+      const img = new Image();
 
-    const loadSingleFrame = (index: number): Promise<HTMLImageElement | null> => {
-      if (globalImageCache.has(index)) {
-        return Promise.resolve(globalImageCache.get(index)!);
-      }
+      const handleLoad = () => {
+        if (!isMounted) return;
+        imagesRef.current[index] = img;
+        count++;
+        setLoadedCount(count);
+        const progress = Math.min(100, Math.round((count / totalFrames) * 100));
+        if (onPreloadProgress) onPreloadProgress(progress);
 
-      if (inFlightPromises.has(index)) {
-        return inFlightPromises.get(index)!;
-      }
-
-      const promise = new Promise<HTMLImageElement | null>((resolve) => {
-        const img = new Image();
-
-        const cleanupAndResolve = (resultImg: HTMLImageElement | null) => {
-          inFlightPromises.delete(index);
-          resolve(resultImg);
-        };
-
-        img.onload = () => {
-          if (img.naturalWidth > 0) {
-            globalImageCache.set(index, img);
-            cleanupAndResolve(img);
-          } else {
-            cleanupAndResolve(null);
-          }
-        };
-
-        img.onerror = () => {
-          cleanupAndResolve(null);
-        };
-
-        img.src = getFrameUrl(index);
-
-        if (img.complete && img.naturalWidth > 0) {
-          globalImageCache.set(index, img);
-          cleanupAndResolve(img);
-        }
-      });
-
-      inFlightPromises.set(index, promise);
-      return promise;
-    };
-
-    const preloadAll = async () => {
-      const updateProgress = () => {
-        if (onPreloadProgressRef.current && isMounted) {
-          onPreloadProgressRef.current(
-            Math.min(100, Math.round((globalImageCache.size / totalFrames) * 100))
-          );
+        if ('decode' in img) {
+          img.decode().catch(() => {});
         }
       };
 
-      // 1. Immediately load frame 0
-      const firstImg = await loadSingleFrame(0);
-      if (isMounted) {
-        imagesRef.current[0] = firstImg;
-        updateProgress();
-      }
-
-      // 2. Load keyframes (every 5th frame) to give instant scroll coverage
-      const keyframeIndices: number[] = [];
-      for (let i = 0; i < totalFrames; i += 5) {
-        if (i !== 0) keyframeIndices.push(i);
-      }
-
-      const batchSize = 6;
-      for (let i = 0; i < keyframeIndices.length; i += batchSize) {
+      const handleError = () => {
         if (!isMounted) return;
-        const batch = keyframeIndices.slice(i, i + batchSize);
-        await Promise.all(
-          batch.map(async (idx) => {
-            const img = await loadSingleFrame(idx);
-            if (isMounted) {
-              imagesRef.current[idx] = img;
-              updateProgress();
-            }
-          })
-        );
-      }
+        count++;
+        setLoadedCount(count);
+        const progress = Math.min(100, Math.round((count / totalFrames) * 100));
+        if (onPreloadProgress) onPreloadProgress(progress);
+      };
 
-      // 3. Load all remaining frames
-      const remainingIndices: number[] = [];
-      for (let i = 0; i < totalFrames; i++) {
-        if (!globalImageCache.has(i) && !inFlightPromises.has(i)) {
-          remainingIndices.push(i);
-        }
-      }
+      img.onload = handleLoad;
+      img.onerror = handleError;
+      img.src = `/frames/ezgif-frame-${numStr}.jpg`;
 
-      for (let i = 0; i < remainingIndices.length; i += batchSize) {
-        if (!isMounted) return;
-        const batch = remainingIndices.slice(i, i + batchSize);
-        await Promise.all(
-          batch.map(async (idx) => {
-            const img = await loadSingleFrame(idx);
-            if (isMounted) {
-              imagesRef.current[idx] = img;
-              updateProgress();
-            }
-          })
-        );
+      if (img.complete && img.naturalWidth > 0) {
+        handleLoad();
       }
     };
 
-    preloadAll();
+    // Load all 240 frames
+    for (let i = 0; i < totalFrames; i++) {
+      loadFrame(i);
+    }
 
     return () => {
       isMounted = false;
     };
-  }, [totalFrames]);
+  }, [totalFrames, onPreloadProgress]);
 
   // Draw frame on canvas with high quality cover scaling
   const drawFrame = useCallback(
@@ -179,19 +101,17 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
       const safeIndex = Math.max(0, Math.min(maxIndex, Math.round(frameIdx)));
 
       // Retrieve image or closest available loaded neighbor for seamless continuity
-      let img = imagesRef.current[safeIndex] || globalImageCache.get(safeIndex) || null;
+      let img = imagesRef.current[safeIndex];
       if (!img || !img.complete || img.naturalWidth === 0) {
-        for (let offset = 1; offset < 60; offset++) {
+        for (let offset = 1; offset < 40; offset++) {
           const prevIdx = safeIndex - offset;
-          const prevImg = (prevIdx >= 0 && (imagesRef.current[prevIdx] || globalImageCache.get(prevIdx))) || null;
-          if (prevImg?.complete && prevImg.naturalWidth > 0) {
-            img = prevImg;
+          if (prevIdx >= 0 && imagesRef.current[prevIdx]?.complete && imagesRef.current[prevIdx]!.naturalWidth > 0) {
+            img = imagesRef.current[prevIdx];
             break;
           }
           const nextIdx = safeIndex + offset;
-          const nextImg = (nextIdx < totalFrames && (imagesRef.current[nextIdx] || globalImageCache.get(nextIdx))) || null;
-          if (nextImg?.complete && nextImg.naturalWidth > 0) {
-            img = nextImg;
+          if (nextIdx < totalFrames && imagesRef.current[nextIdx]?.complete && imagesRef.current[nextIdx]!.naturalWidth > 0) {
+            img = imagesRef.current[nextIdx];
             break;
           }
         }
@@ -217,22 +137,6 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
         const dy = (height - drawHeight) / 2;
 
         ctx.drawImage(img, dx, dy, drawWidth, drawHeight);
-
-        // Seamless patch layer: clone adjacent clean leather background over star region in bottom right
-        const nw = img.naturalWidth;
-        const nh = img.naturalHeight;
-
-        const srcX = nw * 0.800;
-        const srcY = nh * 0.780;
-        const srcW = nw * 0.075;
-        const srcH = nh * 0.110;
-
-        const dstX = dx + drawWidth * 0.865;
-        const dstY = dy + drawHeight * 0.780;
-        const dstW = drawWidth * 0.075;
-        const dstH = drawHeight * 0.110;
-
-        ctx.drawImage(img, srcX, srcY, srcW, srcH, dstX, dstY, dstW, dstH);
       }
 
       ctx.restore();
@@ -246,7 +150,7 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
       drawFrame(currentFrame);
     });
     return () => cancelAnimationFrame(animId);
-  }, [currentFrame, drawFrame]);
+  }, [currentFrame, drawFrame, loadedCount]);
 
   // Handle window resize
   useEffect(() => {
@@ -263,3 +167,6 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
     </div>
   );
 };
+
+
+
