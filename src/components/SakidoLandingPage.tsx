@@ -8,72 +8,75 @@ gsap.registerPlugin(ScrollTrigger);
 /**
  * =========================================================================
  * FEATURE CALLOUT FRAME RANGES (0 to 239)
- * Exact copy from product specification.
+ * 6 Main Product Sections with expanded duration for parts 1 to 6.
  * =========================================================================
  */
 const FEATURE_CALLOUTS = [
   {
     id: 'notes',
+    category: '01 / ORGANIZER',
     title: 'Notes',
     text: 'Write notes by course and semester.',
-    startFrame: 25,
-    peakStart: 32,
-    peakEnd: 50,
+    align: 'left',
+    startFrame: 22,
+    peakStart: 30,
+    peakEnd: 52,
     endFrame: 58,
   },
   {
     id: 'calendar',
+    category: '02 / SCHEDULE',
     title: 'Calendar',
     text: 'See your classes and deadlines. Connect Google Calendar if you want.',
+    align: 'right',
     startFrame: 58,
-    peakStart: 65,
-    peakEnd: 83,
-    endFrame: 91,
+    peakStart: 66,
+    peakEnd: 88,
+    endFrame: 94,
   },
   {
     id: 'tasks-grades',
+    category: '03 / ACADEMICS',
     title: 'Tasks & grades',
     text: 'Track assignments and calculate your grade.',
-    startFrame: 91,
-    peakStart: 98,
-    peakEnd: 116,
-    endFrame: 124,
+    align: 'left',
+    startFrame: 94,
+    peakStart: 102,
+    peakEnd: 124,
+    endFrame: 130,
   },
   {
     id: 'knowledge-inbox',
+    category: '04 / KNOWLEDGE',
     title: 'Knowledge Inbox',
     text: "Save a link — a video, article, or PDF — so you don't lose it. Share a YouTube link and it plays right on the page.",
-    startFrame: 124,
-    peakStart: 131,
-    peakEnd: 149,
-    endFrame: 157,
+    align: 'right',
+    startFrame: 130,
+    peakStart: 138,
+    peakEnd: 160,
+    endFrame: 166,
   },
   {
     id: 'chat',
+    category: '05 / COMMUNITY',
     title: 'Chat',
     text: 'Message people at your university, or join the global chat.',
-    startFrame: 157,
-    peakStart: 164,
-    peakEnd: 182,
-    endFrame: 190,
+    align: 'left',
+    startFrame: 166,
+    peakStart: 174,
+    peakEnd: 196,
+    endFrame: 202,
   },
   {
     id: 'dashboard',
+    category: '06 / OVERVIEW',
     title: 'Dashboard',
     text: "Opens to today's classes and what's due next.",
-    startFrame: 190,
-    peakStart: 197,
-    peakEnd: 212,
-    endFrame: 218,
-  },
-  {
-    id: 'search',
-    title: 'Search',
-    text: 'Ctrl/Cmd+K to find any note fast.',
-    startFrame: 218,
-    peakStart: 222,
+    align: 'right',
+    startFrame: 202,
+    peakStart: 210,
     peakEnd: 232,
-    endFrame: 238,
+    endFrame: 239,
   },
 ];
 
@@ -89,14 +92,14 @@ function getCalloutOpacity(frame: number, start: number, peakStart: number, peak
 
 /** Helper to calculate vertical offset during fade in/out */
 function getCalloutY(frame: number, start: number, peakStart: number, peakEnd: number, end: number): number {
-  if (frame < start || frame > end) return 20;
+  if (frame < start || frame > end) return 24;
   if (frame >= peakStart && frame <= peakEnd) return 0;
   if (frame < peakStart) {
     const p = (frame - start) / (peakStart - start);
-    return (1 - p) * 20;
+    return (1 - p) * 24;
   }
   const p = (end - frame) / (end - peakEnd);
-  return (1 - p) * -20;
+  return (1 - p) * -24;
 }
 
 export const SakidoLandingPage: React.FC = () => {
@@ -107,22 +110,21 @@ export const SakidoLandingPage: React.FC = () => {
   const [displayFrame, setDisplayFrame] = useState<number>(0);
   const [preloadProgress, setPreloadProgress] = useState<number>(0);
 
-  // Smooth lerp animation loop for frame transitions
+  // GSAP Ticker for buttery smooth frame interpolation
   useEffect(() => {
-    let animId: number;
-    const updateLoop = () => {
+    const updateFrame = () => {
       setDisplayFrame((prev) => {
         const diff = targetFrame - prev;
         if (Math.abs(diff) < 0.01) return targetFrame;
-        return prev + diff * 0.18;
+        return prev + diff * 0.22;
       });
-      animId = requestAnimationFrame(updateLoop);
     };
-    animId = requestAnimationFrame(updateLoop);
-    return () => cancelAnimationFrame(animId);
+
+    gsap.ticker.add(updateFrame);
+    return () => gsap.ticker.remove(updateFrame);
   }, [targetFrame]);
 
-  // Bind GSAP ScrollTrigger to pin canvas & map smooth scroll progress across 240 frames
+  // GSAP ScrollTrigger pinning & scroll mapping
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -131,9 +133,9 @@ export const SakidoLandingPage: React.FC = () => {
       ScrollTrigger.create({
         trigger: container,
         start: 'top top',
-        end: '+=5000', // ~5000px pinned scroll space for smooth frame pacing
+        end: '+=6000', // Pinned scroll track length
         pin: pinnedRef.current,
-        scrub: 1, // Smooth scrub momentum
+        scrub: 0.8,
         onUpdate: (self) => {
           const frame = Math.min(239, self.progress * 239);
           setTargetFrame(frame);
@@ -144,22 +146,12 @@ export const SakidoLandingPage: React.FC = () => {
     return () => ctx.revert();
   }, []);
 
-  // Compute hero opacity (Frame 0 to 22)
-  const heroOpacity = Math.max(0, 1 - displayFrame / 22);
-  const heroY = (1 - heroOpacity) * -20;
+  // Compute hero title opacity (Frame 0 to 20)
+  const heroOpacity = Math.max(0, 1 - displayFrame / 20);
+  const heroY = (1 - heroOpacity) * -24;
 
   return (
     <div className="bg-black text-white min-h-screen font-sans selection:bg-white selection:text-black">
-      {/* 1. Header (fixed) */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-zinc-900 px-6 sm:px-12 py-4 flex items-center justify-between">
-        <span className="text-lg sm:text-xl font-bold tracking-tight text-white select-none">
-          Sakido
-        </span>
-        <span className="text-xs sm:text-sm text-zinc-400 font-normal tracking-wide select-none pointer-events-none">
-          Notes · Calendar · Tasks · Chat
-        </span>
-      </header>
-
       {/* Subtle Preloading Progress Line */}
       {preloadProgress < 100 && (
         <div className="fixed top-0 left-0 right-0 z-50 h-[2px] bg-zinc-900 pointer-events-none transition-opacity duration-500">
@@ -170,13 +162,13 @@ export const SakidoLandingPage: React.FC = () => {
         </div>
       )}
 
-      {/* Main Pinned Scroll Section */}
+      {/* Main GSAP Pinned Scroll Track */}
       <div ref={scrollContainerRef} className="relative w-full bg-black">
         <div
           ref={pinnedRef}
-          className="h-screen w-full relative overflow-hidden flex flex-col justify-between items-center py-16 px-6 sm:px-12"
+          className="h-screen w-full relative overflow-hidden flex flex-col justify-between items-center py-12 px-6 sm:px-12"
         >
-          {/* Full Screen Canvas background for 240-frame sequence */}
+          {/* Canvas sequence background */}
           <div className="absolute inset-0 z-10 w-full h-full">
             <FrameCanvas
               currentFrame={displayFrame}
@@ -186,15 +178,15 @@ export const SakidoLandingPage: React.FC = () => {
             />
           </div>
 
-          {/* 2. Hero Header Text (Frame 0 - 22) */}
+          {/* Hero Header Title (Frame 0 - 20) */}
           <div
-            className="z-20 text-center max-w-3xl pointer-events-none transition-all duration-300 relative mt-16 sm:mt-24 px-4"
+            className="z-20 text-center max-w-3xl pointer-events-none transition-all duration-300 relative mt-20 sm:mt-28 px-4"
             style={{
               opacity: heroOpacity,
               transform: `translateY(${heroY}px)`,
             }}
           >
-            <h1 className="text-6xl sm:text-8xl md:text-9xl font-bold tracking-tighter text-white">
+            <h1 className="text-6xl sm:text-8xl md:text-9xl font-extrabold tracking-tighter text-white">
               Sakido
             </h1>
             <p className="mt-6 text-lg sm:text-2xl text-zinc-300 font-normal tracking-tight leading-relaxed max-w-2xl mx-auto">
@@ -202,8 +194,8 @@ export const SakidoLandingPage: React.FC = () => {
             </p>
           </div>
 
-          {/* 3. Scroll-pinned feature callouts (Generous negative space, no cards/shadows/gradients) */}
-          <div className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center p-6 sm:p-12">
+          {/* Feature callouts positioned strictly Left and Right */}
+          <div className="absolute inset-0 z-20 pointer-events-none p-6 sm:p-12 md:p-16">
             {FEATURE_CALLOUTS.map((item) => {
               const opacity = getCalloutOpacity(
                 displayFrame,
@@ -222,19 +214,28 @@ export const SakidoLandingPage: React.FC = () => {
 
               if (opacity <= 0.001) return null;
 
+              const isLeft = item.align === 'left';
+
               return (
                 <div
                   key={item.id}
-                  className="absolute text-center max-w-xl px-6 transition-all duration-300"
+                  className={`absolute top-1/2 -translate-y-1/2 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg transition-all duration-300 ${
+                    isLeft
+                      ? 'left-8 sm:left-14 md:left-20 lg:left-28 text-left'
+                      : 'right-8 sm:right-14 md:right-20 lg:right-28 text-right'
+                  }`}
                   style={{
                     opacity,
-                    transform: `translateY(${translateY}px)`,
+                    transform: `translateY(calc(-50% + ${translateY}px))`,
                   }}
                 >
-                  <h2 className="text-4xl sm:text-6xl font-bold tracking-tight text-white mb-3">
+                  <span className="text-xs uppercase tracking-[0.25em] text-zinc-400 font-semibold mb-2 block">
+                    {item.category}
+                  </span>
+                  <h2 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white mb-3 leading-tight">
                     {item.title}
                   </h2>
-                  <p className="text-lg sm:text-2xl text-zinc-300 font-normal tracking-tight leading-snug">
+                  <p className="text-base sm:text-xl lg:text-2xl text-zinc-300 font-normal tracking-tight leading-snug">
                     {item.text}
                   </p>
                 </div>
@@ -244,7 +245,7 @@ export const SakidoLandingPage: React.FC = () => {
 
           {/* Hero Bottom Scroll Hint */}
           <div
-            className="z-20 text-center text-xs text-zinc-500 font-medium tracking-widest uppercase pointer-events-none transition-opacity duration-300 mb-4"
+            className="z-20 text-center text-xs text-zinc-500 font-medium tracking-[0.2em] uppercase pointer-events-none transition-opacity duration-300 mb-6"
             style={{ opacity: heroOpacity }}
           >
             Scroll to unpack
@@ -252,10 +253,10 @@ export const SakidoLandingPage: React.FC = () => {
         </div>
       </div>
 
-      {/* 5. Closing Section */}
+      {/* Closing CTA Section */}
       <section className="relative z-30 bg-black py-28 sm:py-40 px-6 text-center border-t border-zinc-900">
         <div className="max-w-3xl mx-auto space-y-6">
-          <h2 className="text-5xl sm:text-7xl font-bold tracking-tighter text-white leading-none">
+          <h2 className="text-5xl sm:text-7xl font-extrabold tracking-tighter text-white leading-none">
             Everything school. One app.
           </h2>
 
@@ -272,5 +273,6 @@ export const SakidoLandingPage: React.FC = () => {
     </div>
   );
 };
+
 
 
