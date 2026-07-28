@@ -85,8 +85,12 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     setIsMobileMenuOpen(false);
   };
 
-  // Theme state
+  // Theme state with localStorage persistence
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('sakido_theme');
+      if (saved) return saved === 'dark';
+    } catch {}
     return document.documentElement.classList.contains('dark');
   });
 
@@ -273,8 +277,11 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     return () => clearInterval(timer);
   }, []);
 
-  // Sync dark mode class on document element
+  // Sync dark mode class on document element & localStorage
   useEffect(() => {
+    try {
+      localStorage.setItem('sakido_theme', isDarkMode ? 'dark' : 'light');
+    } catch {}
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
     } else {
@@ -1338,9 +1345,9 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   };
 
   return (
-    <div className="flex w-full min-h-screen bg-surface dark:bg-[#15110e] text-on-surface dark:text-[#f9efe9] font-body transition-colors duration-200">
+    <div className="flex w-full min-h-screen bg-surface text-on-surface font-body transition-colors duration-200">
       {/* Mobile Header Bar */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-surface/90 dark:bg-[#15110e]/90 backdrop-blur-md border-b border-outline-variant/30 px-4 py-3 flex items-center justify-between">
+      <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-surface/90 backdrop-blur-md border-b border-outline-variant/30 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -1364,24 +1371,24 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
       {/* Sidebar Navigation */}
       <nav
-        className={`fixed lg:sticky top-0 left-0 h-screen w-64 bg-surface dark:bg-[#191310] border-r border-outline-variant/30 dark:border-outline/20 flex flex-col py-6 px-4 z-50 transition-transform duration-300 ${
+        className={`fixed lg:sticky top-0 left-0 h-screen w-64 bg-surface-container-low border-r border-outline-variant/30 flex flex-col py-6 px-4 z-50 transition-transform duration-300 ${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
         {/* Brand */}
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="font-display text-2xl font-bold tracking-tight text-on-surface dark:text-inverse-on-surface">
+            <h1 className="font-display text-2xl font-bold tracking-tight text-on-surface">
               Sakido
             </h1>
-            <p className="text-secondary dark:text-secondary-fixed-dim text-xs mt-0.5 font-mono">
+            <p className="text-secondary text-xs mt-0.5 font-mono">
               Productivity Portal
             </p>
           </div>
           {onBackToLanding && (
             <button
               onClick={onBackToLanding}
-              className="p-1.5 rounded-lg border border-outline-variant/40 hover:bg-surface-container-low text-secondary hover:text-on-surface transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg border border-outline-variant/40 hover:bg-surface-container text-secondary hover:text-on-surface transition-colors cursor-pointer"
               title="Return to Landing Page"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -1409,8 +1416,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   onClick={() => handleSelectTab(item.name)}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                     isActive
-                      ? 'text-primary dark:text-primary-fixed-dim font-bold bg-surface-container-low dark:bg-[#28201a] border border-primary-container/20 shadow-2xs'
-                      : 'text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-low/60 dark:hover:bg-[#221b16]'
+                      ? 'text-primary font-bold bg-surface-container border border-primary-container/20 shadow-2xs'
+                      : 'text-secondary hover:text-on-surface hover:bg-surface-container/60'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -1431,8 +1438,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               onClick={() => handleSelectTab('Connectors')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                 activeTab === 'Connectors'
-                  ? 'text-primary dark:text-primary-fixed-dim font-bold bg-surface-container-low dark:bg-[#28201a] border border-primary-container/20 shadow-2xs'
-                  : 'text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-low/60 dark:hover:bg-[#221b16]'
+                  ? 'text-primary font-bold bg-surface-container border border-primary-container/20 shadow-2xs'
+                  : 'text-secondary hover:text-on-surface hover:bg-surface-container/60'
               }`}
             >
               <Sliders className="w-4 h-4" />
@@ -1452,8 +1459,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 onClick={() => handleSelectTab(item)}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                   activeTab === item
-                    ? 'text-primary dark:text-primary-fixed-dim font-bold bg-surface-container-low dark:bg-[#28201a]'
-                    : 'text-secondary/70 hover:bg-surface-container-low/40'
+                    ? 'text-primary font-bold bg-surface-container border border-primary-container/20 shadow-2xs'
+                    : 'text-secondary hover:text-on-surface hover:bg-surface-container/60'
                 }`}
               >
                 <Info className="w-4 h-4 text-secondary/60" />
