@@ -422,10 +422,19 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newEventTitle.trim() || !newEventDate.trim()) return;
+    if (!newEventTitle.trim()) return;
 
     const title = newEventTitle.trim();
-    const date = newEventDate.trim();
+    let date = newEventDate.trim();
+
+    // Fallback: if newEventDate was not manually changed in input, use active day inspector date or today
+    if (!date && activeDayInspector?.dateStr) {
+      date = activeDayInspector.dateStr;
+    }
+    if (!date) {
+      date = new Date().toISOString().split('T')[0];
+    }
+
     const startTime = newEventStartTime.trim() || '09:00';
     const endTime = newEventEndTime.trim() || '10:00';
     const type = newEventType;
@@ -481,7 +490,9 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     // Real 2-Way Live Google Calendar API POST Sync with Recurrence Rule
     if (connectors.googleCalendar) {
       const token = localStorage.getItem('sakido_provider_token');
-      if (token) {
+      if (!token) {
+        setConnectorNotice('⚠️ Google Calendar is connected, but provider session token is missing. Please click Disconnect / Reauth to renew Google permissions.');
+      } else {
         try {
           const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
           const startDt = new Date(`${date}T${startTime}:00`);
@@ -513,9 +524,38 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
           if (res.ok) {
             setConnectorNotice(`🟢 Event "${title}" (${startTime}-${endTime}${recurrence !== 'none' ? `, ${recurrence}` : ''}) posted live to your Google Calendar!`);
+            // Trigger background refresh of live Google Calendar events
+            try {
+              const startOfMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1).toISOString();
+              const endOfMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0, 23, 59, 59).toISOString();
+              const fetchRes = await fetch(
+                `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(startOfMonth)}&timeMax=${encodeURIComponent(endOfMonth)}&singleEvents=true`,
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              if (fetchRes.ok) {
+                const data = await fetchRes.json();
+                if (data.items) {
+                  const fetchedGcal = data.items.map((item: any) => ({
+                    id: `gcal-${item.id}`,
+                    title: item.summary || 'Google Event',
+                    date: item.start?.dateTime?.split('T')[0] || item.start?.date || '',
+                    time: item.start?.dateTime ? new Date(item.start.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'All Day',
+                    type: 'Google Cal',
+                  }));
+                  setGoogleCalendarEvents(fetchedGcal);
+                }
+              }
+            } catch (refErr) {
+              console.warn('Refinement notice:', refErr);
+            }
+          } else {
+            const errJson = await res.json().catch(() => null);
+            console.warn('Google Calendar API POST status:', res.status, errJson);
+            setConnectorNotice(`⚠️ Google Calendar API returned ${res.status}: ${errJson?.error?.message || 'Access token may be expired. Click Disconnect / Reauth to re-authorize.'}`);
           }
-        } catch (err) {
+        } catch (err: any) {
           console.warn('Google Calendar POST notice:', err);
+          setConnectorNotice(`⚠️ Could not reach Google Calendar API: ${err?.message || err}`);
         }
       }
     }
