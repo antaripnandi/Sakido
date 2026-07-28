@@ -30,7 +30,9 @@ import {
   Menu,
   X,
   ArrowLeft,
-  Play
+  Play,
+  Settings,
+  ShieldCheck
 } from 'lucide-react';
 import { getSupabaseClient } from '../../lib/supabaseClient';
 
@@ -383,6 +385,10 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   const [connectingService, setConnectingService] = useState<string | null>(null);
   const [connectorNotice, setConnectorNotice] = useState<string | null>(null);
+
+  // Profile & Logout Modal states
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
+  const [isLogoutConfirmOpen, setIsLogoutConfirmOpen] = useState<boolean>(false);
 
 
   // Clock tick interval
@@ -1620,9 +1626,13 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         </ul>
 
         {/* Footer User Info */}
-        <div className="mt-auto border-t border-outline-variant/30 pt-4 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-surface-container-high dark:bg-[#342a23] border border-outline-variant/40 flex items-center justify-center overflow-hidden shrink-0">
+        <div className="mt-auto border-t border-outline-variant/30 pt-4 flex items-center justify-between relative">
+          <button
+            onClick={() => setIsProfileModalOpen(true)}
+            className="flex items-center gap-2.5 min-w-0 hover:bg-surface-container/80 p-1.5 -ml-1.5 rounded-xl transition-all cursor-pointer text-left flex-1"
+            title="User Profile & Settings"
+          >
+            <div className="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant/40 flex items-center justify-center overflow-hidden shrink-0">
               {userAvatar ? (
                 <img src={userAvatar} alt={userName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               ) : (
@@ -1636,13 +1646,14 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   <Check className="w-2.5 h-2.5 stroke-[3]" />
                 </div>
               </div>
+              <span className="text-[10px] text-secondary font-mono">Settings & Profile</span>
             </div>
-          </div>
+          </button>
 
           {onSignOut && (
             <button
-              onClick={onSignOut}
-              className="p-1.5 rounded-lg text-secondary hover:text-error hover:bg-surface-container-high transition-colors cursor-pointer"
+              onClick={() => setIsLogoutConfirmOpen(true)}
+              className="p-2 rounded-lg text-secondary hover:text-error hover:bg-surface-container-high transition-colors cursor-pointer shrink-0 ml-1"
               title="Sign Out"
             >
               <LogOut className="w-4 h-4" />
@@ -1904,6 +1915,150 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               >
                 Open in External Browser <ExternalLink className="w-3.5 h-3.5" />
               </a>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Profile & Settings Modal */}
+      {isProfileModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-5">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-surface-container-high border border-outline-variant/40 flex items-center justify-center overflow-hidden shrink-0">
+                  {userAvatar ? (
+                    <img src={userAvatar} alt={userName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <UserIcon className="w-6 h-6 text-secondary" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h3 className="font-display font-bold text-lg text-on-surface">{userName}</h3>
+                    <ShieldCheck className="w-4 h-4 text-emerald-500" title="Verified Account" />
+                  </div>
+                  <p className="text-xs text-secondary font-mono">{currentUser?.email || 'Student Account'}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsProfileModalOpen(false)}
+                className="text-secondary hover:text-on-surface p-1 rounded-lg hover:bg-surface-container-high cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Quick Preferences */}
+            <div className="flex flex-col gap-3 pt-3 border-t border-outline-variant/20">
+              <div className="text-xs font-mono font-bold uppercase text-secondary">
+                Preferences & Controls
+              </div>
+
+              {/* Theme Toggle */}
+              <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low border border-outline-variant/30">
+                <div className="flex items-center gap-3">
+                  {isDarkMode ? <Moon className="w-4 h-4 text-amber-300" /> : <Sun className="w-4 h-4 text-amber-600" />}
+                  <div>
+                    <span className="text-sm font-medium text-on-surface block">Interface Theme</span>
+                    <span className="text-xs text-secondary font-mono">{isDarkMode ? 'Dark Mode' : 'Light Mode'}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={handleToggleDark}
+                  className="px-3 py-1.5 rounded-lg border border-outline-variant text-xs font-semibold text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+                >
+                  Switch Theme
+                </button>
+              </div>
+
+              {/* Connected Integrations Summary */}
+              <div className="p-3 rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-on-surface">Active Integrations</span>
+                  <button
+                    onClick={() => {
+                      setIsProfileModalOpen(false);
+                      handleSelectTab('Connectors');
+                    }}
+                    className="text-xs text-primary hover:underline font-mono cursor-pointer"
+                  >
+                    Manage →
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(connectors).map(([key, isConnected]) => (
+                    <span
+                      key={key}
+                      className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                        isConnected
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20'
+                          : 'bg-surface-container-high text-secondary/70'
+                      }`}
+                    >
+                      {key.replace('google', '')}: {isConnected ? 'Active' : 'Off'}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-between pt-2 border-t border-outline-variant/20">
+              <button
+                onClick={() => {
+                  setIsProfileModalOpen(false);
+                  setIsLogoutConfirmOpen(true);
+                }}
+                className="text-xs text-error hover:underline flex items-center gap-1.5 font-medium cursor-pointer"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Sign Out
+              </button>
+              <button
+                onClick={() => setIsProfileModalOpen(false)}
+                className="px-4 py-2 rounded-lg bg-[#8b5e3c] hover:bg-[#6f4627] text-white text-xs font-medium cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sign Out Confirmation Modal */}
+      {isLogoutConfirmOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl max-w-sm w-full p-6 shadow-2xl flex flex-col gap-4">
+            <div className="flex items-center gap-3 text-amber-500">
+              <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
+                <LogOut className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-base text-on-surface">Confirm Sign Out</h3>
+                <span className="text-xs text-secondary font-mono">End Active Session</span>
+              </div>
+            </div>
+
+            <p className="text-sm text-on-surface leading-relaxed">
+              Are you sure you want to log out of your Sakido workspace?
+            </p>
+
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => setIsLogoutConfirmOpen(false)}
+                className="px-4 py-2 rounded-lg border border-outline-variant text-xs font-semibold text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setIsLogoutConfirmOpen(false);
+                  if (onSignOut) onSignOut();
+                }}
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+              >
+                Log Out
+              </button>
             </div>
           </div>
         </div>
