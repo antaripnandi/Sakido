@@ -257,6 +257,79 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     } catch {}
   }, [connectors]);
 
+  // Bulk sync helper: push all existing Sakido events to Google Calendar
+  const bulkSyncEventsToGCal = async (accessToken: string) => {
+    try {
+      const savedEvents = localStorage.getItem('sakido_events');
+      if (!savedEvents) return;
+
+      const allEvents: any[] = JSON.parse(savedEvents);
+      if (!allEvents.length) return;
+
+      // Deduplicate: only sync unique base events (skip recurring child IDs like "123-1", "123-2")
+      const seen = new Set<string>();
+      const uniqueEvents = allEvents.filter((ev) => {
+        const baseId = ev.id.includes('-') ? ev.id.split('-').slice(0, -1).join('-') : ev.id;
+        // But keep each individual occurrence for non-recurring or if id is numeric (base)
+        if (seen.has(ev.id)) return false;
+        seen.add(ev.id);
+        return true;
+      });
+
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      let synced = 0;
+      let failed = 0;
+
+      for (const ev of uniqueEvents) {
+        try {
+          const startDt = new Date(`${ev.date}T${ev.startTime || '09:00'}:00`);
+          const endDt = new Date(`${ev.date}T${ev.endTime || '10:00'}:00`);
+
+          // Skip events with invalid dates
+          if (isNaN(startDt.getTime()) || isNaN(endDt.getTime())) continue;
+
+          const gcalPayload: any = {
+            summary: `[Sakido] ${ev.title}`,
+            description: `Bulk-synced from Sakido Academic Portal (${ev.type || 'Event'})`,
+            start: { dateTime: startDt.toISOString(), timeZone: tz },
+            end: { dateTime: endDt.toISOString(), timeZone: tz },
+          };
+
+          const res = await fetch(
+            'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(gcalPayload),
+            }
+          );
+
+          if (res.ok) {
+            synced++;
+          } else {
+            failed++;
+            // If 401 on first event, token is bad — stop trying
+            if (res.status === 401 && synced === 0) {
+              console.warn('Bulk sync: token expired on first event, aborting');
+              break;
+            }
+          }
+        } catch {
+          failed++;
+        }
+      }
+
+      if (synced > 0) {
+        setConnectorNotice(`🟢 Bulk-synced ${synced} existing Sakido event${synced > 1 ? 's' : ''} to Google Calendar!${failed > 0 ? ` (${failed} failed)` : ''}`);
+      }
+    } catch (err) {
+      console.warn('Bulk sync error:', err);
+    }
+  };
+
   // Verify pending connector ONLY after user completes OAuth authorization callback
   useEffect(() => {
     const verifyOAuthCallback = async () => {
@@ -290,7 +363,13 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               gmail: 'Gmail Notifications',
               googleNotes: 'Google Notes / Keep',
             };
-            setConnectorNotice(`Successfully connected ${serviceNames[pending] || pending}! Permissions & API synchronization active.`);
+            setConnectorNotice(`Successfully connected ${serviceNames[pending] || pending}! Syncing existing events...`);
+
+            // Bulk sync all existing Sakido events to Google Calendar on reconnect
+            if (pending === 'googleCalendar' && session.provider_token) {
+              // Slight delay to let the UI update first
+              setTimeout(() => bulkSyncEventsToGCal(session.provider_token!), 500);
+            }
           } else {
             console.log('OAuth authorization was closed or unfulfilled.');
           }
