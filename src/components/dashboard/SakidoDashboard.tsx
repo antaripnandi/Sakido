@@ -37,6 +37,7 @@ import {
   Layers
 } from 'lucide-react';
 import { getSupabaseClient } from '../../lib/supabaseClient';
+import { normalizeToISODate, safeCreateDateTime } from '../../lib/dateUtils';
 import { SakidoLogo } from '../common/SakidoLogo';
 import { FlashcardModule } from '../flashcards/FlashcardModule';
 import { Flashcard } from '../../types';
@@ -282,11 +283,12 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
       for (const ev of uniqueEvents) {
         try {
-          const startDt = new Date(`${ev.date}T${ev.startTime || '09:00'}:00`);
-          const endDt = new Date(`${ev.date}T${ev.endTime || '10:00'}:00`);
+          const isoDate = normalizeToISODate(ev.date);
+          const startDt = safeCreateDateTime(isoDate, ev.startTime || '09:00');
+          const endDt = safeCreateDateTime(isoDate, ev.endTime || '10:00');
 
           // Skip events with invalid dates
-          if (isNaN(startDt.getTime()) || isNaN(endDt.getTime())) continue;
+          if (!startDt || !endDt) continue;
 
           const gcalPayload: any = {
             summary: `[Sakido] ${ev.title}`,
@@ -507,14 +509,14 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     if (!newEventTitle.trim()) return;
 
     const title = newEventTitle.trim();
-    let date = newEventDate.trim();
+    let date = normalizeToISODate(newEventDate.trim());
 
     // Fallback: if newEventDate was not manually changed in input, use active day inspector date or today
-    if (!date && activeDayInspector?.dateStr) {
-      date = activeDayInspector.dateStr;
+    if (!newEventDate.trim() && activeDayInspector?.dateStr) {
+      date = normalizeToISODate(activeDayInspector.dateStr);
     }
     if (!date) {
-      date = new Date().toISOString().split('T')[0];
+      date = normalizeToISODate(new Date());
     }
 
     const startTime = newEventStartTime.trim() || '09:00';
@@ -542,7 +544,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       if (recurrence === 'weekday') limit = 15;
       if (recurrence === 'monthly') limit = 4;
 
-      const curr = new Date(`${date}T${startTime}:00`);
+      const curr = safeCreateDateTime(date, startTime) || new Date();
       while (list.length < limit) {
         if (recurrence === 'daily') {
           curr.setDate(curr.getDate() + 1);
@@ -556,7 +558,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             curr.setDate(curr.getDate() + 1);
           }
         }
-        const dateStr = curr.toISOString().split('T')[0];
+        const dateStr = normalizeToISODate(curr);
         list.push({
           ...base,
           id: `${base.id}-${list.length}`,
@@ -573,106 +575,115 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     if (connectors.googleCalendar) {
       let token = localStorage.getItem('sakido_provider_token');
       if (!token) {
-        setConnectorNotice('⚠️ Google Calendar is connected, but provider session token is missing. Please click Disconnect / Reauth to renew Google permissions.');
+        setConnectorNotice('⚠️ Event saved in Sakido, but Google Calendar provider token is missing. Please click Disconnect / Reauth to renew permissions.');
       } else {
         try {
           const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-          const startDt = new Date(`${date}T${startTime}:00`);
-          const endDt = new Date(`${date}T${endTime}:00`);
+          const startDt = safeCreateDateTime(date, startTime);
+          const endDt = safeCreateDateTime(date, endTime);
 
-          const gcalPayload: any = {
-            summary: `[Sakido] ${title}`,
-            description: `Created from Sakido Academic Portal (${type})`,
-            start: { dateTime: startDt.toISOString(), timeZone: tz },
-            end: { dateTime: endDt.toISOString(), timeZone: tz },
-          };
+          if (!startDt || !endDt) {
+            setConnectorNotice(`⚠️ Event saved locally, but invalid date/time format (${date} ${startTime}-${endTime}) prevented Google Calendar sync.`);
+          } else {
+            const gcalPayload: any = {
+              summary: `[Sakido] ${title}`,
+              description: `Created from Sakido Academic Portal (${type})`,
+              start: { dateTime: startDt.toISOString(), timeZone: tz },
+              end: { dateTime: endDt.toISOString(), timeZone: tz },
+            };
 
-          if (recurrence === 'daily') gcalPayload.recurrence = ['RRULE:FREQ=DAILY;COUNT=14'];
-          if (recurrence === 'weekly') gcalPayload.recurrence = ['RRULE:FREQ=WEEKLY;COUNT=8'];
-          if (recurrence === 'monthly') gcalPayload.recurrence = ['RRULE:FREQ=MONTHLY;COUNT=4'];
-          if (recurrence === 'weekday') gcalPayload.recurrence = ['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=15'];
+            if (recurrence === 'daily') gcalPayload.recurrence = ['RRULE:FREQ=DAILY;COUNT=14'];
+            if (recurrence === 'weekly') gcalPayload.recurrence = ['RRULE:FREQ=WEEKLY;COUNT=8'];
+            if (recurrence === 'monthly') gcalPayload.recurrence = ['RRULE:FREQ=MONTHLY;COUNT=4'];
+            if (recurrence === 'weekday') gcalPayload.recurrence = ['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=15'];
 
-          // Helper: POST event to Google Calendar with a given token
-          const postToGCal = async (accessToken: string) => {
-            return fetch(
-              `https://www.googleapis.com/calendar/v3/calendars/primary/events`,
-              {
-                method: 'POST',
-                headers: {
-                  Authorization: `Bearer ${accessToken}`,
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(gcalPayload),
-              }
-            );
-          };
-
-          let res = await postToGCal(token);
-
-          // If 401 (token expired), try to auto-refresh using the serverless endpoint
-          if (res.status === 401) {
-            const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
-            if (refreshToken) {
-              try {
-                const refreshRes = await fetch('/api/refresh-token', {
+            // Helper: POST event to Google Calendar with a given token
+            const postToGCal = async (accessToken: string) => {
+              return fetch(
+                `https://www.googleapis.com/calendar/v3/calendars/primary/events`,
+                {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ refresh_token: refreshToken }),
-                });
-
-                if (refreshRes.ok) {
-                  const refreshData = await refreshRes.json();
-                  token = refreshData.access_token;
-                  localStorage.setItem('sakido_provider_token', token!);
-                  // Retry the POST with the fresh token
-                  res = await postToGCal(token!);
-                } else {
-                  const refreshErr = await refreshRes.json().catch(() => null);
-                  console.warn('Token refresh failed:', refreshErr);
-                  setConnectorNotice(`⚠️ Google token refresh failed. Please Disconnect / Reauth to renew permissions.`);
+                  headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify(gcalPayload),
                 }
-              } catch (refreshErr) {
-                console.warn('Token refresh error:', refreshErr);
-              }
-            } else {
-              setConnectorNotice(`⚠️ Access token expired and no refresh token available. Please Disconnect / Reauth the Google Calendar connector.`);
-            }
-          }
-
-          if (res.ok) {
-            setConnectorNotice(`🟢 Event "${title}" (${startTime}-${endTime}${recurrence !== 'none' ? `, ${recurrence}` : ''}) posted live to your Google Calendar!`);
-            // Trigger background refresh of live Google Calendar events
-            try {
-              const startOfMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1).toISOString();
-              const endOfMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0, 23, 59, 59).toISOString();
-              const fetchRes = await fetch(
-                `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(startOfMonth)}&timeMax=${encodeURIComponent(endOfMonth)}&singleEvents=true`,
-                { headers: { Authorization: `Bearer ${token}` } }
               );
-              if (fetchRes.ok) {
-                const data = await fetchRes.json();
-                if (data.items) {
-                  const fetchedGcal = data.items.map((item: any) => ({
-                    id: `gcal-${item.id}`,
-                    title: item.summary || 'Google Event',
-                    date: item.start?.dateTime?.split('T')[0] || item.start?.date || '',
-                    time: item.start?.dateTime ? new Date(item.start.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'All Day',
-                    type: 'Google Cal',
-                  }));
-                  setGoogleCalendarEvents(fetchedGcal);
+            };
+
+            let res = await postToGCal(token);
+
+            // If 401 (token expired), try to auto-refresh using the serverless endpoint
+            if (res.status === 401) {
+              const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
+              if (refreshToken) {
+                try {
+                  const refreshRes = await fetch('/api/refresh-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: refreshToken }),
+                  });
+
+                  if (refreshRes.ok) {
+                    const refreshData = await refreshRes.json();
+                    token = refreshData.access_token;
+                    localStorage.setItem('sakido_provider_token', token!);
+                    // Retry the POST with the fresh token
+                    res = await postToGCal(token!);
+                  } else {
+                    const refreshErr = await refreshRes.json().catch(() => null);
+                    console.warn('Token refresh failed:', refreshErr);
+                    setConnectorNotice(`⚠️ Google token refresh failed. Please Disconnect / Reauth to renew permissions.`);
+                  }
+                } catch (refreshErr) {
+                  console.warn('Token refresh error:', refreshErr);
                 }
+              } else {
+                setConnectorNotice(`⚠️ Access token expired and no refresh token available. Please Disconnect / Reauth Google Calendar.`);
               }
-            } catch (refErr) {
-              console.warn('Refinement notice:', refErr);
             }
-          } else if (res.status !== 401) {
-            const errJson = await res.json().catch(() => null);
-            console.warn('Google Calendar API POST status:', res.status, errJson);
-            setConnectorNotice(`⚠️ Google Calendar API returned ${res.status}: ${errJson?.error?.message || 'Unknown error. Try Disconnect / Reauth.'}`);
+
+            if (res.ok) {
+              setConnectorNotice(`🟢 Event "${title}" (${startTime}-${endTime}) posted live to your Google Calendar!`);
+              // Trigger background refresh of live Google Calendar events
+              try {
+                const startOfMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1).toISOString();
+                const endOfMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0, 23, 59, 59).toISOString();
+                const fetchRes = await fetch(
+                  `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(startOfMonth)}&timeMax=${encodeURIComponent(endOfMonth)}&singleEvents=true`,
+                  { headers: { Authorization: `Bearer ${token}` } }
+                );
+                if (fetchRes.ok) {
+                  const data = await fetchRes.json();
+                  if (data.items) {
+                    const fetchedGcal = data.items.map((item: any) => ({
+                      id: `gcal-${item.id}`,
+                      title: item.summary || 'Google Event',
+                      date: normalizeToISODate(item.start?.dateTime || item.start?.date),
+                      time: item.start?.dateTime ? new Date(item.start.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'All Day',
+                      type: 'Google Cal',
+                    }));
+                    setGoogleCalendarEvents(fetchedGcal);
+                  }
+                }
+              } catch (refErr) {
+                console.warn('Refinement notice:', refErr);
+              }
+            } else if (res.status !== 401) {
+              const rawErrText = await res.text().catch(() => '');
+              let errDetail = rawErrText;
+              try {
+                const parsed = JSON.parse(rawErrText);
+                errDetail = parsed?.error?.message || rawErrText;
+              } catch {}
+              console.warn('Google Calendar API POST status:', res.status, rawErrText);
+              setConnectorNotice(`⚠️ Event saved locally, but Google Calendar API returned ${res.status}: ${errDetail || 'Unknown API error'}`);
+            }
           }
         } catch (err: any) {
           console.warn('Google Calendar POST notice:', err);
-          setConnectorNotice(`⚠️ Could not reach Google Calendar API: ${err?.message || err}`);
+          setConnectorNotice(`⚠️ Event saved locally, but Google Calendar API request failed: ${err?.message || err}`);
         }
       }
     }
@@ -2038,6 +2049,23 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   return (
     <div className="flex w-full min-h-screen bg-surface text-on-surface font-body transition-colors duration-200">
+      {/* Global Toast Notice Banner */}
+      {connectorNotice && (
+        <div className="fixed top-4 right-4 sm:top-6 sm:right-6 z-[100] max-w-md w-[calc(100vw-2rem)] p-4 rounded-2xl border border-outline-variant/60 bg-surface-container-lowest dark:bg-[#251e19] text-on-surface shadow-2xl backdrop-blur-md flex items-start gap-3">
+          <Info className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+          <div className="flex-1 text-xs leading-relaxed">
+            <span className="font-bold text-primary block mb-0.5">Sync & Service Notice</span>
+            {connectorNotice}
+          </div>
+          <button
+            onClick={() => setConnectorNotice(null)}
+            className="p-1 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors text-xs shrink-0 cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Mobile Header Bar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-surface/90 backdrop-blur-md border-b border-outline-variant/30 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
