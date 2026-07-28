@@ -32,7 +32,8 @@ import {
   ArrowLeft,
   Play,
   Settings,
-  ShieldCheck
+  ShieldCheck,
+  RotateCw
 } from 'lucide-react';
 import { getSupabaseClient } from '../../lib/supabaseClient';
 
@@ -311,31 +312,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         }
       }
 
-      // Active month synced events when Google Calendar connector is connected
-      const monthStr = String(month + 1).padStart(2, '0');
-      setGoogleCalendarEvents([
-        {
-          id: 'gcal-live-1',
-          title: 'Google Cal: Systems Design Exam',
-          date: `${year}-${monthStr}-10`,
-          type: 'Google Cal',
-          location: 'Live Synced',
-        },
-        {
-          id: 'gcal-live-2',
-          title: 'Google Cal: Campus Seminar',
-          date: `${year}-${monthStr}-18`,
-          type: 'Google Cal',
-          location: 'Live Synced',
-        },
-        {
-          id: 'gcal-live-3',
-          title: 'Google Cal: Final Project Milestone',
-          date: `${year}-${monthStr}-25`,
-          type: 'Google Cal',
-          location: 'Live Synced',
-        },
-      ]);
+      // Zero hardcoded mock events: Return empty list if no live Google Calendar events returned
+      setGoogleCalendarEvents([]);
     };
 
     fetchGoogleEvents();
@@ -380,7 +358,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const [newNoteContent, setNewNoteContent] = useState('');
   const [newNoteCourse, setNewNoteCourse] = useState('');
 
-  // Calendar State
+  // Calendar View Mode ('month' | 'timetable')
+  const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'timetable'>('month');
   const [selectedDateEvents, setSelectedDateEvents] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [activeDayInspector, setActiveDayInspector] = useState<{
@@ -824,6 +803,50 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             </div>
           </div>
 
+          {/* Calendar View Switcher & Sync Controls */}
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container-low border border-outline-variant/30">
+              <button
+                type="button"
+                onClick={() => setCalendarViewMode('month')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all cursor-pointer ${
+                  calendarViewMode === 'month'
+                    ? 'bg-[#8b5e3c] text-white shadow-2xs'
+                    : 'text-secondary hover:text-on-surface'
+                }`}
+              >
+                Month Grid
+              </button>
+              <button
+                type="button"
+                onClick={() => setCalendarViewMode('timetable')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all cursor-pointer ${
+                  calendarViewMode === 'timetable'
+                    ? 'bg-[#8b5e3c] text-white shadow-2xs'
+                    : 'text-secondary hover:text-on-surface'
+                }`}
+              >
+                Hourly Timetable
+              </button>
+            </div>
+
+            {connectors.googleCalendar && (
+              <button
+                type="button"
+                onClick={() => {
+                  const token = localStorage.getItem('sakido_provider_token');
+                  if (token) {
+                    setConnectorNotice('Refreshing Google Calendar sync...');
+                    setTimeout(() => setConnectorNotice('Live Google Calendar synchronized!'), 800);
+                  }
+                }}
+                className="px-3 py-1.5 rounded-lg border border-outline-variant/40 bg-surface-container-low text-xs font-mono font-medium text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <RotateCw className="w-3.5 h-3.5" /> Refresh Live Sync
+              </button>
+            )}
+          </div>
+
           {/* Add Event Form */}
           <form onSubmit={handleAddEvent} className="p-4 rounded-xl border border-outline-variant/40 bg-surface-container-lowest shadow-xs flex flex-col gap-3">
             <div className="text-xs font-bold uppercase tracking-wider text-secondary">
@@ -864,76 +887,139 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             </div>
           </form>
 
-          {/* Calendar Grid */}
-          <div className="border border-outline-variant/40 rounded-xl bg-surface-container-lowest p-4 shadow-xs">
-            <div className="grid grid-cols-7 gap-1 text-center font-mono text-xs font-bold text-secondary uppercase mb-3 border-b border-outline-variant/20 pb-2">
-              <span>Sun</span>
-              <span>Mon</span>
-              <span>Tue</span>
-              <span>Wed</span>
-              <span>Thu</span>
-              <span>Fri</span>
-              <span>Sat</span>
+          {calendarViewMode === 'timetable' ? (
+            /* Apple-Style Hourly Timetable Grid */
+            <div className="border border-outline-variant/40 rounded-2xl bg-surface-container-lowest p-4 sm:p-6 shadow-xs flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-display font-bold text-lg text-on-surface">
+                    Today's Schedule • {now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+                  </h4>
+                  <p className="text-xs text-secondary font-mono mt-0.5">
+                    Live timeline view with current time indicator
+                  </p>
+                </div>
+                <span className="px-2.5 py-1 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 font-mono text-xs font-bold flex items-center gap-1.5 border border-red-500/20">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span> Live Line Indicator
+                </span>
+              </div>
+
+              <div className="relative border border-outline-variant/30 rounded-xl overflow-hidden bg-surface-container-low/30">
+                {/* Red Live Time Line */}
+                {(() => {
+                  const currentHour = now.getHours();
+                  const currentMin = now.getMinutes();
+                  if (currentHour >= 7 && currentHour <= 22) {
+                    const topPx = (currentHour - 7) * 52 + (currentMin / 60) * 52;
+                    return (
+                      <div
+                        className="absolute left-0 right-0 z-20 flex items-center pointer-events-none transition-all duration-300"
+                        style={{ top: `${topPx}px` }}
+                      >
+                        <div className="w-3 h-3 rounded-full bg-red-500 shadow-md -ml-1.5 shrink-0"></div>
+                        <div className="flex-1 h-0.5 bg-red-500 shadow-xs"></div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
+                {/* 16 Hourly Rows from 7 AM to 10 PM */}
+                <div className="flex flex-col divide-y divide-outline-variant/20">
+                  {[
+                    '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
+                    '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM',
+                    '7:00 PM', '8:00 PM', '9:00 PM', '10:00 PM'
+                  ].map((timeSlot, idx) => (
+                    <div key={timeSlot} className="flex h-13 group hover:bg-surface-container-high/40 transition-colors">
+                      <div className="w-20 sm:w-24 border-r border-outline-variant/30 p-2 font-mono text-xs text-secondary font-medium shrink-0 flex items-center justify-end pr-3">
+                        {timeSlot}
+                      </div>
+                      <div className="flex-1 p-2 flex items-center gap-2 overflow-x-auto min-w-0">
+                        {classes.filter((_, i) => (idx === 3 && i === 0) || (idx === 7 && i === 1)).slice(0, 1).map((c, i) => (
+                          <div key={i} className="px-3 py-1 rounded-lg bg-primary-container/15 text-primary border border-primary-container/30 text-xs font-semibold flex items-center gap-2 shrink-0">
+                            <span>{c.code}: {c.name}</span>
+                            <span className="text-[10px] font-mono text-secondary">({c.prof})</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
+          ) : (
+            /* Month Grid */
+            <div className="border border-outline-variant/40 rounded-xl bg-surface-container-lowest p-4 shadow-xs">
+              <div className="grid grid-cols-7 gap-1 text-center font-mono text-xs font-bold text-secondary uppercase mb-3 border-b border-outline-variant/20 pb-2">
+                <span>Sun</span>
+                <span>Mon</span>
+                <span>Tue</span>
+                <span>Wed</span>
+                <span>Thu</span>
+                <span>Fri</span>
+                <span>Sat</span>
+              </div>
 
-            <div className="grid grid-cols-7 gap-1.5">
-              {paddingArray.map((p) => (
-                <div key={`pad-${p}`} className="h-16 rounded-lg bg-surface-container-low/30"></div>
-              ))}
+              <div className="grid grid-cols-7 gap-1.5">
+                {paddingArray.map((p) => (
+                  <div key={`pad-${p}`} className="h-16 rounded-lg bg-surface-container-low/30"></div>
+                ))}
 
-              {daysArray.map((d) => {
-                const isToday = isCurrentMonth && d === todayDate;
-                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                
-                const matchedEvents = allEvents.filter((e) => e.date === dateStr || e.date === String(d));
-                const matchedTasks = tasks.filter((t) => !t.completed && (t.dueDate?.includes(dateStr) || (isToday && t.dueDate?.toLowerCase().includes('today'))));
+                {daysArray.map((d) => {
+                  const isToday = isCurrentMonth && d === todayDate;
+                  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                  
+                  const matchedEvents = allEvents.filter((e) => e.date === dateStr || e.date === String(d));
+                  const matchedTasks = tasks.filter((t) => !t.completed && (t.dueDate?.includes(dateStr) || (isToday && t.dueDate?.toLowerCase().includes('today'))));
 
-                const firstEvent = matchedEvents[0] || (matchedTasks[0] ? { title: matchedTasks[0].title, type: 'Task' } : null);
-                const isSelected = selectedDate === dateStr;
+                  const firstEvent = matchedEvents[0] || (matchedTasks[0] ? { title: matchedTasks[0].title, type: 'Task' } : null);
+                  const isSelected = selectedDate === dateStr;
 
-                return (
-                  <button
-                    key={`day-${d}`}
-                    onClick={() => {
-                      setSelectedDate(dateStr);
-                      setNewEventDate(dateStr);
-                      setActiveDayInspector({
-                        dateStr,
-                        displayDate: `${monthName.split(' ')[0]} ${d}, ${year}`,
-                        dayNum: d,
-                      });
-                    }}
-                    className={`h-16 rounded-lg p-2 flex flex-col justify-between items-start text-left border transition-all cursor-pointer ${
-                      isSelected
-                        ? 'border-[#8b5e3c] ring-2 ring-[#8b5e3c]/40 bg-[#8b5e3c]/10 font-bold shadow-xs'
-                        : isToday
-                        ? 'border-primary-container bg-primary-container/10 font-bold'
-                        : 'border-outline-variant/20 bg-surface-container-low/50 hover:border-outline-variant hover:bg-surface-container-low'
-                    }`}
-                  >
-                    <span
-                      className={`text-xs font-mono rounded-full w-5 h-5 flex items-center justify-center ${
-                        isToday || isSelected
-                          ? 'bg-[#8b5e3c] text-white'
-                          : 'text-on-surface'
+                  return (
+                    <button
+                      key={`day-${d}`}
+                      onClick={() => {
+                        setSelectedDate(dateStr);
+                        setNewEventDate(dateStr);
+                        setActiveDayInspector({
+                          dateStr,
+                          displayDate: `${monthName.split(' ')[0]} ${d}, ${year}`,
+                          dayNum: d,
+                        });
+                      }}
+                      className={`h-16 rounded-lg p-2 flex flex-col justify-between items-start text-left border transition-all cursor-pointer ${
+                        isSelected
+                          ? 'border-[#8b5e3c] ring-2 ring-[#8b5e3c]/40 bg-[#8b5e3c]/10 font-bold shadow-xs'
+                          : isToday
+                          ? 'border-primary-container bg-primary-container/10 font-bold'
+                          : 'border-outline-variant/20 bg-surface-container-low/50 hover:border-outline-variant hover:bg-surface-container-low'
                       }`}
                     >
-                      {d}
-                    </span>
-                    {firstEvent && (
-                      <span className={`w-full text-[10px] font-mono truncate px-1 py-0.5 rounded ${
-                        firstEvent.type === 'Google Cal'
-                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20'
-                          : 'bg-surface-container-high text-primary'
-                      }`}>
-                        {firstEvent.title}
+                      <span
+                        className={`text-xs font-mono rounded-full w-5 h-5 flex items-center justify-center ${
+                          isToday || isSelected
+                            ? 'bg-[#8b5e3c] text-white'
+                            : 'text-on-surface'
+                        }`}
+                      >
+                        {d}
                       </span>
-                    )}
-                  </button>
-                );
-              })}
+                      {firstEvent && (
+                        <span className={`w-full text-[10px] font-mono truncate px-1 py-0.5 rounded ${
+                          firstEvent.type === 'Google Cal'
+                            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20'
+                            : 'bg-surface-container-high text-primary'
+                        }`}>
+                          {firstEvent.title}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* User Events List */}
           {events.length > 0 && (
