@@ -2157,51 +2157,66 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 </button>
               </div>
 
-              {/* Active Integrations Section Box */}
-              <div className="flex flex-col gap-4 p-6 sm:p-8 rounded-xl bg-surface border border-outline-variant/40 shadow-xs">
-                {/* Header Row */}
-                <div className="flex items-center justify-between">
-                  <span className="font-manrope font-semibold text-base text-on-surface">Active Integrations</span>
-                  <button
-                    onClick={() => {
-                      setIsProfileModalOpen(false);
-                      handleSelectTab('Connectors');
-                    }}
-                    className="font-manrope text-sm font-medium text-primary hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>Manage</span>
-                    <span className="text-base leading-none">→</span>
-                  </button>
-                </div>
+              {/* Active Integrations Section Box (Squishes when none active, auto-expands when connected) */}
+              {(() => {
+                const activeServices = (
+                  [
+                    { key: 'googleCalendar', label: 'Calendar' },
+                    { key: 'googleDrive', label: 'Drive' },
+                    { key: 'gmail', label: 'gmail' },
+                    { key: 'googleNotes', label: 'Notes' },
+                  ] as const
+                ).filter((item) => connectors[item.key]);
 
-                {/* Integration Chips Row */}
-                <div className="flex flex-wrap items-center gap-3 pt-1">
-                  {(
-                    [
-                      { key: 'googleCalendar', label: 'Calendar' },
-                      { key: 'googleDrive', label: 'Drive' },
-                      { key: 'gmail', label: 'gmail' },
-                      { key: 'googleNotes', label: 'Notes' },
-                    ] as const
-                  ).map((item) => {
-                    const isConnected = connectors[item.key];
-                    return (
+                const hasActive = activeServices.length > 0;
+
+                return (
+                  <div
+                    className={`flex flex-col rounded-xl bg-surface border border-outline-variant/40 shadow-xs transition-all duration-300 ease-in-out ${
+                      hasActive ? 'gap-4 p-6 sm:p-8' : 'p-4 sm:p-5'
+                    }`}
+                  >
+                    {/* Header Row */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-manrope font-semibold text-base text-on-surface">Active Integrations</span>
+                        {hasActive && (
+                          <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
+                            {activeServices.length} Active
+                          </span>
+                        )}
+                      </div>
                       <button
-                        key={item.key}
-                        onClick={() => handleConnectOAuth(item.key)}
-                        className={`px-4 py-2 rounded-xl border text-xs font-manrope uppercase transition-all cursor-pointer active:scale-95 flex items-center gap-2 ${
-                          isConnected
-                            ? 'bg-surface border-primary text-primary font-bold shadow-xs'
-                            : 'bg-surface-container-high/50 border-outline-variant/40 text-secondary hover:text-on-surface'
-                        }`}
+                        onClick={() => {
+                          setIsProfileModalOpen(false);
+                          handleSelectTab('Connectors');
+                        }}
+                        className="font-manrope text-sm font-medium text-primary hover:underline flex items-center gap-1 cursor-pointer"
                       >
-                        <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
-                        <span>{item.label}: {isConnected ? 'Active' : 'Off'}</span>
+                        <span>{hasActive ? 'Manage' : '+ Add Connectors'}</span>
+                        <span className="text-base leading-none">→</span>
                       </button>
-                    );
-                  })}
-                </div>
-              </div>
+                    </div>
+
+                    {/* Auto-Expanding Connected Chips Row (Only visible when connected) */}
+                    {hasActive && (
+                      <div className="flex flex-wrap items-center gap-3 pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
+                        {activeServices.map((item) => (
+                          <button
+                            key={item.key}
+                            onClick={() => handleConnectOAuth(item.key)}
+                            title="Click to manage connector"
+                            className="px-4 py-2 rounded-xl border border-primary bg-surface text-primary text-xs font-manrope font-bold uppercase transition-all cursor-pointer active:scale-95 flex items-center gap-2 shadow-xs hover:bg-primary/5"
+                          >
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span>{item.label}: Active</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Footer Actions */}
