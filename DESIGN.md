@@ -156,3 +156,7 @@ Shapes are geometric and disciplined. A low corner radius of 4px (Soft) is appli
 - **Lists:** High-contrast separators with generous vertical padding (16px+).
 - **Icons:** Use thin-line (24px box, 1.5px stroke) icons. Icons should never be filled; they remain as wireframes to maintain the airy aesthetic.
 - **Progress Bars:** Thin, 2px or 4px height. Use the warm brown for the fill and a very light neutral for the track.
+- **Flashcards & Spaced Repetition (SM-2):**
+  - **Card Flip & Reveal:** Interactive card reveal transition showing the answer (back side) upon user action.
+  - **SM-2 Rating Scale:** 4-point rating buttons (`Again` / `Hard` / `Good` / `Easy`) using desaturated functional color states (`rose`, `amber`, `blue`, `emerald`) to rate recall quality (0-3).
+  - **Due-Count Indicators:** Minimal `font-mono` badges indicating active cards due for review (`nextReviewDate <= today`).

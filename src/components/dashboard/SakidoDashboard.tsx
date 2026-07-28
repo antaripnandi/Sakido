@@ -33,15 +33,19 @@ import {
   Play,
   Settings,
   ShieldCheck,
-  RotateCw
+  RotateCw,
+  Layers
 } from 'lucide-react';
 import { getSupabaseClient } from '../../lib/supabaseClient';
 import { SakidoLogo } from '../common/SakidoLogo';
+import { FlashcardModule } from '../flashcards/FlashcardModule';
+import { Flashcard } from '../../types';
 
 const TAB_SLUG_MAP: Record<string, string> = {
   classes: 'Classes',
   calendar: 'Calendar',
   tasks: 'Tasks & Grades',
+  flashcards: 'Flashcards',
   watch: 'Watch Later',
   'watch-later': 'Watch Later',
   notes: 'Notes',
@@ -54,6 +58,7 @@ const TAB_NAME_TO_SLUG: Record<string, string> = {
   Classes: 'classes',
   Calendar: 'calendar',
   'Tasks & Grades': 'tasks',
+  Flashcards: 'flashcards',
   'Watch Later': 'watch-later',
   Notes: 'notes',
   Connectors: 'connectors',
@@ -164,6 +169,69 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       return [];
     }
   });
+
+  const [flashcards, setFlashcards] = useState<Flashcard[]>(() => {
+    try {
+      const saved = localStorage.getItem('sakido_flashcards');
+      return saved ? JSON.parse(saved) : [
+        {
+          id: 'fc-1',
+          classId: 'c-1',
+          className: 'CS 301',
+          classColor: '#8b5e3c',
+          front: 'What is the average time complexity of QuickSort?',
+          back: 'O(N log N)',
+          interval: 0,
+          repetitions: 0,
+          easeFactor: 2.5,
+          nextReviewDate: new Date().toISOString().split('T')[0],
+          createdAt: new Date().toISOString(),
+        },
+        {
+          id: 'fc-2',
+          classId: 'c-1',
+          className: 'CS 301',
+          classColor: '#8b5e3c',
+          front: 'What is the primary property of a Red-Black Tree?',
+          back: 'Self-balancing binary search tree where every node is colored red or black, guaranteeing logarithmic height.',
+          interval: 0,
+          repetitions: 0,
+          easeFactor: 2.5,
+          nextReviewDate: new Date().toISOString().split('T')[0],
+          createdAt: new Date().toISOString(),
+        }
+      ];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('sakido_flashcards', JSON.stringify(flashcards));
+    } catch {}
+  }, [flashcards]);
+
+  const handleUpdateFlashcard = (updatedCard: Flashcard) => {
+    setFlashcards(prev => prev.map(c => c.id === updatedCard.id ? updatedCard : c));
+  };
+
+  const handleAddFlashcard = (cardData: { classId: string; className: string; classColor: string; front: string; back: string }) => {
+    const newCard: Flashcard = {
+      id: `fc-${Date.now()}`,
+      ...cardData,
+      interval: 0,
+      repetitions: 0,
+      easeFactor: 2.5,
+      nextReviewDate: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString(),
+    };
+    setFlashcards(prev => [newCard, ...prev]);
+  };
+
+  const handleDeleteFlashcard = (id: string) => {
+    setFlashcards(prev => prev.filter(c => c.id !== id));
+  };
 
   // Connectors OAuth status state with localStorage persistence
   const [connectors, setConnectors] = useState<{
@@ -1358,6 +1426,20 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       );
     }
 
+    if (activeTab === 'Flashcards') {
+      return (
+        <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 pl-0 lg:pl-8 border-t lg:border-t-0 lg:border-l border-outline-variant/30 pt-6 lg:pt-0">
+          <FlashcardModule
+            courses={classes}
+            flashcards={flashcards}
+            onUpdateCard={handleUpdateFlashcard}
+            onAddCard={handleAddFlashcard}
+            onDeleteCard={handleDeleteFlashcard}
+          />
+        </div>
+      );
+    }
+
     if (activeTab === 'Notes') {
       return (
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 pl-0 lg:pl-8 border-t lg:border-t-0 lg:border-l border-outline-variant/30 pt-6 lg:pt-0">
@@ -1735,6 +1817,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               { name: 'Classes', icon: BookOpen },
               { name: 'Calendar', icon: CalendarIcon },
               { name: 'Tasks & Grades', icon: CheckCircle2 },
+              { name: 'Flashcards', icon: Layers },
               { name: 'Watch Later', icon: Video },
               { name: 'Notes', icon: FileText },
             ].map((item) => {

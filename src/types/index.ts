@@ -1,4 +1,53 @@
-export type NavView = 'dashboard' | 'tasks' | 'notes' | 'focus' | 'schedule' | 'habits' | 'courses';
+export type NavView = 'dashboard' | 'tasks' | 'notes' | 'focus' | 'schedule' | 'habits' | 'courses' | 'flashcards';
+
+export interface Flashcard {
+  id: string;
+  classId: string;
+  className: string;
+  classColor: string;
+  front: string;
+  back: string;
+  interval: number;
+  repetitions: number;
+  easeFactor: number;
+  nextReviewDate: string; // YYYY-MM-DD
+  createdAt: string;
+}
+
+export function calculateSM2(card: Flashcard, quality: 0 | 1 | 2 | 3): Flashcard {
+  let { interval, repetitions, easeFactor } = card;
+
+  if (quality < 2) {
+    repetitions = 0;
+    interval = 1;
+  } else {
+    if (repetitions === 0) {
+      interval = 1;
+    } else if (repetitions === 1) {
+      interval = 6;
+    } else {
+      interval = Math.round(interval * easeFactor);
+    }
+    repetitions += 1;
+  }
+
+  const qFactor = 3 - quality;
+  easeFactor = easeFactor + (0.1 - qFactor * (0.08 + qFactor * 0.02));
+  if (easeFactor < 1.3) easeFactor = 1.3;
+
+  const today = new Date();
+  const nextDate = new Date(today);
+  nextDate.setDate(today.getDate() + interval);
+  const nextReviewDate = nextDate.toISOString().split('T')[0];
+
+  return {
+    ...card,
+    interval,
+    repetitions,
+    easeFactor: Number(easeFactor.toFixed(2)),
+    nextReviewDate,
+  };
+}
 
 export type TaskPriority = 'urgent' | 'high' | 'medium' | 'low';
 export type TaskStatus = 'todo' | 'in_progress' | 'submitted' | 'completed';

@@ -17,6 +17,7 @@ const viewTitles: Record<NavView, { title: string; subtitle: string }> = {
   schedule: { title: 'Class Timetable', subtitle: 'Weekly lecture schedule, discussion sections, and room locations.' },
   habits: { title: 'Daily Habits & Routines', subtitle: 'Track study consistency, physical health, and personal goals.' },
   courses: { title: 'Enrolled Courses', subtitle: 'Academic syllabus, grade benchmarks, and professor contact info.' },
+  flashcards: { title: 'Spaced Repetition Flashcards', subtitle: 'Anki-style SM-2 review scheduling for active recall mastery.' },
 };
 
 export const Header: React.FC<HeaderProps> = ({
