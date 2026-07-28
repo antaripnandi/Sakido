@@ -2090,100 +2090,138 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
       {/* User Profile & Settings Modal */}
       {isProfileModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl max-w-md w-full p-6 shadow-2xl flex flex-col gap-5">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-surface-container-high border border-outline-variant/40 flex items-center justify-center overflow-hidden shrink-0">
-                  {userAvatar ? (
-                    <img src={userAvatar} alt={userName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  ) : (
-                    <UserIcon className="w-6 h-6 text-secondary" />
-                  )}
-                </div>
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <h3 className="font-display font-bold text-lg text-on-surface">{userName}</h3>
-                  </div>
-                  <p className="text-xs text-secondary font-mono">{currentUser?.email || 'Student Account'}</p>
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+          <div className="relative w-full max-w-[672px] bg-surface-container-low border border-outline-variant rounded-2xl p-6 sm:p-10 shadow-2xl flex flex-col gap-8 text-on-surface animate-in fade-in zoom-in-95 duration-200">
+            {/* Close Button ('X' top right) */}
+            <button
+              onClick={() => setIsProfileModalOpen(false)}
+              className="absolute top-6 right-6 p-2 rounded-full text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Profile Section Header */}
+            <div className="flex flex-col sm:flex-row items-center sm:items-center gap-6 pb-8 border-b border-outline-variant/40">
+              {/* Profile Avatar Container Box (96px x 96px, #FCF1EC / container background) */}
+              <div className="w-24 h-24 rounded-2xl bg-surface-container-high border border-outline-variant flex items-center justify-center overflow-hidden shrink-0 shadow-sm">
+                {userAvatar ? (
+                  <img src={userAvatar} alt={userName} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <UserIcon className="w-10 h-10 text-secondary" />
+                )}
+              </div>
+
+              {/* Profile Details */}
+              <div className="flex flex-col text-center sm:text-left gap-1">
+                <h2 className="font-tilt-warp text-xl sm:text-2xl uppercase tracking-tight text-on-surface">
+                  {userName}
+                </h2>
+                <p className="font-manrope text-sm text-secondary">
+                  {currentUser?.email || 'bantarip4@gmail.com'}
+                </p>
+                <div className="flex items-center justify-center sm:justify-start gap-2 mt-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="font-mono text-[11px] uppercase tracking-wider text-secondary">
+                    Active Student Session · Sakido Portal
+                  </span>
                 </div>
               </div>
-              <button
-                onClick={() => setIsProfileModalOpen(false)}
-                className="text-secondary hover:text-on-surface p-1 rounded-lg hover:bg-surface-container-high cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
             </div>
 
-            {/* Quick Preferences */}
-            <div className="flex flex-col gap-3 pt-3 border-t border-outline-variant/20">
-              <div className="text-xs font-mono font-bold uppercase text-secondary">
-                Preferences & Controls
-              </div>
+            {/* Main Content Body */}
+            <div className="flex flex-col gap-6">
+              {/* Heading 3: PREFERENCES & CONTROLS */}
+              <h3 className="font-marko-one text-xs sm:text-sm uppercase tracking-[0.15em] text-secondary">
+                PREFERENCES & CONTROLS
+              </h3>
 
-              {/* Theme Toggle */}
-              <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low border border-outline-variant/30">
-                <div className="flex items-center gap-3">
-                  {isDarkMode ? <Moon className="w-4 h-4 text-amber-300" /> : <Sun className="w-4 h-4 text-amber-600" />}
-                  <div>
-                    <span className="text-sm font-medium text-on-surface block">Interface Theme</span>
-                    <span className="text-xs text-secondary font-mono">{isDarkMode ? 'Dark Mode' : 'Light Mode'}</span>
+              {/* Theme Section Box */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 p-6 sm:p-8 rounded-xl bg-surface border border-outline-variant/40 shadow-xs">
+                {/* Theme Info */}
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    {isDarkMode ? <Moon className="w-5 h-5 text-amber-400" /> : <Sun className="w-5 h-5 text-amber-600" />}
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="font-manrope font-semibold text-base text-on-surface">Interface Theme</span>
+                    <span className="font-manrope text-sm text-secondary">{isDarkMode ? 'Dark Mode' : 'Light Mode'}</span>
                   </div>
                 </div>
+
+                {/* Switch Theme Button */}
                 <button
                   onClick={handleToggleDark}
-                  className="px-3 py-1.5 rounded-lg border border-outline-variant text-xs font-semibold text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-outline-variant font-libre-baskerville text-sm text-on-surface hover:bg-surface-container-high transition-all active:scale-95 cursor-pointer shadow-xs"
                 >
                   Switch Theme
                 </button>
               </div>
 
-              {/* Connected Integrations Summary */}
-              <div className="p-3 rounded-xl bg-surface-container-low border border-outline-variant/30 flex flex-col gap-2">
+              {/* Active Integrations Section Box */}
+              <div className="flex flex-col gap-4 p-6 sm:p-8 rounded-xl bg-surface border border-outline-variant/40 shadow-xs">
+                {/* Header Row */}
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-medium text-on-surface">Active Integrations</span>
+                  <span className="font-manrope font-semibold text-base text-on-surface">Active Integrations</span>
                   <button
                     onClick={() => {
                       setIsProfileModalOpen(false);
                       handleSelectTab('Connectors');
                     }}
-                    className="text-xs text-primary hover:underline font-mono cursor-pointer"
+                    className="font-manrope text-sm font-medium text-primary hover:underline flex items-center gap-1 cursor-pointer"
                   >
-                    Manage →
+                    <span>Manage</span>
+                    <span className="text-base leading-none">→</span>
                   </button>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {Object.entries(connectors).map(([key, isConnected]) => (
-                    <span
-                      key={key}
-                      className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
-                        isConnected
-                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20'
-                          : 'bg-surface-container-high text-secondary/70'
-                      }`}
-                    >
-                      {key.replace('google', '')}: {isConnected ? 'Active' : 'Off'}
-                    </span>
-                  ))}
+
+                {/* Integration Chips Row */}
+                <div className="flex flex-wrap items-center gap-3 pt-1">
+                  {(
+                    [
+                      { key: 'googleCalendar', label: 'Calendar' },
+                      { key: 'googleDrive', label: 'Drive' },
+                      { key: 'gmail', label: 'gmail' },
+                      { key: 'googleNotes', label: 'Notes' },
+                    ] as const
+                  ).map((item) => {
+                    const isConnected = connectors[item.key];
+                    return (
+                      <button
+                        key={item.key}
+                        onClick={() => handleConnectOAuth(item.key)}
+                        className={`px-4 py-2 rounded-xl border text-xs font-manrope uppercase transition-all cursor-pointer active:scale-95 flex items-center gap-2 ${
+                          isConnected
+                            ? 'bg-surface border-primary text-primary font-bold shadow-xs'
+                            : 'bg-surface-container-high/50 border-outline-variant/40 text-secondary hover:text-on-surface'
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
+                        <span>{item.label}: {isConnected ? 'Active' : 'Off'}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
 
-            {/* Modal Actions */}
-            <div className="flex items-center justify-between pt-2 border-t border-outline-variant/20">
+            {/* Footer Actions */}
+            <div className="flex items-center justify-between pt-6 border-t border-outline-variant/40">
+              {/* Sign Out Button */}
               <button
                 onClick={() => {
                   setIsProfileModalOpen(false);
                   setIsLogoutConfirmOpen(true);
                 }}
-                className="text-xs text-error hover:underline flex items-center gap-1.5 font-medium cursor-pointer"
+                className="flex items-center gap-2 text-error hover:text-red-500 font-manrope text-sm font-semibold transition-colors cursor-pointer active:scale-95"
               >
-                <LogOut className="w-3.5 h-3.5" /> Sign Out
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out</span>
               </button>
+
+              {/* Done Button */}
               <button
                 onClick={() => setIsProfileModalOpen(false)}
-                className="px-4 py-2 rounded-lg bg-[#8b5e3c] hover:bg-[#6f4627] text-white text-xs font-medium cursor-pointer"
+                className="px-8 py-2.5 rounded-xl bg-on-surface text-inverse-on-surface hover:opacity-90 font-manrope text-sm font-semibold transition-all cursor-pointer active:scale-95 shadow-md"
               >
                 Done
               </button>

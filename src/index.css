@@ -197,6 +197,22 @@ html.lenis, html.lenis body {
   font-family: 'Syne', sans-serif;
 }
 
+.font-tilt-warp {
+  font-family: 'Tilt Warp', cursive, sans-serif;
+}
+
+.font-marko-one {
+  font-family: 'Marko One', serif;
+}
+
+.font-libre-baskerville {
+  font-family: 'Libre Baskerville', serif;
+}
+
+.font-manrope {
+  font-family: 'Manrope', 'Inter', sans-serif;
+}
+
 .font-label-md, .font-label-sm, .font-mono {
   font-family: 'JetBrains Mono', monospace;
 }
