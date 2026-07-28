@@ -342,6 +342,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const [newEventStartTime, setNewEventStartTime] = useState('09:00');
   const [newEventEndTime, setNewEventEndTime] = useState('10:00');
   const [newEventType, setNewEventType] = useState('Exam');
+  const [newEventRecurrence, setNewEventRecurrence] = useState<string>('none');
 
   useEffect(() => {
     try {
@@ -427,20 +428,57 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     const date = newEventDate.trim();
     const startTime = newEventStartTime.trim() || '09:00';
     const endTime = newEventEndTime.trim() || '10:00';
+    const type = newEventType;
+    const recurrence = newEventRecurrence;
 
-    const newEv = {
+    const baseEv = {
       id: Date.now().toString(),
       title,
       date,
       startTime,
       endTime,
       time: `${startTime} - ${endTime}`,
-      type: newEventType,
+      type,
+      recurrence,
     };
 
-    setEvents((prev) => [...prev, newEv]);
+    // Helper to generate recurring events for local schedule
+    const generateEventsList = (base: typeof baseEv) => {
+      if (recurrence === 'none') return [base];
+      const list = [base];
+      let limit = 8;
+      if (recurrence === 'daily') limit = 14;
+      if (recurrence === 'weekday') limit = 15;
+      if (recurrence === 'monthly') limit = 4;
 
-    // Real 2-Way Live Google Calendar API POST Sync
+      const curr = new Date(`${date}T${startTime}:00`);
+      while (list.length < limit) {
+        if (recurrence === 'daily') {
+          curr.setDate(curr.getDate() + 1);
+        } else if (recurrence === 'weekly') {
+          curr.setDate(curr.getDate() + 7);
+        } else if (recurrence === 'monthly') {
+          curr.setMonth(curr.getMonth() + 1);
+        } else if (recurrence === 'weekday') {
+          curr.setDate(curr.getDate() + 1);
+          while (curr.getDay() === 0 || curr.getDay() === 6) {
+            curr.setDate(curr.getDate() + 1);
+          }
+        }
+        const dateStr = curr.toISOString().split('T')[0];
+        list.push({
+          ...base,
+          id: `${base.id}-${list.length}`,
+          date: dateStr,
+        });
+      }
+      return list;
+    };
+
+    const newEvents = generateEventsList(baseEv);
+    setEvents((prev) => [...prev, ...newEvents]);
+
+    // Real 2-Way Live Google Calendar API POST Sync with Recurrence Rule
     if (connectors.googleCalendar) {
       const token = localStorage.getItem('sakido_provider_token');
       if (token) {
@@ -448,6 +486,18 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
           const startDt = new Date(`${date}T${startTime}:00`);
           const endDt = new Date(`${date}T${endTime}:00`);
+
+          const gcalPayload: any = {
+            summary: `[Sakido] ${title}`,
+            description: `Created from Sakido Academic Portal (${type})`,
+            start: { dateTime: startDt.toISOString(), timeZone: tz },
+            end: { dateTime: endDt.toISOString(), timeZone: tz },
+          };
+
+          if (recurrence === 'daily') gcalPayload.recurrence = ['RRULE:FREQ=DAILY;COUNT=14'];
+          if (recurrence === 'weekly') gcalPayload.recurrence = ['RRULE:FREQ=WEEKLY;COUNT=8'];
+          if (recurrence === 'monthly') gcalPayload.recurrence = ['RRULE:FREQ=MONTHLY;COUNT=4'];
+          if (recurrence === 'weekday') gcalPayload.recurrence = ['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=15'];
 
           const res = await fetch(
             `https://www.googleapis.com/calendar/v3/calendars/primary/events`,
@@ -457,17 +507,12 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify({
-                summary: `[Sakido] ${title}`,
-                description: `Created from Sakido Academic Portal (${newEventType})`,
-                start: { dateTime: startDt.toISOString(), timeZone: tz },
-                end: { dateTime: endDt.toISOString(), timeZone: tz },
-              }),
+              body: JSON.stringify(gcalPayload),
             }
           );
 
           if (res.ok) {
-            setConnectorNotice(`🟢 Event "${title}" (${startTime}-${endTime}) posted live to your Google Calendar!`);
+            setConnectorNotice(`🟢 Event "${title}" (${startTime}-${endTime}${recurrence !== 'none' ? `, ${recurrence}` : ''}) posted live to your Google Calendar!`);
           }
         } catch (err) {
           console.warn('Google Calendar POST notice:', err);
@@ -2446,141 +2491,216 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         </div>
       )}
 
-      {/* Day Inspector & Event Planner Modal */}
+      {/* Day Inspector & Event Planner Modal (Figma HTML Spec Design) */}
       {activeDayInspector && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl max-w-lg w-full p-6 shadow-2xl flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="flex items-start justify-between">
+        <div aria-labelledby="modal-title" aria-modal="true" className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-in fade-in zoom-in-95 duration-200" role="dialog">
+          <div className="bg-surface-container-lowest dark:bg-[#1a1411] rounded-[32px] sm:rounded-4xl shadow-2xl w-full max-w-2xl overflow-hidden border border-outline-variant flex flex-col max-h-[92vh]">
+            {/* Modal Header */}
+            <div className="p-6 sm:p-10 flex items-start justify-between border-b border-outline-variant/30 shrink-0">
               <div>
-                <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-[#8b5e3c]/15 text-[#8b5e3c] dark:text-amber-400 border border-[#8b5e3c]/20">
-                  Day Inspector • {activeDayInspector.dateStr}
-                </span>
-                <h3 className="font-display font-bold text-xl text-on-surface mt-1">
+                <div className="text-secondary dark:text-secondary-fixed-dim text-xs font-semibold tracking-widest uppercase mb-1 font-mono">
+                  {activeDayInspector.dateStr}
+                </div>
+                <h2 className="text-2xl sm:text-4xl font-extrabold text-on-surface tracking-tighter font-display" id="modal-title">
                   {activeDayInspector.displayDate}
-                </h3>
+                </h2>
               </div>
               <button
                 onClick={() => setActiveDayInspector(null)}
-                className="p-1.5 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
-                title="Close"
+                aria-label="Close modal"
+                className="p-2.5 text-secondary hover:text-on-surface hover:bg-surface-container-high rounded-full transition-colors focus:outline-none cursor-pointer"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
             </div>
 
-            {/* Scheduled Items List for this Date */}
-            <div className="flex flex-col gap-3">
-              <div className="text-xs font-mono font-bold uppercase text-secondary">
-                Scheduled Events & Deadlines
-              </div>
+            {/* Modal Body */}
+            <div className="p-6 sm:p-8 space-y-6 overflow-y-auto flex-1">
+              {/* Section: Scheduled Events */}
+              <section>
+                <h3 className="text-xs font-bold text-secondary uppercase tracking-widest mb-3 font-mono">
+                  Scheduled Events & Deadlines
+                </h3>
 
-              {(() => {
-                const dayEvents = [...events, ...(connectors.googleCalendar ? googleCalendarEvents : [])].filter(
-                  (e) => e.date === activeDayInspector.dateStr || e.date === String(activeDayInspector.dayNum)
-                );
-                const dayTasks = tasks.filter(
-                  (t) => !t.completed && (t.dueDate?.includes(activeDayInspector.dateStr) || t.dueDate?.toLowerCase().includes('today'))
-                );
+                {(() => {
+                  const dayEvents = [...events, ...(connectors.googleCalendar ? googleCalendarEvents : [])].filter(
+                    (e) => e.date === activeDayInspector.dateStr || e.date === String(activeDayInspector.dayNum)
+                  );
+                  const dayTasks = tasks.filter(
+                    (t) => !t.completed && (t.dueDate?.includes(activeDayInspector.dateStr) || t.dueDate?.toLowerCase().includes('today'))
+                  );
 
-                if (dayEvents.length === 0 && dayTasks.length === 0) {
+                  if (dayEvents.length === 0 && dayTasks.length === 0) {
+                    return (
+                      <div className="bg-surface-container-low dark:bg-[#251e19] rounded-3xl p-8 sm:p-10 text-center border border-outline-variant/50 border-dashed flex flex-col items-center justify-center gap-3">
+                        <div className="w-14 h-14 rounded-full bg-surface-container-high dark:bg-[#342a23] text-primary dark:text-primary-fixed-dim flex items-center justify-center">
+                          <CalendarIcon className="w-7 h-7" />
+                        </div>
+                        <h4 className="text-base sm:text-lg font-medium text-on-surface">
+                          No events or exams scheduled for this day
+                        </h4>
+                        <p className="text-secondary text-xs sm:text-sm max-w-md">
+                          Use the quick form below to add a deadline or lecture for this date.
+                        </p>
+                      </div>
+                    );
+                  }
+
                   return (
-                    <div className="p-4 rounded-xl border border-outline-variant/40 bg-surface-container-low/50 text-center flex flex-col items-center gap-2">
-                      <CalendarIcon className="w-8 h-8 text-secondary/50" />
-                      <p className="text-sm font-medium text-on-surface">No events or exams scheduled for this day</p>
-                      <p className="text-xs text-secondary">Use the quick form below to add a deadline or lecture for this date.</p>
+                    <div className="space-y-2">
+                      {dayEvents.map((ev, idx) => (
+                        <div
+                          key={`de-ev-${idx}`}
+                          className="flex items-center justify-between p-4 rounded-2xl border border-outline-variant/30 bg-surface-container-low dark:bg-[#251e19]"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold ${
+                                ev.type === 'Google Cal'
+                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                  : 'bg-[#8b5e3c]/10 text-[#8b5e3c] dark:text-amber-400 border border-[#8b5e3c]/20'
+                              }`}
+                            >
+                              {ev.type || 'Event'}
+                            </span>
+                            <div>
+                              <span className="text-sm font-semibold text-on-surface block">{ev.title}</span>
+                              {ev.time && <span className="text-xs font-mono text-secondary">{ev.time}</span>}
+                            </div>
+                          </div>
+                          {ev.id && !ev.id.startsWith('gcal-') && (
+                            <button
+                              onClick={() => handleDeleteEvent(ev.id)}
+                              className="text-secondary/60 hover:text-error transition-colors p-1.5 rounded-lg hover:bg-error/10 cursor-pointer"
+                              title="Delete event"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+
+                      {dayTasks.map((t) => (
+                        <div
+                          key={`de-tk-${t.id}`}
+                          className="flex items-center justify-between p-4 rounded-2xl border border-outline-variant/30 bg-surface-container-low dark:bg-[#251e19]"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                              Task
+                            </span>
+                            <span className="text-sm font-semibold text-on-surface">{t.title}</span>
+                          </div>
+                          <span className="text-xs font-mono text-secondary">{t.course}</span>
+                        </div>
+                      ))}
                     </div>
                   );
-                }
+                })()}
+              </section>
 
-                return (
-                  <div className="flex flex-col gap-2">
-                    {dayEvents.map((ev, idx) => (
-                      <div
-                        key={`de-ev-${idx}`}
-                        className="flex items-center justify-between p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                              ev.type === 'Google Cal'
-                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                                : 'bg-[#8b5e3c]/10 text-[#8b5e3c] border border-[#8b5e3c]/20'
-                            }`}
-                          >
-                            {ev.type || 'Event'}
-                          </span>
-                          <span className="text-sm font-medium text-on-surface">{ev.title}</span>
-                        </div>
-                        {ev.id && !ev.id.startsWith('gcal-') && (
-                          <button
-                            onClick={() => handleDeleteEvent(ev.id)}
-                            className="text-secondary/60 hover:text-error transition-colors p-1"
-                            title="Delete event"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    ))}
+              {/* Section: Quick Add Form */}
+              <section className="bg-surface-container-low dark:bg-[#251e19] rounded-3xl p-6 sm:p-8 border border-outline-variant/40 space-y-4">
+                <h3 className="text-xs font-bold text-secondary uppercase tracking-widest font-mono">
+                  Quick Add Event to {activeDayInspector.displayDate}
+                </h3>
 
-                    {dayTasks.map((t) => (
-                      <div
-                        key={`de-tk-${t.id}`}
-                        className="flex items-center justify-between p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/10 text-blue-600 border border-blue-500/20">
-                            Task
-                          </span>
-                          <span className="text-sm font-medium text-on-surface">{t.title}</span>
-                        </div>
-                        <span className="text-xs font-mono text-secondary">{t.course}</span>
-                      </div>
-                    ))}
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!newEventTitle.trim()) return;
+                    handleAddEvent(e);
+                  }}
+                  className="space-y-4"
+                >
+                  {/* Event Title Input */}
+                  <div>
+                    <input
+                      type="text"
+                      value={newEventTitle}
+                      onChange={(e) => setNewEventTitle(e.target.value)}
+                      placeholder="Event / Exam Title"
+                      required
+                      className="w-full bg-surface-container-lowest dark:bg-[#1a1411] border border-outline-variant text-on-surface rounded-2xl px-5 py-4 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent text-sm placeholder-secondary/50"
+                    />
                   </div>
-                );
-              })()}
-            </div>
 
-            {/* Quick Add Event Form inside Modal */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!newEventTitle.trim()) return;
-                handleAddEvent(e);
-              }}
-              className="p-4 rounded-xl border border-outline-variant/40 bg-surface-container-low flex flex-col gap-3 pt-3"
-            >
-              <div className="text-xs font-mono font-bold uppercase text-secondary">
-                Quick Add Event to {activeDayInspector.displayDate}
-              </div>
-              <input
-                type="text"
-                value={newEventTitle}
-                onChange={(e) => setNewEventTitle(e.target.value)}
-                placeholder="Event / Exam Title"
-                className="w-full border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest text-on-surface focus:outline-hidden focus:border-primary-container"
-              />
-              <div className="flex gap-2 justify-between">
-                <select
-                  value={newEventType}
-                  onChange={(e) => setNewEventType(e.target.value)}
-                  className="flex-1 border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest text-on-surface focus:outline-hidden"
-                >
-                  <option value="Exam">Exam / Midterm</option>
-                  <option value="Lecture">Lecture / Class</option>
-                  <option value="Deadline">Assignment Deadline</option>
-                  <option value="Event">Academic Milestone</option>
-                </select>
-                <button
-                  type="submit"
-                  className="bg-[#8b5e3c] hover:bg-[#6f4627] text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-                >
-                  <Plus className="w-4 h-4" /> Save
-                </button>
-              </div>
-            </form>
+                  {/* Date & Time Period Selection */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="text-[11px] font-mono text-secondary mb-1 block">Date</label>
+                      <input
+                        type="date"
+                        value={newEventDate || activeDayInspector.dateStr}
+                        onChange={(e) => setNewEventDate(e.target.value)}
+                        className="w-full bg-surface-container-lowest dark:bg-[#1a1411] border border-outline-variant text-on-surface rounded-2xl px-4 py-3 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-mono text-secondary mb-1 block">Start Time</label>
+                      <input
+                        type="time"
+                        value={newEventStartTime}
+                        onChange={(e) => setNewEventStartTime(e.target.value)}
+                        className="w-full bg-surface-container-lowest dark:bg-[#1a1411] border border-outline-variant text-on-surface rounded-2xl px-4 py-3 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-mono text-secondary mb-1 block">End Time</label>
+                      <input
+                        type="time"
+                        value={newEventEndTime}
+                        onChange={(e) => setNewEventEndTime(e.target.value)}
+                        className="w-full bg-surface-container-lowest dark:bg-[#1a1411] border border-outline-variant text-on-surface rounded-2xl px-4 py-3 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Event Type Select & Google Cal Recurrence */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[11px] font-mono text-secondary mb-1 block">Event Category</label>
+                      <select
+                        value={newEventType}
+                        onChange={(e) => setNewEventType(e.target.value)}
+                        className="w-full bg-surface-container-lowest dark:bg-[#1a1411] border border-outline-variant text-on-surface rounded-2xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                      >
+                        <option value="Lecture">Lecture / Class</option>
+                        <option value="Exam">Exam / Midterm</option>
+                        <option value="Deadline">Assignment Deadline</option>
+                        <option value="Meeting">Meeting / Discussion</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-[11px] font-mono text-secondary mb-1 block">Repeat (Google Cal style)</label>
+                      <select
+                        value={newEventRecurrence}
+                        onChange={(e) => setNewEventRecurrence(e.target.value)}
+                        className="w-full bg-surface-container-lowest dark:bg-[#1a1411] border border-outline-variant text-on-surface rounded-2xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
+                      >
+                        <option value="none">Does not repeat</option>
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly">Monthly</option>
+                        <option value="weekday">Every weekday (Mon-Fri)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <div className="flex justify-end pt-2">
+                    <button
+                      type="submit"
+                      className="inline-flex items-center justify-center gap-2 bg-[#8b5e3c] hover:bg-[#6f4627] text-white rounded-2xl px-8 py-3.5 font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-primary text-sm shadow-sm cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Save Event
+                    </button>
+                  </div>
+                </form>
+              </section>
+            </div>
           </div>
         </div>
       )}
