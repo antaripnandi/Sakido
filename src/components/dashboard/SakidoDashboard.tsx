@@ -320,7 +320,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventDate, setNewEventDate] = useState('');
-  const [newEventTime, setNewEventTime] = useState('10:00');
+  const [newEventStartTime, setNewEventStartTime] = useState('09:00');
+  const [newEventEndTime, setNewEventEndTime] = useState('10:00');
   const [newEventType, setNewEventType] = useState('Exam');
 
   useEffect(() => {
@@ -367,14 +368,23 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           );
           if (res.ok) {
             const data = await res.json();
-            const fetched = (data.items || []).map((item: any) => ({
-              id: item.id,
-              title: item.summary || 'Google Calendar Event',
-              date: item.start?.dateTime ? item.start.dateTime.split('T')[0] : item.start?.date,
-              time: item.start?.dateTime ? item.start.dateTime.split('T')[1]?.substring(0, 5) : '09:00',
-              type: 'Google Cal',
-              location: item.location || 'Google Sync',
-            }));
+            const fetched = (data.items || []).map((item: any) => {
+              const startIso = item.start?.dateTime || item.start?.date || '';
+              const endIso = item.end?.dateTime || item.end?.date || '';
+              const date = startIso.split('T')[0];
+              const startTime = startIso.includes('T') ? startIso.split('T')[1].substring(0, 5) : '09:00';
+              const endTime = endIso.includes('T') ? endIso.split('T')[1].substring(0, 5) : '10:00';
+              return {
+                id: item.id,
+                title: item.summary || 'Google Calendar Event',
+                date,
+                startTime,
+                endTime,
+                time: `${startTime} - ${endTime}`,
+                type: 'Google Cal',
+                location: item.location || 'Google Sync',
+              };
+            });
             setGoogleCalendarEvents(fetched);
             return;
           }
@@ -396,13 +406,16 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
     const title = newEventTitle.trim();
     const date = newEventDate.trim();
-    const time = newEventTime.trim() || '10:00';
+    const startTime = newEventStartTime.trim() || '09:00';
+    const endTime = newEventEndTime.trim() || '10:00';
 
     const newEv = {
       id: Date.now().toString(),
       title,
       date,
-      time,
+      startTime,
+      endTime,
+      time: `${startTime} - ${endTime}`,
       type: newEventType,
     };
 
@@ -413,8 +426,9 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       const token = localStorage.getItem('sakido_provider_token');
       if (token) {
         try {
-          const startDt = new Date(`${date}T${time}:00`);
-          const endDt = new Date(startDt.getTime() + 60 * 60 * 1000); // 1 hour duration
+          const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          const startDt = new Date(`${date}T${startTime}:00`);
+          const endDt = new Date(`${date}T${endTime}:00`);
 
           const res = await fetch(
             `https://www.googleapis.com/calendar/v3/calendars/primary/events`,
@@ -427,14 +441,14 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               body: JSON.stringify({
                 summary: `[Sakido] ${title}`,
                 description: `Created from Sakido Academic Portal (${newEventType})`,
-                start: { dateTime: startDt.toISOString() },
-                end: { dateTime: endDt.toISOString() },
+                start: { dateTime: startDt.toISOString(), timeZone: tz },
+                end: { dateTime: endDt.toISOString(), timeZone: tz },
               }),
             }
           );
 
           if (res.ok) {
-            setConnectorNotice(`🟢 Event "${title}" posted live to your Google Calendar!`);
+            setConnectorNotice(`🟢 Event "${title}" (${startTime}-${endTime}) posted live to your Google Calendar!`);
           }
         } catch (err) {
           console.warn('Google Calendar POST notice:', err);
@@ -958,12 +972,18 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             )}
           </div>
 
-          {/* Add Event Form */}
+          {/* Add Event Form with Unified Day & Time Period Selection */}
           <form onSubmit={handleAddEvent} className="p-4 rounded-xl border border-outline-variant/40 bg-surface-container-lowest shadow-xs flex flex-col gap-3">
-            <div className="text-xs font-bold uppercase tracking-wider text-secondary">
-              Schedule New Event / Exam
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-bold uppercase tracking-wider text-secondary">
+                Schedule New Event / Lecture / Exam
+              </div>
+              <span className="text-[10px] font-mono text-secondary">
+                Syncs with Google Calendar Time Slots
+              </span>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <input
                 type="text"
                 value={newEventTitle}
@@ -975,25 +995,43 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 type="date"
                 value={newEventDate}
                 onChange={(e) => setNewEventDate(e.target.value)}
-                className="border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container font-mono"
+                className="border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest text-on-surface focus:outline-hidden focus:border-primary-container font-mono"
               />
-            </div>
-            <div className="flex gap-3 justify-between items-center">
               <select
                 value={newEventType}
                 onChange={(e) => setNewEventType(e.target.value)}
-                className="w-1/2 border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest text-on-surface focus:outline-hidden focus:border-primary-container"
+                className="border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest text-on-surface focus:outline-hidden focus:border-primary-container"
               >
                 <option value="Exam">Exam / Midterm</option>
                 <option value="Lecture">Lecture / Class</option>
                 <option value="Deadline">Assignment Deadline</option>
                 <option value="Event">Academic Milestone</option>
               </select>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1 border-t border-outline-variant/20">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <span className="text-xs font-mono text-secondary font-medium shrink-0">Time Period:</span>
+                <input
+                  type="time"
+                  value={newEventStartTime}
+                  onChange={(e) => setNewEventStartTime(e.target.value)}
+                  className="border border-outline-variant/50 rounded-lg p-2 text-xs bg-surface-container-lowest text-on-surface font-mono focus:outline-none focus:border-primary-container"
+                />
+                <span className="text-xs text-secondary font-mono">to</span>
+                <input
+                  type="time"
+                  value={newEventEndTime}
+                  onChange={(e) => setNewEventEndTime(e.target.value)}
+                  className="border border-outline-variant/50 rounded-lg p-2 text-xs bg-surface-container-lowest text-on-surface font-mono focus:outline-none focus:border-primary-container"
+                />
+              </div>
+
               <button
                 type="submit"
-                className="bg-[#8b5e3c] hover:bg-[#6f4627] text-white px-5 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors cursor-pointer"
+                className="w-full sm:w-auto bg-[#8b5e3c] hover:bg-[#6f4627] text-white px-5 py-2 rounded-lg text-sm font-medium flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
-                <Plus className="w-4 h-4" /> Add to Calendar
+                <Plus className="w-4 h-4" /> Add to Timetable & Sync
               </button>
             </div>
           </form>
