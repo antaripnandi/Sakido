@@ -128,7 +128,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
   if (!isOpen) return null;
 
-  // Handle Google OAuth Sign In
+  // Handle Google OAuth Sign In (Same-tab redirect to avoid opening duplicate tabs)
   const handleGoogleSignIn = async () => {
     setErrorMessage(null);
     const supabase = getSupabaseClient();
@@ -139,58 +139,24 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
     try {
       setLoading(true);
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: window.location.origin,
-          skipBrowserRedirect: true,
+          redirectTo: `${window.location.origin}/dashboard`,
         },
       });
 
       if (error) {
+        setLoading(false);
         if (error.message?.includes('provider is not enabled') || (error as any).code === 400) {
           setErrorMessage('Google Sign-In is not enabled in auth settings yet. Please use Email OTP below.');
         } else {
           setErrorMessage(error.message || 'Failed to connect to Google. Please try email verification.');
         }
-        return;
-      }
-
-      if (data?.url) {
-        // Opening in a new window/tab prevents Google's 403 X-Frame-Options error in iframe previews
-        const newWindow = window.open(data.url, '_blank');
-        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-          // If popup blocker intervened, direct navigation fallback
-          window.location.href = data.url;
-        } else {
-          setInfoMessage('Google sign-in opened in a new tab. Please complete sign-in there.');
-          // Poll for auth session completion while tab is open
-          const checkInterval = setInterval(async () => {
-            const { data: sessionData } = await supabase.auth.getSession();
-            if (sessionData?.session?.user) {
-              const u = sessionData.session.user;
-              clearInterval(checkInterval);
-              setUserProfile({
-                id: u.id,
-                email: u.email,
-                name: u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split('@')[0],
-                avatarUrl: u.user_metadata?.avatar_url || u.user_metadata?.picture,
-                provider: 'Google OAuth',
-                lastSignIn: new Date().toLocaleString(),
-              });
-              setStep('success');
-              if (onSuccess) onSuccess();
-            }
-            if (newWindow.closed) {
-              clearInterval(checkInterval);
-            }
-          }, 1000);
-        }
       }
     } catch (err: any) {
-      setErrorMessage(err?.message || 'An unexpected authentication error occurred.');
-    } finally {
       setLoading(false);
+      setErrorMessage(err?.message || 'Google authentication failed.');
     }
   };
 
