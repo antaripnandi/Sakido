@@ -2178,14 +2178,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   >
                     {/* Header Row */}
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="font-manrope font-semibold text-base text-on-surface">Active Integrations</span>
-                        {hasActive && (
-                          <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold border border-emerald-500/20">
-                            {activeServices.length} Active
-                          </span>
-                        )}
-                      </div>
+                      <span className="font-manrope font-semibold text-base text-on-surface">Active Integrations</span>
                       <button
                         onClick={() => {
                           setIsProfileModalOpen(false);
@@ -2209,7 +2202,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                             className="px-4 py-2 rounded-xl border border-primary bg-surface text-primary text-xs font-manrope font-bold uppercase transition-all cursor-pointer active:scale-95 flex items-center gap-2 shadow-xs hover:bg-primary/5"
                           >
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span>{item.label}: Active</span>
+                            <span>{item.label}</span>
                           </button>
                         ))}
                       </div>
