@@ -5,7 +5,7 @@ import Lenis from 'lenis';
 import { FrameCanvas } from './FrameCanvas';
 import { AuthModal } from './auth/AuthModal';
 import { getSupabaseClient } from '../lib/supabaseClient';
-import { User, ChevronLeft } from 'lucide-react';
+import { User, ChevronLeft, Check } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -119,7 +119,11 @@ function getCalloutY(frame: number, start: number, peakStart: number, peakEnd: n
   return (1 - p) * -20;
 }
 
-export const SakidoLandingPage: React.FC = () => {
+interface SakidoLandingPageProps {
+  onOpenDashboard?: () => void;
+}
+
+export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDashboard }) => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const pinnedRef = useRef<HTMLDivElement | null>(null);
 
@@ -266,7 +270,9 @@ export const SakidoLandingPage: React.FC = () => {
             <span className="font-mono text-xs text-zinc-200 group-hover:text-white transition-colors">
               {currentUser.name || currentUser.email}
             </span>
-            <ChevronLeft className="w-4 h-4 text-zinc-400 group-hover:text-white group-hover:-translate-x-0.5 transition-transform" />
+            <div className="w-5 h-5 rounded-full bg-emerald-950/80 border border-emerald-700/80 flex items-center justify-center text-emerald-400 shrink-0">
+              <Check className="w-3 h-3 stroke-[2.5]" />
+            </div>
           </button>
         ) : (
           <button
@@ -389,7 +395,11 @@ export const SakidoLandingPage: React.FC = () => {
       </section>
 
       {/* Auth Modal Flow */}
-      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onGoToDashboard={onOpenDashboard}
+      />
     </div>
   );
 };

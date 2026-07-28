@@ -6,6 +6,7 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  onGoToDashboard?: () => void;
 }
 
 // Helper to extract clean error message from auth responses
@@ -58,7 +59,7 @@ const formatSupabaseAuthError = (error: any): string => {
   return msg;
 };
 
-export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
+export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess, onGoToDashboard }) => {
   const [step, setStep] = useState<'email' | 'otp' | 'success'>('email');
   const [email, setEmail] = useState('');
   const [otpCode, setOtpCode] = useState<string[]>(['', '', '', '', '', '']);
@@ -582,10 +583,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
               <div className="pt-3 flex flex-col sm:flex-row items-center gap-3">
                 <button
                   type="button"
-                  onClick={onClose}
-                  className="w-full sm:flex-1 py-3.5 px-6 bg-white text-black font-label-md text-xs sm:text-sm font-bold tracking-widest uppercase hover:bg-[#E5E5E5] transition-all duration-200 cursor-pointer text-center"
+                  onClick={() => {
+                    onClose();
+                    if (onGoToDashboard) {
+                      onGoToDashboard();
+                    }
+                  }}
+                  className="w-full sm:flex-1 py-3.5 px-6 bg-white text-black font-label-md text-xs sm:text-sm font-bold tracking-widest uppercase hover:bg-[#E5E5E5] transition-all duration-200 cursor-pointer text-center flex items-center justify-center gap-2"
                 >
-                  GO TO DASHBOARD
+                  <span>GO TO DASHBOARD</span>
+                  <ArrowRight className="w-4 h-4" />
                 </button>
                 <button
                   type="button"

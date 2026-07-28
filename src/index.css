@@ -1,18 +1,179 @@
 @import "tailwindcss";
 
+@theme {
+  --color-surface: #fff8f5;
+  --color-surface-dim: #e2d8d3;
+  --color-surface-bright: #fff8f5;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #fcf1ec;
+  --color-surface-container: #f6ece7;
+  --color-surface-container-high: #f1e6e1;
+  --color-surface-container-highest: #ebe0db;
+  --color-on-surface: #1f1b18;
+  --color-on-surface-variant: #51443c;
+  --color-inverse-surface: #352f2c;
+  --color-inverse-on-surface: #f9efe9;
+  --color-outline: #83746b;
+  --color-outline-variant: #d5c3b8;
+  --color-surface-tint: #805533;
+  --color-primary: #6f4627;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #8b5e3c;
+  --color-on-primary-container: #ffe3d1;
+  --color-inverse-primary: #f4bb92;
+  --color-secondary: #5f5e5e;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #e2dfde;
+  --color-on-secondary-container: #636262;
+  --color-tertiary: #265763;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #406f7c;
+  --color-on-tertiary-container: #c1f0ff;
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-primary-fixed: #ffdcc5;
+  --color-primary-fixed-dim: #f4bb92;
+  --color-on-primary-fixed: #301400;
+  --color-on-primary-fixed-variant: #653d1e;
+  --color-secondary-fixed: #e5e2e1;
+  --color-secondary-fixed-dim: #c8c6c5;
+  --color-on-secondary-fixed: #1c1b1b;
+  --color-on-secondary-fixed-variant: #474746;
+  --color-tertiary-fixed: #baeaf9;
+  --color-tertiary-fixed-dim: #9ecedd;
+  --color-on-tertiary-fixed: #001f26;
+  --color-on-tertiary-fixed-variant: #1a4d59;
+  --color-background: #fff8f5;
+  --color-on-background: #1f1b18;
+  --color-surface-variant: #ebe0db;
+
+  --font-display: 'Syne', sans-serif;
+  --font-body: 'Manrope', 'Inter', sans-serif;
+}
+
 @layer base {
   html, body {
     background-color: #000000;
     color: #ffffff;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-family: 'Manrope', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     overflow-x: hidden;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
+  html.dark, html.dark body {
+    background-color: #15110e;
+    color: #f9efe9;
+
+    --color-surface: #15110e;
+    --color-surface-dim: #1d1714;
+    --color-surface-bright: #2c241f;
+    --color-surface-container-lowest: #120e0b;
+    --color-surface-container-low: #1c1613;
+    --color-surface-container: #241d18;
+    --color-surface-container-high: #2c241f;
+    --color-surface-container-highest: #352b25;
+    --color-on-surface: #f9efe9;
+    --color-on-surface-variant: #e0d0c5;
+    --color-inverse-surface: #ebe0db;
+    --color-inverse-on-surface: #1f1b18;
+    --color-outline: #9e8d83;
+    --color-outline-variant: #51443c;
+    --color-surface-tint: #f4bb92;
+    --color-primary: #f4bb92;
+    --color-on-primary: #301400;
+    --color-primary-container: #8b5e3c;
+    --color-on-primary-container: #ffe3d1;
+    --color-inverse-primary: #6f4627;
+    --color-secondary: #d1cecc;
+    --color-on-secondary: #1c1b1b;
+    --color-secondary-container: #474746;
+    --color-on-secondary-container: #e2dfde;
+    --color-background: #15110e;
+    --color-on-background: #f9efe9;
+    --color-surface-variant: #352b25;
+  }
+
   h1, h2, h3, h4, h5, h6, .font-display, .font-syne {
     font-family: 'Syne', sans-serif;
   }
+}
+
+/* Analog Clock Styling */
+.analog-clock-container {
+  position: relative;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 1px solid #d5c3b8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.3s ease, background-color 0.3s ease;
+}
+
+.dark .analog-clock-container {
+  border-color: #51443c;
+  background-color: #241d18 !important;
+}
+
+.clock-center {
+  width: 6px;
+  height: 6px;
+  background-color: #1f1b18;
+  border-radius: 50%;
+  z-index: 10;
+}
+
+.dark .clock-center {
+  background-color: #f9efe9;
+}
+
+.hand {
+  position: absolute;
+  bottom: 50%;
+  left: 50%;
+  transform-origin: bottom center;
+  border-radius: 2px;
+  transition: transform 0.2s cubic-bezier(0.4, 2.08, 0.55, 1);
+}
+
+.hour-hand {
+  width: 3px;
+  height: 32px;
+  background-color: #1f1b18;
+}
+
+.dark .hour-hand {
+  background-color: #f9efe9;
+}
+
+.minute-hand {
+  width: 2px;
+  height: 46px;
+  background-color: #8b5e3c;
+}
+
+.second-hand {
+  width: 1px;
+  height: 50px;
+  background-color: #ba1a1a;
+}
+
+.tick {
+  position: absolute;
+  width: 1px;
+  height: 5px;
+  background-color: #d5c3b8;
+  top: 4px;
+  left: 50%;
+  transform-origin: 50% 56px;
+}
+
+.dark .tick {
+  background-color: #51443c;
 }
 
 /* Lenis smooth scroll integration */
@@ -41,7 +202,7 @@ html.lenis, html.lenis body {
 }
 
 .font-body-lg, .font-body-md {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Manrope', 'Inter', sans-serif;
 }
 
 /* Form Autofill styles to maintain dark mode aesthetic */
@@ -49,22 +210,23 @@ input:-webkit-autofill,
 input:-webkit-autofill:hover, 
 input:-webkit-autofill:focus, 
 input:-webkit-autofill:active {
-    -webkit-box-shadow: 0 0 0 30px #000000 inset !important;
-    -webkit-text-fill-color: white !important;
-    transition: background-color 5000s ease-in-out 0s;
+  -webkit-box-shadow: 0 0 0 30px #181310 inset !important;
+  -webkit-text-fill-color: #f9efe9 !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
-/* Custom subtle scrollbar for cinematic feel */
+/* Custom subtle scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: #000000;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #27272a;
+  background: #83746b40;
   border-radius: 3px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3f3f46;
+  background: #83746b80;
 }
+

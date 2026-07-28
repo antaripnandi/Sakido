@@ -1,0 +1,975 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Sakido Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;700&amp;family=Syne:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script crossorigin="" src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin="" src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-container": "#f6ece7",
+                      "on-secondary-container": "#636262",
+                      "on-secondary-fixed": "#1c1b1b",
+                      "on-primary-fixed": "#301400",
+                      "primary-fixed-dim": "#f4bb92",
+                      "surface-container-high": "#f1e6e1",
+                      "tertiary-fixed": "#baeaf9",
+                      "surface-dim": "#e2d8d3",
+                      "inverse-primary": "#f4bb92",
+                      "surface-container-lowest": "#ffffff",
+                      "secondary-container": "#e2dfde",
+                      "inverse-on-surface": "#f9efe9",
+                      "on-tertiary-container": "#c1f0ff",
+                      "error": "#ba1a1a",
+                      "primary-fixed": "#ffdcc5",
+                      "on-secondary-fixed-variant": "#474746",
+                      "surface-bright": "#fff8f5",
+                      "on-error-container": "#93000a",
+                      "on-tertiary-fixed-variant": "#1a4d59",
+                      "tertiary-container": "#406f7c",
+                      "on-background": "#1f1b18",
+                      "primary-container": "#8b5e3c",
+                      "secondary": "#5f5e5e",
+                      "background": "#fff8f5",
+                      "primary": "#6f4627",
+                      "surface": "#fff8f5",
+                      "on-surface": "#1f1b18",
+                      "on-primary": "#ffffff",
+                      "surface-variant": "#ebe0db",
+                      "secondary-fixed-dim": "#c8c6c5",
+                      "outline": "#83746b",
+                      "surface-tint": "#805533",
+                      "inverse-surface": "#352f2c",
+                      "error-container": "#ffdad6",
+                      "on-surface-variant": "#51443c",
+                      "on-primary-fixed-variant": "#653d1e",
+                      "secondary-fixed": "#e5e2e1",
+                      "outline-variant": "#d5c3b8",
+                      "surface-container-highest": "#ebe0db",
+                      "tertiary-fixed-dim": "#9ecedd",
+                      "on-secondary": "#ffffff",
+                      "surface-container-low": "#fcf1ec",
+                      "tertiary": "#265763",
+                      "on-primary-container": "#ffe3d1",
+                      "on-tertiary": "#ffffff",
+                      "on-tertiary-fixed": "#001f26",
+                      "on-error": "#ffffff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "lg": "32px",
+                      "margin-desktop": "40px",
+                      "md": "16px",
+                      "xxl": "128px",
+                      "gutter": "24px",
+                      "unit": "4px",
+                      "margin-mobile": "20px",
+                      "xl": "64px",
+                      "xs": "4px",
+                      "sm": "8px"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "Manrope"
+                      ],
+                      "headline-lg": [
+                              "Syne"
+                      ],
+                      "body-lg": [
+                              "Manrope"
+                      ],
+                      "body-sm": [
+                              "Manrope"
+                      ],
+                      "headline-md": [
+                              "Syne"
+                      ],
+                      "headline-lg-mobile": [
+                              "Syne"
+                      ],
+                      "display": [
+                              "Syne"
+                      ],
+                      "label-caps": [
+                              "Manrope"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "body-sm": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.5",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "display": [
+                              "48px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "label-caps": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "0.1em",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        body {
+            background-color: #fff8f5; /* surface */
+            color: #1f1b18; /* on-surface */
+        }
+        
+        .analog-clock-container {
+            position: relative;
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 1px solid #d5c3b8; /* outline-variant */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .clock-center {
+            width: 4px;
+            height: 4px;
+            background-color: #1f1b18;
+            border-radius: 50%;
+            z-index: 10;
+        }
+
+        .hand {
+            position: absolute;
+            bottom: 50%;
+            left: 50%;
+            transform-origin: bottom;
+            background-color: #1f1b18;
+            border-radius: 2px;
+        }
+
+        .hour-hand {
+            width: 2px;
+            height: 30px;
+            transform: translateX(-50%) rotate(45deg); /* Static for visual */
+        }
+
+        .minute-hand {
+            width: 1px;
+            height: 45px;
+            transform: translateX(-50%) rotate(180deg); /* Static for visual */
+        }
+        
+        .tick {
+            position: absolute;
+            width: 1px;
+            height: 4px;
+            background-color: #d5c3b8;
+            top: 4px;
+            left: 50%;
+            transform-origin: 50% 56px; /* 120/2 - 4 */
+        }
+
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #8b5e3c;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #8b5e3c;
+        }
+    </style>
+<script>function _typeof(o) { "@babel/helpers - typeof"; return _typeof = "function" == typeof Symbol && "symbol" == typeof Symbol.iterator ? function (o) { return typeof o; } : function (o) { return o && "function" == typeof Symbol && o.constructor === Symbol && o !== Symbol.prototype ? "symbol" : typeof o; }, _typeof(o); }
+function ownKeys(e, r) { var t = Object.keys(e); if (Object.getOwnPropertySymbols) { var o = Object.getOwnPropertySymbols(e); r && (o = o.filter(function (r) { return Object.getOwnPropertyDescriptor(e, r).enumerable; })), t.push.apply(t, o); } return t; }
+function _objectSpread(e) { for (var r = 1; r < arguments.length; r++) { var t = null != arguments[r] ? arguments[r] : {}; r % 2 ? ownKeys(Object(t), !0).forEach(function (r) { _defineProperty(e, r, t[r]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(e, Object.getOwnPropertyDescriptors(t)) : ownKeys(Object(t)).forEach(function (r) { Object.defineProperty(e, r, Object.getOwnPropertyDescriptor(t, r)); }); } return e; }
+function _defineProperty(e, r, t) { return (r = _toPropertyKey(r)) in e ? Object.defineProperty(e, r, { value: t, enumerable: !0, configurable: !0, writable: !0 }) : e[r] = t, e; }
+function _toPropertyKey(t) { var i = _toPrimitive(t, "string"); return "symbol" == _typeof(i) ? i : i + ""; }
+function _toPrimitive(t, r) { if ("object" != _typeof(t) || !t) return t; var e = t[Symbol.toPrimitive]; if (void 0 !== e) { var i = e.call(t, r || "default"); if ("object" != _typeof(i)) return i; throw new TypeError("@@toPrimitive must return a primitive value."); } return ("string" === r ? String : Number)(t); }
+function _toConsumableArray(r) { return _arrayWithoutHoles(r) || _iterableToArray(r) || _unsupportedIterableToArray(r) || _nonIterableSpread(); }
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _iterableToArray(r) { if ("undefined" != typeof Symbol && null != r[Symbol.iterator] || null != r["@@iterator"]) return Array.from(r); }
+function _arrayWithoutHoles(r) { if (Array.isArray(r)) return _arrayLikeToArray(r); }
+function _slicedToArray(r, e) { return _arrayWithHoles(r) || _iterableToArrayLimit(r, e) || _unsupportedIterableToArray(r, e) || _nonIterableRest(); }
+function _nonIterableRest() { throw new TypeError("Invalid attempt to destructure non-iterable instance.\nIn order to be iterable, non-array objects must have a [Symbol.iterator]() method."); }
+function _unsupportedIterableToArray(r, a) { if (r) { if ("string" == typeof r) return _arrayLikeToArray(r, a); var t = {}.toString.call(r).slice(8, -1); return "Object" === t && r.constructor && (t = r.constructor.name), "Map" === t || "Set" === t ? Array.from(r) : "Arguments" === t || /^(?:Ui|I)nt(?:8|16|32)(?:Clamped)?Array$/.test(t) ? _arrayLikeToArray(r, a) : void 0; } }
+function _arrayLikeToArray(r, a) { (null == a || a > r.length) && (a = r.length); for (var e = 0, n = Array(a); e < a; e++) n[e] = r[e]; return n; }
+function _iterableToArrayLimit(r, l) { var t = null == r ? null : "undefined" != typeof Symbol && r[Symbol.iterator] || r["@@iterator"]; if (null != t) { var e, n, i, u, a = [], f = !0, o = !1; try { if (i = (t = t.call(r)).next, 0 === l) { if (Object(t) !== t) return; f = !1; } else for (; !(f = (e = i.call(t)).done) && (a.push(e.value), a.length !== l); f = !0); } catch (r) { o = !0, n = r; } finally { try { if (!f && null != t["return"] && (u = t["return"](), Object(u) !== u)) return; } finally { if (o) throw n; } } return a; } }
+function _arrayWithHoles(r) { if (Array.isArray(r)) return r; }
+var _React = React,
+  useState = _React.useState,
+  useEffect = _React.useEffect;
+var App = function App(_ref) {
+  var _ref$bannerImageUrl = _ref.bannerImageUrl,
+    bannerImageUrl = _ref$bannerImageUrl === void 0 ? "https://lh3.googleusercontent.com/aida-public/AB6AXuDe4vi7XJaiQ_y6qHVBWtwxJT55vq5sudKnrI-Hpl8ZD3YwwUYUEgtmD5YjHpKMDwF9O6SdtCmD5EAPaWqMNQQVKvCjNr7fYhKnLF04RHwraB-EoRih4deKj5q6ozMf8ySu0ujlI9URS4op71sfgi0YXvENKCoKbzckrD3CiQD4_QBB3MFXuygwE7JqHOA6oUjRhBBJfDmeeda3L6QWJQV1KIgQnVRYIMSCPyd3p-zS7-opLoXSVtZZ" : _ref$bannerImageUrl,
+    onEditBanner = _ref.onEditBanner,
+    _ref$initialIsDarkMod = _ref.initialIsDarkMode,
+    initialIsDarkMode = _ref$initialIsDarkMod === void 0 ? false : _ref$initialIsDarkMod,
+    onToggleDarkMode = _ref.onToggleDarkMode,
+    _ref$userName = _ref.userName,
+    userName = _ref$userName === void 0 ? "Alex" : _ref$userName;
+  var _useState = useState(initialIsDarkMode),
+    _useState2 = _slicedToArray(_useState, 2),
+    isDarkMode = _useState2[0],
+    setIsDarkMode = _useState2[1];
+  var _useState3 = useState('Classes'),
+    _useState4 = _slicedToArray(_useState3, 2),
+    activeTab = _useState4[0],
+    setActiveTab = _useState4[1];
+  var _useState5 = useState({
+      googleCalendar: false,
+      googleDrive: false,
+      gmail: false
+    }),
+    _useState6 = _slicedToArray(_useState5, 2),
+    connectors = _useState6[0],
+    setConnectors = _useState6[1];
+  var _useState7 = useState([]),
+    _useState8 = _slicedToArray(_useState7, 2),
+    classes = _useState8[0],
+    setClasses = _useState8[1];
+  var _useState9 = useState(''),
+    _useState0 = _slicedToArray(_useState9, 2),
+    newClassName = _useState0[0],
+    setNewClassName = _useState0[1];
+  var _useState1 = useState([]),
+    _useState10 = _slicedToArray(_useState1, 2),
+    tasks = _useState10[0],
+    setTasks = _useState10[1];
+  var _useState11 = useState(''),
+    _useState12 = _slicedToArray(_useState11, 2),
+    newTaskName = _useState12[0],
+    setNewTaskName = _useState12[1];
+  var _useState13 = useState(''),
+    _useState14 = _slicedToArray(_useState13, 2),
+    newTaskGrade = _useState14[0],
+    setNewTaskGrade = _useState14[1];
+  var _useState15 = useState([]),
+    _useState16 = _slicedToArray(_useState15, 2),
+    watchLater = _useState16[0],
+    setWatchLater = _useState16[1];
+  var _useState17 = useState(''),
+    _useState18 = _slicedToArray(_useState17, 2),
+    newWatchUrl = _useState18[0],
+    setNewWatchUrl = _useState18[1];
+  var _useState19 = useState(''),
+    _useState20 = _slicedToArray(_useState19, 2),
+    newWatchTitle = _useState20[0],
+    setNewWatchTitle = _useState20[1];
+  useEffect(function () {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
+  var toggleDark = function toggleDark() {
+    setIsDarkMode(!isDarkMode);
+    if (onToggleDarkMode) onToggleDarkMode(!isDarkMode);
+  };
+  var addClass = function addClass(e) {
+    e.preventDefault();
+    if (newClassName) {
+      setClasses([].concat(_toConsumableArray(classes), [{
+        id: Date.now(),
+        name: newClassName
+      }]));
+      setNewClassName('');
+    }
+  };
+  var addTask = function addTask(e) {
+    e.preventDefault();
+    if (newTaskName) {
+      setTasks([].concat(_toConsumableArray(tasks), [{
+        id: Date.now(),
+        name: newTaskName,
+        grade: newTaskGrade,
+        checked: false
+      }]));
+      setNewTaskName('');
+      setNewTaskGrade('');
+    }
+  };
+  var toggleTask = function toggleTask(id) {
+    setTasks(tasks.map(function (t) {
+      return t.id === id ? _objectSpread(_objectSpread({}, t), {}, {
+        checked: !t.checked
+      }) : t;
+    }));
+  };
+  var addWatch = function addWatch(e) {
+    e.preventDefault();
+    if (newWatchTitle) {
+      setWatchLater([].concat(_toConsumableArray(watchLater), [{
+        id: Date.now(),
+        title: newWatchTitle,
+        url: newWatchUrl
+      }]));
+      setNewWatchTitle('');
+      setNewWatchUrl('');
+    }
+  };
+  var removeWatch = function removeWatch(id) {
+    setWatchLater(watchLater.filter(function (w) {
+      return w.id !== id;
+    }));
+  };
+  var handleConnectorToggle = function handleConnectorToggle(key) {
+    setConnectors(function (prev) {
+      return _objectSpread(_objectSpread({}, prev), {}, _defineProperty({}, key, !prev[key]));
+    });
+  };
+  var avgGrade = tasks.filter(function (t) {
+    return t.grade;
+  }).length > 0 ? Math.round(tasks.filter(function (t) {
+    return t.grade;
+  }).reduce(function (acc, t) {
+    return acc + parseInt(t.grade);
+  }, 0) / tasks.filter(function (t) {
+    return t.grade;
+  }).length) : 0;
+  var renderContent = function renderContent() {
+    if (['University & People', 'AI Features'].includes(activeTab)) {
+      return /*#__PURE__*/React.createElement("div", {
+        className: "flex-1 flex items-center justify-center min-h-[400px]"
+      }, /*#__PURE__*/React.createElement("h2", {
+        className: "text-secondary font-display text-headline-lg tracking-widest uppercase"
+      }, "Coming Soon"));
+    }
+    if (activeTab === 'Classes') {
+      return /*#__PURE__*/React.createElement("div", {
+        className: "col-span-8 flex flex-col gap-lg pl-lg border-l border-outline-variant/30 min-h-[400px]"
+      }, /*#__PURE__*/React.createElement("h3", {
+        className: "font-headline-lg text-headline-lg text-on-surface mb-md"
+      }, "Classes"), /*#__PURE__*/React.createElement("form", {
+        onSubmit: addClass,
+        className: "flex gap-2 mb-4"
+      }, /*#__PURE__*/React.createElement("input", {
+        type: "text",
+        value: newClassName,
+        onChange: function onChange(e) {
+          return setNewClassName(e.target.value);
+        },
+        placeholder: "Class Name",
+        className: "border border-outline-variant rounded p-2 flex-1 bg-surface-container-lowest text-on-surface"
+      }), /*#__PURE__*/React.createElement("button", {
+        type: "submit",
+        className: "bg-[#8b5e3c] text-white px-4 py-2 rounded"
+      }, "Add Class")), /*#__PURE__*/React.createElement("div", {
+        className: "grid grid-cols-2 gap-4"
+      }, classes.map(function (c) {
+        return /*#__PURE__*/React.createElement("div", {
+          key: c.id,
+          className: "p-4 border border-outline-variant rounded-lg bg-surface-container-low shadow-sm"
+        }, /*#__PURE__*/React.createElement("h4", {
+          className: "font-headline-md"
+        }, c.name));
+      }), classes.length === 0 && /*#__PURE__*/React.createElement("div", {
+        className: "col-span-2 w-full h-48 border border-outline-variant border-dashed rounded-lg flex flex-col items-center justify-center gap-md text-secondary"
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "w-12 h-12 rounded-full border border-outline-variant flex items-center justify-center"
+      }, /*#__PURE__*/React.createElement("span", {
+        className: "material-symbols-outlined text-[24px] font-light"
+      }, "school")), /*#__PURE__*/React.createElement("span", {
+        className: "font-body-md"
+      }, "No classes yet"))));
+    }
+    if (activeTab === 'Tasks & Grades') {
+      return /*#__PURE__*/React.createElement("div", {
+        className: "col-span-8 flex flex-col gap-lg pl-lg border-l border-outline-variant/30 min-h-[400px]"
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "flex justify-between items-center mb-md"
+      }, /*#__PURE__*/React.createElement("h3", {
+        className: "font-headline-lg text-headline-lg text-on-surface"
+      }, "Tasks & Grades"), avgGrade > 0 && /*#__PURE__*/React.createElement("div", {
+        className: "text-primary-container font-bold"
+      }, "Grade Avg: ", avgGrade, "%")), /*#__PURE__*/React.createElement("form", {
+        onSubmit: addTask,
+        className: "flex gap-2 mb-4"
+      }, /*#__PURE__*/React.createElement("input", {
+        type: "text",
+        value: newTaskName,
+        onChange: function onChange(e) {
+          return setNewTaskName(e.target.value);
+        },
+        placeholder: "Task Name",
+        className: "border border-outline-variant rounded p-2 flex-1 bg-surface-container-lowest text-on-surface"
+      }), /*#__PURE__*/React.createElement("input", {
+        type: "number",
+        min: "0",
+        max: "100",
+        value: newTaskGrade,
+        onChange: function onChange(e) {
+          return setNewTaskGrade(e.target.value);
+        },
+        placeholder: "Grade (0-100)",
+        className: "border border-outline-variant rounded p-2 w-32 bg-surface-container-lowest text-on-surface"
+      }), /*#__PURE__*/React.createElement("button", {
+        type: "submit",
+        className: "bg-[#8b5e3c] text-white px-4 py-2 rounded"
+      }, "Add")), /*#__PURE__*/React.createElement("div", {
+        className: "flex flex-col gap-2"
+      }, tasks.map(function (t) {
+        return /*#__PURE__*/React.createElement("div", {
+          key: t.id,
+          className: "flex items-center gap-3 p-3 border border-outline-variant rounded bg-surface-container-low"
+        }, /*#__PURE__*/React.createElement("input", {
+          type: "checkbox",
+          checked: t.checked,
+          onChange: function onChange() {
+            return toggleTask(t.id);
+          },
+          className: "w-5 h-5 accent-[#8b5e3c]"
+        }), /*#__PURE__*/React.createElement("span", {
+          className: "flex-1 ".concat(t.checked ? 'line-through text-secondary' : '')
+        }, t.name), t.grade && /*#__PURE__*/React.createElement("span", {
+          className: "text-sm font-bold text-secondary"
+        }, "Grade: ", t.grade));
+      })));
+    }
+    if (activeTab === 'Watch Later') {
+      return /*#__PURE__*/React.createElement("div", {
+        className: "col-span-8 flex flex-col gap-lg pl-lg border-l border-outline-variant/30 min-h-[400px]"
+      }, /*#__PURE__*/React.createElement("h3", {
+        className: "font-headline-lg text-headline-lg text-on-surface mb-md"
+      }, "Watch Later"), /*#__PURE__*/React.createElement("form", {
+        onSubmit: addWatch,
+        className: "flex gap-2 mb-4"
+      }, /*#__PURE__*/React.createElement("input", {
+        type: "text",
+        value: newWatchTitle,
+        onChange: function onChange(e) {
+          return setNewWatchTitle(e.target.value);
+        },
+        placeholder: "Title",
+        className: "border border-outline-variant rounded p-2 flex-1 bg-surface-container-lowest text-on-surface"
+      }), /*#__PURE__*/React.createElement("input", {
+        type: "text",
+        value: newWatchUrl,
+        onChange: function onChange(e) {
+          return setNewWatchUrl(e.target.value);
+        },
+        placeholder: "URL",
+        className: "border border-outline-variant rounded p-2 flex-1 bg-surface-container-lowest text-on-surface"
+      }), /*#__PURE__*/React.createElement("button", {
+        type: "submit",
+        className: "bg-[#8b5e3c] text-white px-4 py-2 rounded"
+      }, "Add")), /*#__PURE__*/React.createElement("div", {
+        className: "flex flex-col gap-2"
+      }, watchLater.map(function (w) {
+        return /*#__PURE__*/React.createElement("div", {
+          key: w.id,
+          className: "flex items-center justify-between p-3 border border-outline-variant rounded bg-surface-container-low"
+        }, /*#__PURE__*/React.createElement("div", {
+          className: "flex flex-col"
+        }, /*#__PURE__*/React.createElement("span", {
+          className: "font-bold"
+        }, w.title), /*#__PURE__*/React.createElement("a", {
+          href: w.url,
+          target: "_blank",
+          className: "text-sm text-blue-500 underline truncate max-w-xs"
+        }, w.url)), /*#__PURE__*/React.createElement("button", {
+          onClick: function onClick() {
+            return removeWatch(w.id);
+          },
+          className: "text-error text-sm hover:underline"
+        }, "Remove"));
+      })));
+    }
+
+    // Fallback for Notes/Calendar
+    return /*#__PURE__*/React.createElement("div", {
+      className: "col-span-8 flex flex-col gap-lg pl-lg border-l border-outline-variant/30 min-h-[400px]"
+    }, /*#__PURE__*/React.createElement("h3", {
+      className: "font-headline-lg text-headline-lg text-on-surface mb-md"
+    }, activeTab), /*#__PURE__*/React.createElement("p", {
+      className: "text-secondary"
+    }, "Select another tab to see interactive modules."));
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    className: "flex w-full min-h-screen"
+  }, /*#__PURE__*/React.createElement("nav", {
+    className: "bg-surface dark:bg-surface font-body-md text-body-md h-screen w-64 fixed left-0 top-0 border-r border-outline-variant dark:border-outline flex flex-col py-xl px-md z-50 overflow-y-auto"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mb-xxl"
+  }, /*#__PURE__*/React.createElement("h1", {
+    className: "font-display text-headline-md text-on-surface dark:text-inverse-on-surface tracking-tight"
+  }, "Sakido"), /*#__PURE__*/React.createElement("p", {
+    className: "text-secondary dark:text-secondary-fixed-dim text-body-sm mt-xs"
+  }, "Productivity Portal")), /*#__PURE__*/React.createElement("div", {
+    className: "mb-4 text-xs font-bold text-secondary uppercase tracking-wider"
+  }, "Student"), /*#__PURE__*/React.createElement("ul", {
+    className: "space-y-sm mb-8"
+  }, ['Notes', 'Calendar', 'Tasks & Grades', 'Classes', 'Watch Later'].map(function (item) {
+    return /*#__PURE__*/React.createElement("li", {
+      key: item
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: function onClick() {
+        return setActiveTab(item);
+      },
+      className: "w-full flex items-center gap-md px-md py-sm rounded-DEFAULT transition-colors scale-95 transition-transform duration-150 ".concat(activeTab === item ? 'text-primary dark:text-primary-fixed-dim font-bold bg-surface-container-low dark:bg-surface-container-highest' : 'text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-container-highest')
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "material-symbols-outlined text-[20px] font-light"
+    }, item === 'Notes' ? 'description' : item === 'Calendar' ? 'calendar_today' : item === 'Tasks & Grades' ? 'check_circle' : item === 'Classes' ? 'school' : 'watch_later'), /*#__PURE__*/React.createElement("span", null, item)));
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "mb-4 text-xs font-bold text-secondary uppercase tracking-wider"
+  }, "Connectors"), /*#__PURE__*/React.createElement("ul", {
+    className: "space-y-sm mb-8"
+  }, ['googleCalendar', 'googleDrive', 'gmail'].map(function (connector) {
+    return /*#__PURE__*/React.createElement("li", {
+      key: connector,
+      className: "flex items-center justify-between px-md py-sm text-secondary"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "capitalize"
+    }, connector.replace(/([A-Z])/g, ' $1').trim()), /*#__PURE__*/React.createElement("div", {
+      className: "relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in"
+    }, /*#__PURE__*/React.createElement("input", {
+      type: "checkbox",
+      name: "toggle",
+      id: connector,
+      checked: connectors[connector],
+      onChange: function onChange() {
+        return handleConnectorToggle(connector);
+      },
+      className: "toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-outline-variant"
+    }), /*#__PURE__*/React.createElement("label", {
+      htmlFor: connector,
+      className: "toggle-label block overflow-hidden h-5 rounded-full bg-outline-variant cursor-pointer"
+    })));
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "mb-4 text-xs font-bold text-secondary uppercase tracking-wider"
+  }, "Other"), /*#__PURE__*/React.createElement("ul", {
+    className: "space-y-sm"
+  }, ['University & People', 'AI Features'].map(function (item) {
+    return /*#__PURE__*/React.createElement("li", {
+      key: item
+    }, /*#__PURE__*/React.createElement("button", {
+      onClick: function onClick() {
+        return setActiveTab(item);
+      },
+      className: "w-full flex items-center gap-md px-md py-sm rounded-DEFAULT text-secondary opacity-50 hover:bg-surface-container-low transition-colors scale-95"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "material-symbols-outlined text-[20px] font-light"
+    }, "info"), /*#__PURE__*/React.createElement("span", null, item)));
+  })), /*#__PURE__*/React.createElement("ul", {
+    className: "space-y-sm border-t border-outline-variant pt-md mt-auto"
+  }, /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("a", {
+    className: "flex items-center gap-md px-md py-sm rounded-DEFAULT text-secondary hover:bg-surface-container-low transition-colors scale-95",
+    href: "#"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-symbols-outlined text-[20px] font-light"
+  }, "settings"), /*#__PURE__*/React.createElement("span", null, "Settings"))))), /*#__PURE__*/React.createElement("main", {
+    className: "ml-64 flex-1 flex flex-col min-h-screen relative w-full"
+  }, /*#__PURE__*/React.createElement("header", {
+    className: "bg-transparent text-primary dark:text-primary-fixed-dim font-headline-lg text-headline-lg dark:text-on-surface docked full-width top-0 flex justify-between items-center w-full px-margin-desktop py-md absolute z-10"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "hidden"
+  }, "Sakido"), /*#__PURE__*/React.createElement("div", {
+    className: "absolute inset-0 bg-surface-container-highest/20 h-48 -z-10",
+    style: {
+      backgroundImage: "url('".concat(bannerImageUrl, "')"),
+      backgroundSize: 'cover',
+      backgroundPosition: 'center'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "flex-1 flex justify-end gap-md"
+  }, /*#__PURE__*/React.createElement("button", {
+    onClick: toggleDark,
+    className: "w-10 h-10 flex items-center justify-center rounded-full bg-surface/50 border border-outline-variant backdrop-blur-sm text-on-surface-variant hover:opacity-80 transition-opacity cursor-pointer active:scale-95 transition-all"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-symbols-outlined text-[20px] font-light"
+  }, "dark_mode")), /*#__PURE__*/React.createElement("button", {
+    onClick: onEditBanner,
+    className: "w-10 h-10 flex items-center justify-center rounded-full bg-surface/50 border border-outline-variant backdrop-blur-sm text-on-surface-variant hover:opacity-80 transition-opacity cursor-pointer active:scale-95 transition-all"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "material-symbols-outlined text-[20px] font-light"
+  }, "edit")))), /*#__PURE__*/React.createElement("div", {
+    className: "px-margin-desktop pt-40 pb-xl flex-1 flex flex-col"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mb-xxl"
+  }, /*#__PURE__*/React.createElement("h2", {
+    className: "font-display text-display text-on-surface tracking-tight relative"
+  }, "Good morning, ", userName, ".")), /*#__PURE__*/React.createElement("div", {
+    className: "grid grid-cols-12 gap-gutter flex-1"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "col-span-4 flex flex-col gap-xl"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "flex flex-col items-start gap-md"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "analog-clock-container bg-surface-container-lowest"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tick",
+    style: {
+      transform: 'translateX(-50%) rotate(0deg)'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "tick",
+    style: {
+      transform: 'translateX(-50%) rotate(90deg)'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "tick",
+    style: {
+      transform: 'translateX(-50%) rotate(180deg)'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "tick",
+    style: {
+      transform: 'translateX(-50%) rotate(270deg)'
+    }
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "hour-hand"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "minute-hand"
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "clock-center"
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "text-secondary"
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "font-label-caps uppercase tracking-widest text-on-surface-variant"
+  }, "Wednesday"), /*#__PURE__*/React.createElement("p", {
+    className: "font-body-sm mt-xs"
+  }, "October 24")))), renderContent()))));
+};
+var root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(/*#__PURE__*/React.createElement(App, null));
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJuYW1lcyI6W10sInNvdXJjZXMiOlsiSW5saW5lIEJhYmVsIHNjcmlwdCJdLCJzb3VyY2VzQ29udGVudCI6WyJcbiAgICBjb25zdCB7IHVzZVN0YXRlLCB1c2VFZmZlY3QgfSA9IFJlYWN0O1xuXG4gICAgY29uc3QgQXBwID0gKHsgYmFubmVySW1hZ2VVcmwgPSBcImh0dHBzOi8vbGgzLmdvb2dsZXVzZXJjb250ZW50LmNvbS9haWRhLXB1YmxpYy9BQjZBWHVEZTR2aTdYSmFpUV95NnFIVkJXdHd4SlQ1NXZxNXN1ZEtuckktSHBsOFpEM1l3d1VZVUVndG1ENVlqSHBLTUR3RjlPNlNkdENtRDVFQVBhV3FNTlFRVkt2Q2pOcjdmWWhLbkxGMDRSSHdyYUItRW9SaWg0ZGVLajVxNm96TWY4eVN1MHVqbEk5VVJTNG9wNzFzZmdpMFlYdkVOS0NvS2J6Y2tyRDNDaVFENF9RQkIzTUZYdXlnd0U3SnFIT0E2b1VqUmhCQkpmRG1lZWRhM0w2UVdKUVYxS0lnUW5WUllJTVNDUHlkM3AtelM3LW9wTG9YU1Z0WlpcIiwgb25FZGl0QmFubmVyLCBpbml0aWFsSXNEYXJrTW9kZSA9IGZhbHNlLCBvblRvZ2dsZURhcmtNb2RlLCB1c2VyTmFtZSA9IFwiQWxleFwiIH0pID0+IHtcbiAgICAgICAgY29uc3QgW2lzRGFya01vZGUsIHNldElzRGFya01vZGVdID0gdXNlU3RhdGUoaW5pdGlhbElzRGFya01vZGUpO1xuICAgICAgICBjb25zdCBbYWN0aXZlVGFiLCBzZXRBY3RpdmVUYWJdID0gdXNlU3RhdGUoJ0NsYXNzZXMnKTtcbiAgICAgICAgXG4gICAgICAgIGNvbnN0IFtjb25uZWN0b3JzLCBzZXRDb25uZWN0b3JzXSA9IHVzZVN0YXRlKHtcbiAgICAgICAgICAgIGdvb2dsZUNhbGVuZGFyOiBmYWxzZSxcbiAgICAgICAgICAgIGdvb2dsZURyaXZlOiBmYWxzZSxcbiAgICAgICAgICAgIGdtYWlsOiBmYWxzZVxuICAgICAgICB9KTtcblxuICAgICAgICBjb25zdCBbY2xhc3Nlcywgc2V0Q2xhc3Nlc10gPSB1c2VTdGF0ZShbXSk7XG4gICAgICAgIGNvbnN0IFtuZXdDbGFzc05hbWUsIHNldE5ld0NsYXNzTmFtZV0gPSB1c2VTdGF0ZSgnJyk7XG4gICAgICAgIFxuICAgICAgICBjb25zdCBbdGFza3MsIHNldFRhc2tzXSA9IHVzZVN0YXRlKFtdKTtcbiAgICAgICAgY29uc3QgW25ld1Rhc2tOYW1lLCBzZXROZXdUYXNrTmFtZV0gPSB1c2VTdGF0ZSgnJyk7XG4gICAgICAgIGNvbnN0IFtuZXdUYXNrR3JhZGUsIHNldE5ld1Rhc2tHcmFkZV0gPSB1c2VTdGF0ZSgnJyk7XG5cbiAgICAgICAgY29uc3QgW3dhdGNoTGF0ZXIsIHNldFdhdGNoTGF0ZXJdID0gdXNlU3RhdGUoW10pO1xuICAgICAgICBjb25zdCBbbmV3V2F0Y2hVcmwsIHNldE5ld1dhdGNoVXJsXSA9IHVzZVN0YXRlKCcnKTtcbiAgICAgICAgY29uc3QgW25ld1dhdGNoVGl0bGUsIHNldE5ld1dhdGNoVGl0bGVdID0gdXNlU3RhdGUoJycpO1xuXG4gICAgICAgIHVzZUVmZmVjdCgoKSA9PiB7XG4gICAgICAgICAgICBpZiAoaXNEYXJrTW9kZSkge1xuICAgICAgICAgICAgICAgIGRvY3VtZW50LmRvY3VtZW50RWxlbWVudC5jbGFzc0xpc3QuYWRkKCdkYXJrJyk7XG4gICAgICAgICAgICB9IGVsc2Uge1xuICAgICAgICAgICAgICAgIGRvY3VtZW50LmRvY3VtZW50RWxlbWVudC5jbGFzc0xpc3QucmVtb3ZlKCdkYXJrJyk7XG4gICAgICAgICAgICB9XG4gICAgICAgIH0sIFtpc0RhcmtNb2RlXSk7XG5cbiAgICAgICAgY29uc3QgdG9nZ2xlRGFyayA9ICgpID0+IHtcbiAgICAgICAgICAgIHNldElzRGFya01vZGUoIWlzRGFya01vZGUpO1xuICAgICAgICAgICAgaWYob25Ub2dnbGVEYXJrTW9kZSkgb25Ub2dnbGVEYXJrTW9kZSghaXNEYXJrTW9kZSk7XG4gICAgICAgIH1cblxuICAgICAgICBjb25zdCBhZGRDbGFzcyA9IChlKSA9PiB7XG4gICAgICAgICAgICBlLnByZXZlbnREZWZhdWx0KCk7XG4gICAgICAgICAgICBpZihuZXdDbGFzc05hbWUpIHtcbiAgICAgICAgICAgICAgICBzZXRDbGFzc2VzKFsuLi5jbGFzc2VzLCB7IGlkOiBEYXRlLm5vdygpLCBuYW1lOiBuZXdDbGFzc05hbWUgfV0pO1xuICAgICAgICAgICAgICAgIHNldE5ld0NsYXNzTmFtZSgnJyk7XG4gICAgICAgICAgICB9XG4gICAgICAgIH1cblxuICAgICAgICBjb25zdCBhZGRUYXNrID0gKGUpID0+IHtcbiAgICAgICAgICAgIGUucHJldmVudERlZmF1bHQoKTtcbiAgICAgICAgICAgIGlmKG5ld1Rhc2tOYW1lKSB7XG4gICAgICAgICAgICAgICAgc2V0VGFza3MoWy4uLnRhc2tzLCB7IGlkOiBEYXRlLm5vdygpLCBuYW1lOiBuZXdUYXNrTmFtZSwgZ3JhZGU6IG5ld1Rhc2tHcmFkZSwgY2hlY2tlZDogZmFsc2UgfV0pO1xuICAgICAgICAgICAgICAgIHNldE5ld1Rhc2tOYW1lKCcnKTtcbiAgICAgICAgICAgICAgICBzZXROZXdUYXNrR3JhZGUoJycpO1xuICAgICAgICAgICAgfVxuICAgICAgICB9XG5cbiAgICAgICAgY29uc3QgdG9nZ2xlVGFzayA9IChpZCkgPT4ge1xuICAgICAgICAgICAgc2V0VGFza3ModGFza3MubWFwKHQgPT4gdC5pZCA9PT0gaWQgPyB7IC4uLnQsIGNoZWNrZWQ6ICF0LmNoZWNrZWQgfSA6IHQpKTtcbiAgICAgICAgfVxuXG4gICAgICAgIGNvbnN0IGFkZFdhdGNoID0gKGUpID0+IHtcbiAgICAgICAgICAgIGUucHJldmVudERlZmF1bHQoKTtcbiAgICAgICAgICAgIGlmKG5ld1dhdGNoVGl0bGUpIHtcbiAgICAgICAgICAgICAgICBzZXRXYXRjaExhdGVyKFsuLi53YXRjaExhdGVyLCB7IGlkOiBEYXRlLm5vdygpLCB0aXRsZTogbmV3V2F0Y2hUaXRsZSwgdXJsOiBuZXdXYXRjaFVybCB9XSk7XG4gICAgICAgICAgICAgICAgc2V0TmV3V2F0Y2hUaXRsZSgnJyk7XG4gICAgICAgICAgICAgICAgc2V0TmV3V2F0Y2hVcmwoJycpO1xuICAgICAgICAgICAgfVxuICAgICAgICB9XG5cbiAgICAgICAgY29uc3QgcmVtb3ZlV2F0Y2ggPSAoaWQpID0+IHtcbiAgICAgICAgICAgIHNldFdhdGNoTGF0ZXIod2F0Y2hMYXRlci5maWx0ZXIodyA9PiB3LmlkICE9PSBpZCkpO1xuICAgICAgICB9XG5cbiAgICAgICAgY29uc3QgaGFuZGxlQ29ubmVjdG9yVG9nZ2xlID0gKGtleSkgPT4ge1xuICAgICAgICAgICAgc2V0Q29ubmVjdG9ycyhwcmV2ID0+ICh7Li4ucHJldiwgW2tleV06ICFwcmV2W2tleV19KSk7XG4gICAgICAgIH1cblxuICAgICAgICBjb25zdCBhdmdHcmFkZSA9IHRhc2tzLmZpbHRlcih0ID0+IHQuZ3JhZGUpLmxlbmd0aCA+IDAgPyBcbiAgICAgICAgICAgIE1hdGgucm91bmQodGFza3MuZmlsdGVyKHQgPT4gdC5ncmFkZSkucmVkdWNlKChhY2MsIHQpID0+IGFjYyArIHBhcnNlSW50KHQuZ3JhZGUpLCAwKSAvIHRhc2tzLmZpbHRlcih0ID0+IHQuZ3JhZGUpLmxlbmd0aCkgOiAwO1xuXG4gICAgICAgIGNvbnN0IHJlbmRlckNvbnRlbnQgPSAoKSA9PiB7XG4gICAgICAgICAgICBpZiAoWydVbml2ZXJzaXR5ICYgUGVvcGxlJywgJ0FJIEZlYXR1cmVzJ10uaW5jbHVkZXMoYWN0aXZlVGFiKSkge1xuICAgICAgICAgICAgICAgIHJldHVybiAoXG4gICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleC0xIGZsZXggaXRlbXMtY2VudGVyIGp1c3RpZnktY2VudGVyIG1pbi1oLVs0MDBweF1cIj5cbiAgICAgICAgICAgICAgICAgICAgICAgIDxoMiBjbGFzc05hbWU9XCJ0ZXh0LXNlY29uZGFyeSBmb250LWRpc3BsYXkgdGV4dC1oZWFkbGluZS1sZyB0cmFja2luZy13aWRlc3QgdXBwZXJjYXNlXCI+Q29taW5nIFNvb248L2gyPlxuICAgICAgICAgICAgICAgICAgICA8L2Rpdj5cbiAgICAgICAgICAgICAgICApO1xuICAgICAgICAgICAgfVxuXG4gICAgICAgICAgICBpZiAoYWN0aXZlVGFiID09PSAnQ2xhc3NlcycpIHtcbiAgICAgICAgICAgICAgICByZXR1cm4gKFxuICAgICAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImNvbC1zcGFuLTggZmxleCBmbGV4LWNvbCBnYXAtbGcgcGwtbGcgYm9yZGVyLWwgYm9yZGVyLW91dGxpbmUtdmFyaWFudC8zMCBtaW4taC1bNDAwcHhdXCI+XG4gICAgICAgICAgICAgICAgICAgICAgICA8aDMgY2xhc3NOYW1lPVwiZm9udC1oZWFkbGluZS1sZyB0ZXh0LWhlYWRsaW5lLWxnIHRleHQtb24tc3VyZmFjZSBtYi1tZFwiPkNsYXNzZXM8L2gzPlxuICAgICAgICAgICAgICAgICAgICAgICAgPGZvcm0gb25TdWJtaXQ9e2FkZENsYXNzfSBjbGFzc05hbWU9XCJmbGV4IGdhcC0yIG1iLTRcIj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8aW5wdXQgdHlwZT1cInRleHRcIiB2YWx1ZT17bmV3Q2xhc3NOYW1lfSBvbkNoYW5nZT17KGUpID0+IHNldE5ld0NsYXNzTmFtZShlLnRhcmdldC52YWx1ZSl9IHBsYWNlaG9sZGVyPVwiQ2xhc3MgTmFtZVwiIGNsYXNzTmFtZT1cImJvcmRlciBib3JkZXItb3V0bGluZS12YXJpYW50IHJvdW5kZWQgcC0yIGZsZXgtMSBiZy1zdXJmYWNlLWNvbnRhaW5lci1sb3dlc3QgdGV4dC1vbi1zdXJmYWNlXCIgLz5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8YnV0dG9uIHR5cGU9XCJzdWJtaXRcIiBjbGFzc05hbWU9XCJiZy1bIzhiNWUzY10gdGV4dC13aGl0ZSBweC00IHB5LTIgcm91bmRlZFwiPkFkZCBDbGFzczwvYnV0dG9uPlxuICAgICAgICAgICAgICAgICAgICAgICAgPC9mb3JtPlxuICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJncmlkIGdyaWQtY29scy0yIGdhcC00XCI+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAge2NsYXNzZXMubWFwKGMgPT4gKFxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8ZGl2IGtleT17Yy5pZH0gY2xhc3NOYW1lPVwicC00IGJvcmRlciBib3JkZXItb3V0bGluZS12YXJpYW50IHJvdW5kZWQtbGcgYmctc3VyZmFjZS1jb250YWluZXItbG93IHNoYWRvdy1zbVwiPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGg0IGNsYXNzTmFtZT1cImZvbnQtaGVhZGxpbmUtbWRcIj57Yy5uYW1lfTwvaDQ+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvZGl2PlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICkpfVxuICAgICAgICAgICAgICAgICAgICAgICAgICAgIHtjbGFzc2VzLmxlbmd0aCA9PT0gMCAmJiAoXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiY29sLXNwYW4tMiB3LWZ1bGwgaC00OCBib3JkZXIgYm9yZGVyLW91dGxpbmUtdmFyaWFudCBib3JkZXItZGFzaGVkIHJvdW5kZWQtbGcgZmxleCBmbGV4LWNvbCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXIgZ2FwLW1kIHRleHQtc2Vjb25kYXJ5XCI+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cInctMTIgaC0xMiByb3VuZGVkLWZ1bGwgYm9yZGVyIGJvcmRlci1vdXRsaW5lLXZhcmlhbnQgZmxleCBpdGVtcy1jZW50ZXIganVzdGlmeS1jZW50ZXJcIj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9XCJtYXRlcmlhbC1zeW1ib2xzLW91dGxpbmVkIHRleHQtWzI0cHhdIGZvbnQtbGlnaHRcIj5zY2hvb2w8L3NwYW4+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L2Rpdj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxzcGFuIGNsYXNzTmFtZT1cImZvbnQtYm9keS1tZFwiPk5vIGNsYXNzZXMgeWV0PC9zcGFuPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L2Rpdj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICApfVxuICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+XG4gICAgICAgICAgICAgICAgICAgIDwvZGl2PlxuICAgICAgICAgICAgICAgICk7XG4gICAgICAgICAgICB9XG5cbiAgICAgICAgICAgIGlmIChhY3RpdmVUYWIgPT09ICdUYXNrcyAmIEdyYWRlcycpIHtcbiAgICAgICAgICAgICAgICByZXR1cm4gKFxuICAgICAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImNvbC1zcGFuLTggZmxleCBmbGV4LWNvbCBnYXAtbGcgcGwtbGcgYm9yZGVyLWwgYm9yZGVyLW91dGxpbmUtdmFyaWFudC8zMCBtaW4taC1bNDAwcHhdXCI+XG4gICAgICAgICAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXgganVzdGlmeS1iZXR3ZWVuIGl0ZW1zLWNlbnRlciBtYi1tZFwiPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxoMyBjbGFzc05hbWU9XCJmb250LWhlYWRsaW5lLWxnIHRleHQtaGVhZGxpbmUtbGcgdGV4dC1vbi1zdXJmYWNlXCI+VGFza3MgJiBHcmFkZXM8L2gzPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgIHthdmdHcmFkZSA+IDAgJiYgPGRpdiBjbGFzc05hbWU9XCJ0ZXh0LXByaW1hcnktY29udGFpbmVyIGZvbnQtYm9sZFwiPkdyYWRlIEF2Zzoge2F2Z0dyYWRlfSU8L2Rpdj59XG4gICAgICAgICAgICAgICAgICAgICAgICA8L2Rpdj5cbiAgICAgICAgICAgICAgICAgICAgICAgIDxmb3JtIG9uU3VibWl0PXthZGRUYXNrfSBjbGFzc05hbWU9XCJmbGV4IGdhcC0yIG1iLTRcIj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8aW5wdXQgdHlwZT1cInRleHRcIiB2YWx1ZT17bmV3VGFza05hbWV9IG9uQ2hhbmdlPXsoZSkgPT4gc2V0TmV3VGFza05hbWUoZS50YXJnZXQudmFsdWUpfSBwbGFjZWhvbGRlcj1cIlRhc2sgTmFtZVwiIGNsYXNzTmFtZT1cImJvcmRlciBib3JkZXItb3V0bGluZS12YXJpYW50IHJvdW5kZWQgcC0yIGZsZXgtMSBiZy1zdXJmYWNlLWNvbnRhaW5lci1sb3dlc3QgdGV4dC1vbi1zdXJmYWNlXCIgLz5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8aW5wdXQgdHlwZT1cIm51bWJlclwiIG1pbj1cIjBcIiBtYXg9XCIxMDBcIiB2YWx1ZT17bmV3VGFza0dyYWRlfSBvbkNoYW5nZT17KGUpID0+IHNldE5ld1Rhc2tHcmFkZShlLnRhcmdldC52YWx1ZSl9IHBsYWNlaG9sZGVyPVwiR3JhZGUgKDAtMTAwKVwiIGNsYXNzTmFtZT1cImJvcmRlciBib3JkZXItb3V0bGluZS12YXJpYW50IHJvdW5kZWQgcC0yIHctMzIgYmctc3VyZmFjZS1jb250YWluZXItbG93ZXN0IHRleHQtb24tc3VyZmFjZVwiIC8+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgPGJ1dHRvbiB0eXBlPVwic3VibWl0XCIgY2xhc3NOYW1lPVwiYmctWyM4YjVlM2NdIHRleHQtd2hpdGUgcHgtNCBweS0yIHJvdW5kZWRcIj5BZGQ8L2J1dHRvbj5cbiAgICAgICAgICAgICAgICAgICAgICAgIDwvZm9ybT5cbiAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBmbGV4LWNvbCBnYXAtMlwiPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgIHt0YXNrcy5tYXAodCA9PiAoXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYga2V5PXt0LmlkfSBjbGFzc05hbWU9XCJmbGV4IGl0ZW1zLWNlbnRlciBnYXAtMyBwLTMgYm9yZGVyIGJvcmRlci1vdXRsaW5lLXZhcmlhbnQgcm91bmRlZCBiZy1zdXJmYWNlLWNvbnRhaW5lci1sb3dcIj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxpbnB1dCB0eXBlPVwiY2hlY2tib3hcIiBjaGVja2VkPXt0LmNoZWNrZWR9IG9uQ2hhbmdlPXsoKSA9PiB0b2dnbGVUYXNrKHQuaWQpfSBjbGFzc05hbWU9XCJ3LTUgaC01IGFjY2VudC1bIzhiNWUzY11cIiAvPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPHNwYW4gY2xhc3NOYW1lPXtgZmxleC0xICR7dC5jaGVja2VkID8gJ2xpbmUtdGhyb3VnaCB0ZXh0LXNlY29uZGFyeScgOiAnJ31gfT57dC5uYW1lfTwvc3Bhbj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHt0LmdyYWRlICYmIDxzcGFuIGNsYXNzTmFtZT1cInRleHQtc20gZm9udC1ib2xkIHRleHQtc2Vjb25kYXJ5XCI+R3JhZGU6IHt0LmdyYWRlfTwvc3Bhbj59XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvZGl2PlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICkpfVxuICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+XG4gICAgICAgICAgICAgICAgICAgIDwvZGl2PlxuICAgICAgICAgICAgICAgICk7XG4gICAgICAgICAgICB9XG5cbiAgICAgICAgICAgIGlmIChhY3RpdmVUYWIgPT09ICdXYXRjaCBMYXRlcicpIHtcbiAgICAgICAgICAgICAgICByZXR1cm4gKFxuICAgICAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImNvbC1zcGFuLTggZmxleCBmbGV4LWNvbCBnYXAtbGcgcGwtbGcgYm9yZGVyLWwgYm9yZGVyLW91dGxpbmUtdmFyaWFudC8zMCBtaW4taC1bNDAwcHhdXCI+XG4gICAgICAgICAgICAgICAgICAgICAgICA8aDMgY2xhc3NOYW1lPVwiZm9udC1oZWFkbGluZS1sZyB0ZXh0LWhlYWRsaW5lLWxnIHRleHQtb24tc3VyZmFjZSBtYi1tZFwiPldhdGNoIExhdGVyPC9oMz5cbiAgICAgICAgICAgICAgICAgICAgICAgIDxmb3JtIG9uU3VibWl0PXthZGRXYXRjaH0gY2xhc3NOYW1lPVwiZmxleCBnYXAtMiBtYi00XCI+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgPGlucHV0IHR5cGU9XCJ0ZXh0XCIgdmFsdWU9e25ld1dhdGNoVGl0bGV9IG9uQ2hhbmdlPXsoZSkgPT4gc2V0TmV3V2F0Y2hUaXRsZShlLnRhcmdldC52YWx1ZSl9IHBsYWNlaG9sZGVyPVwiVGl0bGVcIiBjbGFzc05hbWU9XCJib3JkZXIgYm9yZGVyLW91dGxpbmUtdmFyaWFudCByb3VuZGVkIHAtMiBmbGV4LTEgYmctc3VyZmFjZS1jb250YWluZXItbG93ZXN0IHRleHQtb24tc3VyZmFjZVwiIC8+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgPGlucHV0IHR5cGU9XCJ0ZXh0XCIgdmFsdWU9e25ld1dhdGNoVXJsfSBvbkNoYW5nZT17KGUpID0+IHNldE5ld1dhdGNoVXJsKGUudGFyZ2V0LnZhbHVlKX0gcGxhY2Vob2xkZXI9XCJVUkxcIiBjbGFzc05hbWU9XCJib3JkZXIgYm9yZGVyLW91dGxpbmUtdmFyaWFudCByb3VuZGVkIHAtMiBmbGV4LTEgYmctc3VyZmFjZS1jb250YWluZXItbG93ZXN0IHRleHQtb24tc3VyZmFjZVwiIC8+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgPGJ1dHRvbiB0eXBlPVwic3VibWl0XCIgY2xhc3NOYW1lPVwiYmctWyM4YjVlM2NdIHRleHQtd2hpdGUgcHgtNCBweS0yIHJvdW5kZWRcIj5BZGQ8L2J1dHRvbj5cbiAgICAgICAgICAgICAgICAgICAgICAgIDwvZm9ybT5cbiAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBmbGV4LWNvbCBnYXAtMlwiPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgIHt3YXRjaExhdGVyLm1hcCh3ID0+IChcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBrZXk9e3cuaWR9IGNsYXNzTmFtZT1cImZsZXggaXRlbXMtY2VudGVyIGp1c3RpZnktYmV0d2VlbiBwLTMgYm9yZGVyIGJvcmRlci1vdXRsaW5lLXZhcmlhbnQgcm91bmRlZCBiZy1zdXJmYWNlLWNvbnRhaW5lci1sb3dcIj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZmxleCBmbGV4LWNvbFwiPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxzcGFuIGNsYXNzTmFtZT1cImZvbnQtYm9sZFwiPnt3LnRpdGxlfTwvc3Bhbj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8YSBocmVmPXt3LnVybH0gdGFyZ2V0PVwiX2JsYW5rXCIgY2xhc3NOYW1lPVwidGV4dC1zbSB0ZXh0LWJsdWUtNTAwIHVuZGVybGluZSB0cnVuY2F0ZSBtYXgtdy14c1wiPnt3LnVybH08L2E+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L2Rpdj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxidXR0b24gb25DbGljaz17KCkgPT4gcmVtb3ZlV2F0Y2gody5pZCl9IGNsYXNzTmFtZT1cInRleHQtZXJyb3IgdGV4dC1zbSBob3Zlcjp1bmRlcmxpbmVcIj5SZW1vdmU8L2J1dHRvbj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgKSl9XG4gICAgICAgICAgICAgICAgICAgICAgICA8L2Rpdj5cbiAgICAgICAgICAgICAgICAgICAgPC9kaXY+XG4gICAgICAgICAgICAgICAgKTtcbiAgICAgICAgICAgIH1cblxuICAgICAgICAgICAgLy8gRmFsbGJhY2sgZm9yIE5vdGVzL0NhbGVuZGFyXG4gICAgICAgICAgICByZXR1cm4gKFxuICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiY29sLXNwYW4tOCBmbGV4IGZsZXgtY29sIGdhcC1sZyBwbC1sZyBib3JkZXItbCBib3JkZXItb3V0bGluZS12YXJpYW50LzMwIG1pbi1oLVs0MDBweF1cIj5cbiAgICAgICAgICAgICAgICAgICAgIDxoMyBjbGFzc05hbWU9XCJmb250LWhlYWRsaW5lLWxnIHRleHQtaGVhZGxpbmUtbGcgdGV4dC1vbi1zdXJmYWNlIG1iLW1kXCI+e2FjdGl2ZVRhYn08L2gzPlxuICAgICAgICAgICAgICAgICAgICAgPHAgY2xhc3NOYW1lPVwidGV4dC1zZWNvbmRhcnlcIj5TZWxlY3QgYW5vdGhlciB0YWIgdG8gc2VlIGludGVyYWN0aXZlIG1vZHVsZXMuPC9wPlxuICAgICAgICAgICAgICAgIDwvZGl2PlxuICAgICAgICAgICAgKTtcbiAgICAgICAgfVxuXG4gICAgICAgIHJldHVybiAoXG4gICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImZsZXggdy1mdWxsIG1pbi1oLXNjcmVlblwiPlxuICAgICAgICAgICAgICAgIDxuYXYgY2xhc3NOYW1lPVwiYmctc3VyZmFjZSBkYXJrOmJnLXN1cmZhY2UgZm9udC1ib2R5LW1kIHRleHQtYm9keS1tZCBoLXNjcmVlbiB3LTY0IGZpeGVkIGxlZnQtMCB0b3AtMCBib3JkZXItciBib3JkZXItb3V0bGluZS12YXJpYW50IGRhcms6Ym9yZGVyLW91dGxpbmUgZmxleCBmbGV4LWNvbCBweS14bCBweC1tZCB6LTUwIG92ZXJmbG93LXktYXV0b1wiPlxuICAgICAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cIm1iLXh4bFwiPlxuICAgICAgICAgICAgICAgICAgICAgICAgPGgxIGNsYXNzTmFtZT1cImZvbnQtZGlzcGxheSB0ZXh0LWhlYWRsaW5lLW1kIHRleHQtb24tc3VyZmFjZSBkYXJrOnRleHQtaW52ZXJzZS1vbi1zdXJmYWNlIHRyYWNraW5nLXRpZ2h0XCI+U2FraWRvPC9oMT5cbiAgICAgICAgICAgICAgICAgICAgICAgIDxwIGNsYXNzTmFtZT1cInRleHQtc2Vjb25kYXJ5IGRhcms6dGV4dC1zZWNvbmRhcnktZml4ZWQtZGltIHRleHQtYm9keS1zbSBtdC14c1wiPlByb2R1Y3Rpdml0eSBQb3J0YWw8L3A+XG4gICAgICAgICAgICAgICAgICAgIDwvZGl2PlxuICAgICAgICAgICAgICAgICAgICBcbiAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJtYi00IHRleHQteHMgZm9udC1ib2xkIHRleHQtc2Vjb25kYXJ5IHVwcGVyY2FzZSB0cmFja2luZy13aWRlclwiPlN0dWRlbnQ8L2Rpdj5cbiAgICAgICAgICAgICAgICAgICAgPHVsIGNsYXNzTmFtZT1cInNwYWNlLXktc20gbWItOFwiPlxuICAgICAgICAgICAgICAgICAgICAgICAge1snTm90ZXMnLCAnQ2FsZW5kYXInLCAnVGFza3MgJiBHcmFkZXMnLCAnQ2xhc3NlcycsICdXYXRjaCBMYXRlciddLm1hcChpdGVtID0+IChcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8bGkga2V5PXtpdGVtfT5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGJ1dHRvbiBvbkNsaWNrPXsoKSA9PiBzZXRBY3RpdmVUYWIoaXRlbSl9IGNsYXNzTmFtZT17YHctZnVsbCBmbGV4IGl0ZW1zLWNlbnRlciBnYXAtbWQgcHgtbWQgcHktc20gcm91bmRlZC1ERUZBVUxUIHRyYW5zaXRpb24tY29sb3JzIHNjYWxlLTk1IHRyYW5zaXRpb24tdHJhbnNmb3JtIGR1cmF0aW9uLTE1MCAke2FjdGl2ZVRhYiA9PT0gaXRlbSA/ICd0ZXh0LXByaW1hcnkgZGFyazp0ZXh0LXByaW1hcnktZml4ZWQtZGltIGZvbnQtYm9sZCBiZy1zdXJmYWNlLWNvbnRhaW5lci1sb3cgZGFyazpiZy1zdXJmYWNlLWNvbnRhaW5lci1oaWdoZXN0JyA6ICd0ZXh0LXNlY29uZGFyeSBkYXJrOnRleHQtc2Vjb25kYXJ5LWZpeGVkLWRpbSBob3ZlcjpiZy1zdXJmYWNlLWNvbnRhaW5lci1sb3cgZGFyazpob3ZlcjpiZy1zdXJmYWNlLWNvbnRhaW5lci1oaWdoZXN0J31gfT5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxzcGFuIGNsYXNzTmFtZT1cIm1hdGVyaWFsLXN5bWJvbHMtb3V0bGluZWQgdGV4dC1bMjBweF0gZm9udC1saWdodFwiPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHtpdGVtID09PSAnTm90ZXMnID8gJ2Rlc2NyaXB0aW9uJyA6IGl0ZW0gPT09ICdDYWxlbmRhcicgPyAnY2FsZW5kYXJfdG9kYXknIDogaXRlbSA9PT0gJ1Rhc2tzICYgR3JhZGVzJyA/ICdjaGVja19jaXJjbGUnIDogaXRlbSA9PT0gJ0NsYXNzZXMnID8gJ3NjaG9vbCcgOiAnd2F0Y2hfbGF0ZXInfVxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9zcGFuPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPHNwYW4+e2l0ZW19PC9zcGFuPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L2J1dHRvbj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L2xpPlxuICAgICAgICAgICAgICAgICAgICAgICAgKSl9XG4gICAgICAgICAgICAgICAgICAgIDwvdWw+XG5cbiAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJtYi00IHRleHQteHMgZm9udC1ib2xkIHRleHQtc2Vjb25kYXJ5IHVwcGVyY2FzZSB0cmFja2luZy13aWRlclwiPkNvbm5lY3RvcnM8L2Rpdj5cbiAgICAgICAgICAgICAgICAgICAgPHVsIGNsYXNzTmFtZT1cInNwYWNlLXktc20gbWItOFwiPlxuICAgICAgICAgICAgICAgICAgICAgICAge1snZ29vZ2xlQ2FsZW5kYXInLCAnZ29vZ2xlRHJpdmUnLCAnZ21haWwnXS5tYXAoY29ubmVjdG9yID0+IChcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8bGkga2V5PXtjb25uZWN0b3J9IGNsYXNzTmFtZT1cImZsZXggaXRlbXMtY2VudGVyIGp1c3RpZnktYmV0d2VlbiBweC1tZCBweS1zbSB0ZXh0LXNlY29uZGFyeVwiPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9XCJjYXBpdGFsaXplXCI+e2Nvbm5lY3Rvci5yZXBsYWNlKC8oW0EtWl0pL2csICcgJDEnKS50cmltKCl9PC9zcGFuPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cInJlbGF0aXZlIGlubGluZS1ibG9jayB3LTEwIG1yLTIgYWxpZ24tbWlkZGxlIHNlbGVjdC1ub25lIHRyYW5zaXRpb24gZHVyYXRpb24tMjAwIGVhc2UtaW5cIj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxpbnB1dCB0eXBlPVwiY2hlY2tib3hcIiBuYW1lPVwidG9nZ2xlXCIgaWQ9e2Nvbm5lY3Rvcn0gY2hlY2tlZD17Y29ubmVjdG9yc1tjb25uZWN0b3JdfSBvbkNoYW5nZT17KCkgPT4gaGFuZGxlQ29ubmVjdG9yVG9nZ2xlKGNvbm5lY3Rvcil9IGNsYXNzTmFtZT1cInRvZ2dsZS1jaGVja2JveCBhYnNvbHV0ZSBibG9jayB3LTUgaC01IHJvdW5kZWQtZnVsbCBiZy13aGl0ZSBib3JkZXItNCBhcHBlYXJhbmNlLW5vbmUgY3Vyc29yLXBvaW50ZXIgYm9yZGVyLW91dGxpbmUtdmFyaWFudFwiIC8+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8bGFiZWwgaHRtbEZvcj17Y29ubmVjdG9yfSBjbGFzc05hbWU9XCJ0b2dnbGUtbGFiZWwgYmxvY2sgb3ZlcmZsb3ctaGlkZGVuIGgtNSByb3VuZGVkLWZ1bGwgYmctb3V0bGluZS12YXJpYW50IGN1cnNvci1wb2ludGVyXCI+PC9sYWJlbD5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9saT5cbiAgICAgICAgICAgICAgICAgICAgICAgICkpfVxuICAgICAgICAgICAgICAgICAgICA8L3VsPlxuXG4gICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwibWItNCB0ZXh0LXhzIGZvbnQtYm9sZCB0ZXh0LXNlY29uZGFyeSB1cHBlcmNhc2UgdHJhY2tpbmctd2lkZXJcIj5PdGhlcjwvZGl2PlxuICAgICAgICAgICAgICAgICAgICA8dWwgY2xhc3NOYW1lPVwic3BhY2UteS1zbVwiPlxuICAgICAgICAgICAgICAgICAgICAgICAge1snVW5pdmVyc2l0eSAmIFBlb3BsZScsICdBSSBGZWF0dXJlcyddLm1hcChpdGVtID0+IChcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8bGkga2V5PXtpdGVtfT5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGJ1dHRvbiBvbkNsaWNrPXsoKSA9PiBzZXRBY3RpdmVUYWIoaXRlbSl9IGNsYXNzTmFtZT1cInctZnVsbCBmbGV4IGl0ZW1zLWNlbnRlciBnYXAtbWQgcHgtbWQgcHktc20gcm91bmRlZC1ERUZBVUxUIHRleHQtc2Vjb25kYXJ5IG9wYWNpdHktNTAgaG92ZXI6Ymctc3VyZmFjZS1jb250YWluZXItbG93IHRyYW5zaXRpb24tY29sb3JzIHNjYWxlLTk1XCI+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9XCJtYXRlcmlhbC1zeW1ib2xzLW91dGxpbmVkIHRleHQtWzIwcHhdIGZvbnQtbGlnaHRcIj5pbmZvPC9zcGFuPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPHNwYW4+e2l0ZW19PC9zcGFuPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L2J1dHRvbj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L2xpPlxuICAgICAgICAgICAgICAgICAgICAgICAgKSl9XG4gICAgICAgICAgICAgICAgICAgIDwvdWw+XG5cbiAgICAgICAgICAgICAgICAgICAgPHVsIGNsYXNzTmFtZT1cInNwYWNlLXktc20gYm9yZGVyLXQgYm9yZGVyLW91dGxpbmUtdmFyaWFudCBwdC1tZCBtdC1hdXRvXCI+XG4gICAgICAgICAgICAgICAgICAgICAgICA8bGk+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgPGEgY2xhc3NOYW1lPVwiZmxleCBpdGVtcy1jZW50ZXIgZ2FwLW1kIHB4LW1kIHB5LXNtIHJvdW5kZWQtREVGQVVMVCB0ZXh0LXNlY29uZGFyeSBob3ZlcjpiZy1zdXJmYWNlLWNvbnRhaW5lci1sb3cgdHJhbnNpdGlvbi1jb2xvcnMgc2NhbGUtOTVcIiBocmVmPVwiI1wiPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9XCJtYXRlcmlhbC1zeW1ib2xzLW91dGxpbmVkIHRleHQtWzIwcHhdIGZvbnQtbGlnaHRcIj5zZXR0aW5nczwvc3Bhbj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPHNwYW4+U2V0dGluZ3M8L3NwYW4+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9hPlxuICAgICAgICAgICAgICAgICAgICAgICAgPC9saT5cbiAgICAgICAgICAgICAgICAgICAgPC91bD5cbiAgICAgICAgICAgICAgICA8L25hdj5cblxuICAgICAgICAgICAgICAgIDxtYWluIGNsYXNzTmFtZT1cIm1sLTY0IGZsZXgtMSBmbGV4IGZsZXgtY29sIG1pbi1oLXNjcmVlbiByZWxhdGl2ZSB3LWZ1bGxcIj5cbiAgICAgICAgICAgICAgICAgICAgPGhlYWRlciBjbGFzc05hbWU9XCJiZy10cmFuc3BhcmVudCB0ZXh0LXByaW1hcnkgZGFyazp0ZXh0LXByaW1hcnktZml4ZWQtZGltIGZvbnQtaGVhZGxpbmUtbGcgdGV4dC1oZWFkbGluZS1sZyBkYXJrOnRleHQtb24tc3VyZmFjZSBkb2NrZWQgZnVsbC13aWR0aCB0b3AtMCBmbGV4IGp1c3RpZnktYmV0d2VlbiBpdGVtcy1jZW50ZXIgdy1mdWxsIHB4LW1hcmdpbi1kZXNrdG9wIHB5LW1kIGFic29sdXRlIHotMTBcIj5cbiAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiaGlkZGVuXCI+U2FraWRvPC9kaXY+XG4gICAgICAgICAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImFic29sdXRlIGluc2V0LTAgYmctc3VyZmFjZS1jb250YWluZXItaGlnaGVzdC8yMCBoLTQ4IC16LTEwXCIgc3R5bGU9e3tiYWNrZ3JvdW5kSW1hZ2U6IGB1cmwoJyR7YmFubmVySW1hZ2VVcmx9JylgLCBiYWNrZ3JvdW5kU2l6ZTogJ2NvdmVyJywgYmFja2dyb3VuZFBvc2l0aW9uOiAnY2VudGVyJ319PjwvZGl2PlxuICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4LTEgZmxleCBqdXN0aWZ5LWVuZCBnYXAtbWRcIj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8YnV0dG9uIG9uQ2xpY2s9e3RvZ2dsZURhcmt9IGNsYXNzTmFtZT1cInctMTAgaC0xMCBmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciByb3VuZGVkLWZ1bGwgYmctc3VyZmFjZS81MCBib3JkZXIgYm9yZGVyLW91dGxpbmUtdmFyaWFudCBiYWNrZHJvcC1ibHVyLXNtIHRleHQtb24tc3VyZmFjZS12YXJpYW50IGhvdmVyOm9wYWNpdHktODAgdHJhbnNpdGlvbi1vcGFjaXR5IGN1cnNvci1wb2ludGVyIGFjdGl2ZTpzY2FsZS05NSB0cmFuc2l0aW9uLWFsbFwiPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9XCJtYXRlcmlhbC1zeW1ib2xzLW91dGxpbmVkIHRleHQtWzIwcHhdIGZvbnQtbGlnaHRcIj5kYXJrX21vZGU8L3NwYW4+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9idXR0b24+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgPGJ1dHRvbiBvbkNsaWNrPXtvbkVkaXRCYW5uZXJ9IGNsYXNzTmFtZT1cInctMTAgaC0xMCBmbGV4IGl0ZW1zLWNlbnRlciBqdXN0aWZ5LWNlbnRlciByb3VuZGVkLWZ1bGwgYmctc3VyZmFjZS81MCBib3JkZXIgYm9yZGVyLW91dGxpbmUtdmFyaWFudCBiYWNrZHJvcC1ibHVyLXNtIHRleHQtb24tc3VyZmFjZS12YXJpYW50IGhvdmVyOm9wYWNpdHktODAgdHJhbnNpdGlvbi1vcGFjaXR5IGN1cnNvci1wb2ludGVyIGFjdGl2ZTpzY2FsZS05NSB0cmFuc2l0aW9uLWFsbFwiPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8c3BhbiBjbGFzc05hbWU9XCJtYXRlcmlhbC1zeW1ib2xzLW91dGxpbmVkIHRleHQtWzIwcHhdIGZvbnQtbGlnaHRcIj5lZGl0PC9zcGFuPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvYnV0dG9uPlxuICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+XG4gICAgICAgICAgICAgICAgICAgIDwvaGVhZGVyPlxuXG4gICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwicHgtbWFyZ2luLWRlc2t0b3AgcHQtNDAgcGIteGwgZmxleC0xIGZsZXggZmxleC1jb2xcIj5cbiAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwibWIteHhsXCI+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgPGgyIGNsYXNzTmFtZT1cImZvbnQtZGlzcGxheSB0ZXh0LWRpc3BsYXkgdGV4dC1vbi1zdXJmYWNlIHRyYWNraW5nLXRpZ2h0IHJlbGF0aXZlXCI+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIEdvb2QgbW9ybmluZywge3VzZXJOYW1lfS5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L2gyPlxuICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+XG4gICAgICAgICAgICAgICAgICAgICAgICBcbiAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwiZ3JpZCBncmlkLWNvbHMtMTIgZ2FwLWd1dHRlciBmbGV4LTFcIj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImNvbC1zcGFuLTQgZmxleCBmbGV4LWNvbCBnYXAteGxcIj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJmbGV4IGZsZXgtY29sIGl0ZW1zLXN0YXJ0IGdhcC1tZFwiPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJhbmFsb2ctY2xvY2stY29udGFpbmVyIGJnLXN1cmZhY2UtY29udGFpbmVyLWxvd2VzdFwiPlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwidGlja1wiIHN0eWxlPXt7dHJhbnNmb3JtOiAndHJhbnNsYXRlWCgtNTAlKSByb3RhdGUoMGRlZyknfX0+PC9kaXY+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJ0aWNrXCIgc3R5bGU9e3t0cmFuc2Zvcm06ICd0cmFuc2xhdGVYKC01MCUpIHJvdGF0ZSg5MGRlZyknfX0+PC9kaXY+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPGRpdiBjbGFzc05hbWU9XCJ0aWNrXCIgc3R5bGU9e3t0cmFuc2Zvcm06ICd0cmFuc2xhdGVYKC01MCUpIHJvdGF0ZSgxODBkZWcpJ319PjwvZGl2PlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwidGlja1wiIHN0eWxlPXt7dHJhbnNmb3JtOiAndHJhbnNsYXRlWCgtNTAlKSByb3RhdGUoMjcwZGVnKSd9fT48L2Rpdj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImhvdXItaGFuZFwiPjwvZGl2PlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDxkaXYgY2xhc3NOYW1lPVwibWludXRlLWhhbmRcIj48L2Rpdj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cImNsb2NrLWNlbnRlclwiPjwvZGl2PlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8ZGl2IGNsYXNzTmFtZT1cInRleHQtc2Vjb25kYXJ5XCI+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPHAgY2xhc3NOYW1lPVwiZm9udC1sYWJlbC1jYXBzIHVwcGVyY2FzZSB0cmFja2luZy13aWRlc3QgdGV4dC1vbi1zdXJmYWNlLXZhcmlhbnRcIj5XZWRuZXNkYXk8L3A+XG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPHAgY2xhc3NOYW1lPVwiZm9udC1ib2R5LXNtIG10LXhzXCI+T2N0b2JlciAyNDwvcD5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIDwvZGl2PlxuICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L2Rpdj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICA8L2Rpdj5cbiAgICAgICAgICAgICAgICAgICAgICAgICAgICBcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICB7cmVuZGVyQ29udGVudCgpfVxuICAgICAgICAgICAgICAgICAgICAgICAgPC9kaXY+XG4gICAgICAgICAgICAgICAgICAgIDwvZGl2PlxuICAgICAgICAgICAgICAgIDwvbWFpbj5cbiAgICAgICAgICAgIDwvZGl2PlxuICAgICAgICApO1xuICAgIH07XG5cbiAgICBjb25zdCByb290ID0gUmVhY3RET00uY3JlYXRlUm9vdChkb2N1bWVudC5nZXRFbGVtZW50QnlJZCgncm9vdCcpKTtcbiAgICByb290LnJlbmRlcig8QXBwIC8+KTtcbiJdLCJtYXBwaW5ncyI6Ijs7Ozs7Ozs7Ozs7Ozs7OztBQUNJLGFBQWdDLEtBQUs7RUFBN0IsUUFBUSxVQUFSLFFBQVE7RUFBRSxTQUFTLFVBQVQsU0FBUztBQUUzQixJQUFNLEdBQUcsR0FBRyxTQUFOLEdBQUcsT0FBd1o7RUFBQSwrQkFBbFosY0FBYztJQUFkLGNBQWMsb0NBQUcsNFNBQTRTO0lBQUUsWUFBWSxRQUFaLFlBQVk7SUFBQSw2QkFBRSxpQkFBaUI7SUFBakIsaUJBQWlCLHNDQUFHLEtBQUs7SUFBRSxnQkFBZ0IsUUFBaEIsZ0JBQWdCO0lBQUEscUJBQUUsUUFBUTtJQUFSLFFBQVEsOEJBQUcsTUFBTTtFQUN0WixnQkFBb0MsUUFBUSxDQUFDLGlCQUFpQixDQUFDO0lBQUE7SUFBeEQsVUFBVTtJQUFFLGFBQWE7RUFDaEMsaUJBQWtDLFFBQVEsQ0FBQyxTQUFTLENBQUM7SUFBQTtJQUE5QyxTQUFTO0lBQUUsWUFBWTtFQUU5QixpQkFBb0MsUUFBUSxDQUFDO01BQ3pDLGNBQWMsRUFBRSxLQUFLO01BQ3JCLFdBQVcsRUFBRSxLQUFLO01BQ2xCLEtBQUssRUFBRTtJQUNYLENBQUMsQ0FBQztJQUFBO0lBSkssVUFBVTtJQUFFLGFBQWE7RUFNaEMsaUJBQThCLFFBQVEsQ0FBQyxFQUFFLENBQUM7SUFBQTtJQUFuQyxPQUFPO0lBQUUsVUFBVTtFQUMxQixpQkFBd0MsUUFBUSxDQUFDLEVBQUUsQ0FBQztJQUFBO0lBQTdDLFlBQVk7SUFBRSxlQUFlO0VBRXBDLGlCQUEwQixRQUFRLENBQUMsRUFBRSxDQUFDO0lBQUE7SUFBL0IsS0FBSztJQUFFLFFBQVE7RUFDdEIsa0JBQXNDLFFB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</script></head>
+<body class="flex min-h-screen bg-surface dark:bg-surface text-on-surface dark:text-on-surface font-body-md text-body-md antialiased overflow-x-hidden">
+<div class="w-full h-full flex flex-1" id="root"><div class="flex w-full min-h-screen"><nav class="bg-surface dark:bg-surface font-body-md text-body-md h-screen w-64 fixed left-0 top-0 border-r border-outline-variant dark:border-outline flex flex-col py-xl px-md z-50 overflow-y-auto"><div class="mb-xxl"><h1 class="font-display text-headline-md text-on-surface dark:text-inverse-on-surface tracking-tight">Sakido</h1><p class="text-secondary dark:text-secondary-fixed-dim text-body-sm mt-xs">Productivity Portal</p></div><div class="mb-4 text-xs font-bold text-secondary uppercase tracking-wider">Student</div><ul class="space-y-sm mb-8"><li><button class="w-full flex items-center gap-md px-md py-sm rounded-DEFAULT transition-colors scale-95 transition-transform duration-150 text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-container-highest"><span class="material-symbols-outlined text-[20px] font-light">description</span><span>Notes</span></button></li><li><button class="w-full flex items-center gap-md px-md py-sm rounded-DEFAULT transition-colors scale-95 transition-transform duration-150 text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-container-highest"><span class="material-symbols-outlined text-[20px] font-light">calendar_today</span><span>Calendar</span></button></li><li><button class="w-full flex items-center gap-md px-md py-sm rounded-DEFAULT transition-colors scale-95 transition-transform duration-150 text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-container-highest"><span class="material-symbols-outlined text-[20px] font-light">check_circle</span><span>Tasks &amp; Grades</span></button></li><li><button class="w-full flex items-center gap-md px-md py-sm rounded-DEFAULT transition-colors scale-95 transition-transform duration-150 text-primary dark:text-primary-fixed-dim font-bold bg-surface-container-low dark:bg-surface-container-highest"><span class="material-symbols-outlined text-[20px] font-light">school</span><span>Classes</span></button></li><li><button class="w-full flex items-center gap-md px-md py-sm rounded-DEFAULT transition-colors scale-95 transition-transform duration-150 text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-container-highest"><span class="material-symbols-outlined text-[20px] font-light">watch_later</span><span>Watch Later</span></button></li></ul><div class="mb-4 text-xs font-bold text-secondary uppercase tracking-wider">Connectors</div><ul class="space-y-sm mb-8"><li class="flex items-center justify-between px-md py-sm text-secondary"><span class="capitalize">google Calendar</span><div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in"><input type="checkbox" name="toggle" id="googleCalendar" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-outline-variant"><label for="googleCalendar" class="toggle-label block overflow-hidden h-5 rounded-full bg-outline-variant cursor-pointer"></label></div></li><li class="flex items-center justify-between px-md py-sm text-secondary"><span class="capitalize">google Drive</span><div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in"><input type="checkbox" name="toggle" id="googleDrive" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-outline-variant"><label for="googleDrive" class="toggle-label block overflow-hidden h-5 rounded-full bg-outline-variant cursor-pointer"></label></div></li><li class="flex items-center justify-between px-md py-sm text-secondary"><span class="capitalize">gmail</span><div class="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in"><input type="checkbox" name="toggle" id="gmail" class="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-outline-variant"><label for="gmail" class="toggle-label block overflow-hidden h-5 rounded-full bg-outline-variant cursor-pointer"></label></div></li></ul><div class="mb-4 text-xs font-bold text-secondary uppercase tracking-wider">Other</div><ul class="space-y-sm"><li><button class="w-full flex items-center gap-md px-md py-sm rounded-DEFAULT text-secondary opacity-50 hover:bg-surface-container-low transition-colors scale-95"><span class="material-symbols-outlined text-[20px] font-light">info</span><span>University &amp; People</span></button></li><li><button class="w-full flex items-center gap-md px-md py-sm rounded-DEFAULT text-secondary opacity-50 hover:bg-surface-container-low transition-colors scale-95"><span class="material-symbols-outlined text-[20px] font-light">info</span><span>AI Features</span></button></li></ul><ul class="space-y-sm border-t border-outline-variant pt-md mt-auto"><li><a class="flex items-center gap-md px-md py-sm rounded-DEFAULT text-secondary hover:bg-surface-container-low transition-colors scale-95" href="#"><span class="material-symbols-outlined text-[20px] font-light">settings</span><span>Settings</span></a></li></ul></nav><main class="ml-64 flex-1 flex flex-col min-h-screen relative w-full"><header class="bg-transparent text-primary dark:text-primary-fixed-dim font-headline-lg text-headline-lg dark:text-on-surface docked full-width top-0 flex justify-between items-center w-full px-margin-desktop py-md absolute z-10"><div class="hidden">Sakido</div><div class="absolute inset-0 bg-surface-container-highest/20 h-48 -z-10" style="background-image: url(&quot;https://lh3.googleusercontent.com/aida-public/AB6AXuDe4vi7XJaiQ_y6qHVBWtwxJT55vq5sudKnrI-Hpl8ZD3YwwUYUEgtmD5YjHpKMDwF9O6SdtCmD5EAPaWqMNQQVKvCjNr7fYhKnLF04RHwraB-EoRih4deKj5q6ozMf8ySu0ujlI9URS4op71sfgi0YXvENKCoKbzckrD3CiQD4_QBB3MFXuygwE7JqHOA6oUjRhBBJfDmeeda3L6QWJQV1KIgQnVRYIMSCPyd3p-zS7-opLoXSVtZZ&quot;); background-size: cover; background-position: center center;"></div><div class="flex-1 flex justify-end gap-md"><button class="w-10 h-10 flex items-center justify-center rounded-full bg-surface/50 border border-outline-variant backdrop-blur-sm text-on-surface-variant hover:opacity-80 transition-opacity cursor-pointer active:scale-95 transition-all"><span class="material-symbols-outlined text-[20px] font-light">dark_mode</span></button><button class="w-10 h-10 flex items-center justify-center rounded-full bg-surface/50 border border-outline-variant backdrop-blur-sm text-on-surface-variant hover:opacity-80 transition-opacity cursor-pointer active:scale-95 transition-all"><span class="material-symbols-outlined text-[20px] font-light">edit</span></button></div></header><div class="px-margin-desktop pt-40 pb-xl flex-1 flex flex-col"><div class="mb-xxl"><h2 class="font-display text-display text-on-surface tracking-tight relative">Good morning, Alex.</h2></div><div class="grid grid-cols-12 gap-gutter flex-1"><div class="col-span-4 flex flex-col gap-xl"><div class="flex flex-col items-start gap-md"><div class="analog-clock-container bg-surface-container-lowest"><div class="tick" style="transform: translateX(-50%) rotate(0deg);"></div><div class="tick" style="transform: translateX(-50%) rotate(90deg);"></div><div class="tick" style="transform: translateX(-50%) rotate(180deg);"></div><div class="tick" style="transform: translateX(-50%) rotate(270deg);"></div><div class="hour-hand"></div><div class="minute-hand"></div><div class="clock-center"></div></div><div class="text-secondary"><p class="font-label-caps uppercase tracking-widest text-on-surface-variant">Wednesday</p><p class="font-body-sm mt-xs">October 24</p></div></div></div><div class="col-span-8 flex flex-col gap-lg pl-lg border-l border-outline-variant/30 min-h-[400px]"><h3 class="font-headline-lg text-headline-lg text-on-surface mb-md">Classes</h3><form class="flex gap-2 mb-4"><input type="text" placeholder="Class Name" class="border border-outline-variant rounded p-2 flex-1 bg-surface-container-lowest text-on-surface" value=""><button type="submit" class="bg-[#8b5e3c] text-white px-4 py-2 rounded">Add Class</button></form><div class="grid grid-cols-2 gap-4"><div class="col-span-2 w-full h-48 border border-outline-variant border-dashed rounded-lg flex flex-col items-center justify-center gap-md text-secondary"><div class="w-12 h-12 rounded-full border border-outline-variant flex items-center justify-center"><span class="material-symbols-outlined text-[24px] font-light">school</span></div><span class="font-body-md">No classes yet</span></div></div></div></div></div></main></div></div>
+<script type="text/babel">
+    const { useState, useEffect } = React;
+
+    const App = ({ bannerImageUrl = "https://lh3.googleusercontent.com/aida-public/AB6AXuDe4vi7XJaiQ_y6qHVBWtwxJT55vq5sudKnrI-Hpl8ZD3YwwUYUEgtmD5YjHpKMDwF9O6SdtCmD5EAPaWqMNQQVKvCjNr7fYhKnLF04RHwraB-EoRih4deKj5q6ozMf8ySu0ujlI9URS4op71sfgi0YXvENKCoKbzckrD3CiQD4_QBB3MFXuygwE7JqHOA6oUjRhBBJfDmeeda3L6QWJQV1KIgQnVRYIMSCPyd3p-zS7-opLoXSVtZZ", onEditBanner, initialIsDarkMode = false, onToggleDarkMode, userName = "Alex" }) => {
+        const [isDarkMode, setIsDarkMode] = useState(initialIsDarkMode);
+        const [activeTab, setActiveTab] = useState('Classes');
+        
+        const [connectors, setConnectors] = useState({
+            googleCalendar: false,
+            googleDrive: false,
+            gmail: false
+        });
+
+        const [classes, setClasses] = useState([]);
+        const [newClassName, setNewClassName] = useState('');
+        
+        const [tasks, setTasks] = useState([]);
+        const [newTaskName, setNewTaskName] = useState('');
+        const [newTaskGrade, setNewTaskGrade] = useState('');
+
+        const [watchLater, setWatchLater] = useState([]);
+        const [newWatchUrl, setNewWatchUrl] = useState('');
+        const [newWatchTitle, setNewWatchTitle] = useState('');
+
+        useEffect(() => {
+            if (isDarkMode) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }, [isDarkMode]);
+
+        const toggleDark = () => {
+            setIsDarkMode(!isDarkMode);
+            if(onToggleDarkMode) onToggleDarkMode(!isDarkMode);
+        }
+
+        const addClass = (e) => {
+            e.preventDefault();
+            if(newClassName) {
+                setClasses([...classes, { id: Date.now(), name: newClassName }]);
+                setNewClassName('');
+            }
+        }
+
+        const addTask = (e) => {
+            e.preventDefault();
+            if(newTaskName) {
+                setTasks([...tasks, { id: Date.now(), name: newTaskName, grade: newTaskGrade, checked: false }]);
+                setNewTaskName('');
+                setNewTaskGrade('');
+            }
+        }
+
+        const toggleTask = (id) => {
+            setTasks(tasks.map(t => t.id === id ? { ...t, checked: !t.checked } : t));
+        }
+
+        const addWatch = (e) => {
+            e.preventDefault();
+            if(newWatchTitle) {
+                setWatchLater([...watchLater, { id: Date.now(), title: newWatchTitle, url: newWatchUrl }]);
+                setNewWatchTitle('');
+                setNewWatchUrl('');
+            }
+        }
+
+        const removeWatch = (id) => {
+            setWatchLater(watchLater.filter(w => w.id !== id));
+        }
+
+        const handleConnectorToggle = (key) => {
+            setConnectors(prev => ({...prev, [key]: !prev[key]}));
+        }
+
+        const avgGrade = tasks.filter(t => t.grade).length > 0 ? 
+            Math.round(tasks.filter(t => t.grade).reduce((acc, t) => acc + parseInt(t.grade), 0) / tasks.filter(t => t.grade).length) : 0;
+
+        const renderContent = () => {
+            if (['University & People', 'AI Features'].includes(activeTab)) {
+                return (
+                    <div className="flex-1 flex items-center justify-center min-h-[400px]">
+                        <h2 className="text-secondary font-display text-headline-lg tracking-widest uppercase">Coming Soon</h2>
+                    </div>
+                );
+            }
+
+            if (activeTab === 'Classes') {
+                return (
+                    <div className="col-span-8 flex flex-col gap-lg pl-lg border-l border-outline-variant/30 min-h-[400px]">
+                        <h3 className="font-headline-lg text-headline-lg text-on-surface mb-md">Classes</h3>
+                        <form onSubmit={addClass} className="flex gap-2 mb-4">
+                            <input type="text" value={newClassName} onChange={(e) => setNewClassName(e.target.value)} placeholder="Class Name" className="border border-outline-variant rounded p-2 flex-1 bg-surface-container-lowest text-on-surface" />
+                            <button type="submit" className="bg-[#8b5e3c] text-white px-4 py-2 rounded">Add Class</button>
+                        </form>
+                        <div className="grid grid-cols-2 gap-4">
+                            {classes.map(c => (
+                                <div key={c.id} className="p-4 border border-outline-variant rounded-lg bg-surface-container-low shadow-sm">
+                                    <h4 className="font-headline-md">{c.name}</h4>
+                                </div>
+                            ))}
+                            {classes.length === 0 && (
+                                <div className="col-span-2 w-full h-48 border border-outline-variant border-dashed rounded-lg flex flex-col items-center justify-center gap-md text-secondary">
+                                    <div className="w-12 h-12 rounded-full border border-outline-variant flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-[24px] font-light">school</span>
+                                    </div>
+                                    <span className="font-body-md">No classes yet</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                );
+            }
+
+            if (activeTab === 'Tasks & Grades') {
+                return (
+                    <div className="col-span-8 flex flex-col gap-lg pl-lg border-l border-outline-variant/30 min-h-[400px]">
+                        <div className="flex justify-between items-center mb-md">
+                            <h3 className="font-headline-lg text-headline-lg text-on-surface">Tasks & Grades</h3>
+                            {avgGrade > 0 && <div className="text-primary-container font-bold">Grade Avg: {avgGrade}%</div>}
+                        </div>
+                        <form onSubmit={addTask} className="flex gap-2 mb-4">
+                            <input type="text" value={newTaskName} onChange={(e) => setNewTaskName(e.target.value)} placeholder="Task Name" className="border border-outline-variant rounded p-2 flex-1 bg-surface-container-lowest text-on-surface" />
+                            <input type="number" min="0" max="100" value={newTaskGrade} onChange={(e) => setNewTaskGrade(e.target.value)} placeholder="Grade (0-100)" className="border border-outline-variant rounded p-2 w-32 bg-surface-container-lowest text-on-surface" />
+                            <button type="submit" className="bg-[#8b5e3c] text-white px-4 py-2 rounded">Add</button>
+                        </form>
+                        <div className="flex flex-col gap-2">
+                            {tasks.map(t => (
+                                <div key={t.id} className="flex items-center gap-3 p-3 border border-outline-variant rounded bg-surface-container-low">
+                                    <input type="checkbox" checked={t.checked} onChange={() => toggleTask(t.id)} className="w-5 h-5 accent-[#8b5e3c]" />
+                                    <span className={`flex-1 ${t.checked ? 'line-through text-secondary' : ''}`}>{t.name}</span>
+                                    {t.grade && <span className="text-sm font-bold text-secondary">Grade: {t.grade}</span>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
+
+            if (activeTab === 'Watch Later') {
+                return (
+                    <div className="col-span-8 flex flex-col gap-lg pl-lg border-l border-outline-variant/30 min-h-[400px]">
+                        <h3 className="font-headline-lg text-headline-lg text-on-surface mb-md">Watch Later</h3>
+                        <form onSubmit={addWatch} className="flex gap-2 mb-4">
+                            <input type="text" value={newWatchTitle} onChange={(e) => setNewWatchTitle(e.target.value)} placeholder="Title" className="border border-outline-variant rounded p-2 flex-1 bg-surface-container-lowest text-on-surface" />
+                            <input type="text" value={newWatchUrl} onChange={(e) => setNewWatchUrl(e.target.value)} placeholder="URL" className="border border-outline-variant rounded p-2 flex-1 bg-surface-container-lowest text-on-surface" />
+                            <button type="submit" className="bg-[#8b5e3c] text-white px-4 py-2 rounded">Add</button>
+                        </form>
+                        <div className="flex flex-col gap-2">
+                            {watchLater.map(w => (
+                                <div key={w.id} className="flex items-center justify-between p-3 border border-outline-variant rounded bg-surface-container-low">
+                                    <div className="flex flex-col">
+                                        <span className="font-bold">{w.title}</span>
+                                        <a href={w.url} target="_blank" className="text-sm text-blue-500 underline truncate max-w-xs">{w.url}</a>
+                                    </div>
+                                    <button onClick={() => removeWatch(w.id)} className="text-error text-sm hover:underline">Remove</button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                );
+            }
+
+            // Fallback for Notes/Calendar
+            return (
+                <div className="col-span-8 flex flex-col gap-lg pl-lg border-l border-outline-variant/30 min-h-[400px]">
+                     <h3 className="font-headline-lg text-headline-lg text-on-surface mb-md">{activeTab}</h3>
+                     <p className="text-secondary">Select another tab to see interactive modules.</p>
+                </div>
+            );
+        }
+
+        return (
+            <div className="flex w-full min-h-screen">
+                <nav className="bg-surface dark:bg-surface font-body-md text-body-md h-screen w-64 fixed left-0 top-0 border-r border-outline-variant dark:border-outline flex flex-col py-xl px-md z-50 overflow-y-auto">
+                    <div className="mb-xxl">
+                        <h1 className="font-display text-headline-md text-on-surface dark:text-inverse-on-surface tracking-tight">Sakido</h1>
+                        <p className="text-secondary dark:text-secondary-fixed-dim text-body-sm mt-xs">Productivity Portal</p>
+                    </div>
+                    
+                    <div className="mb-4 text-xs font-bold text-secondary uppercase tracking-wider">Student</div>
+                    <ul className="space-y-sm mb-8">
+                        {['Notes', 'Calendar', 'Tasks & Grades', 'Classes', 'Watch Later'].map(item => (
+                            <li key={item}>
+                                <button onClick={() => setActiveTab(item)} className={`w-full flex items-center gap-md px-md py-sm rounded-DEFAULT transition-colors scale-95 transition-transform duration-150 ${activeTab === item ? 'text-primary dark:text-primary-fixed-dim font-bold bg-surface-container-low dark:bg-surface-container-highest' : 'text-secondary dark:text-secondary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-container-highest'}`}>
+                                    <span className="material-symbols-outlined text-[20px] font-light">
+                                        {item === 'Notes' ? 'description' : item === 'Calendar' ? 'calendar_today' : item === 'Tasks & Grades' ? 'check_circle' : item === 'Classes' ? 'school' : 'watch_later'}
+                                    </span>
+                                    <span>{item}</span>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+
+                    <div className="mb-4 text-xs font-bold text-secondary uppercase tracking-wider">Connectors</div>
+                    <ul className="space-y-sm mb-8">
+                        {['googleCalendar', 'googleDrive', 'gmail'].map(connector => (
+                            <li key={connector} className="flex items-center justify-between px-md py-sm text-secondary">
+                                <span className="capitalize">{connector.replace(/([A-Z])/g, ' $1').trim()}</span>
+                                <div className="relative inline-block w-10 mr-2 align-middle select-none transition duration-200 ease-in">
+                                    <input type="checkbox" name="toggle" id={connector} checked={connectors[connector]} onChange={() => handleConnectorToggle(connector)} className="toggle-checkbox absolute block w-5 h-5 rounded-full bg-white border-4 appearance-none cursor-pointer border-outline-variant" />
+                                    <label htmlFor={connector} className="toggle-label block overflow-hidden h-5 rounded-full bg-outline-variant cursor-pointer"></label>
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+
+                    <div className="mb-4 text-xs font-bold text-secondary uppercase tracking-wider">Other</div>
+                    <ul className="space-y-sm">
+                        {['University & People', 'AI Features'].map(item => (
+                            <li key={item}>
+                                <button onClick={() => setActiveTab(item)} className="w-full flex items-center gap-md px-md py-sm rounded-DEFAULT text-secondary opacity-50 hover:bg-surface-container-low transition-colors scale-95">
+                                    <span className="material-symbols-outlined text-[20px] font-light">info</span>
+                                    <span>{item}</span>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+
+                    <ul className="space-y-sm border-t border-outline-variant pt-md mt-auto">
+                        <li>
+                            <a className="flex items-center gap-md px-md py-sm rounded-DEFAULT text-secondary hover:bg-surface-container-low transition-colors scale-95" href="#">
+                                <span className="material-symbols-outlined text-[20px] font-light">settings</span>
+                                <span>Settings</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+
+                <main className="ml-64 flex-1 flex flex-col min-h-screen relative w-full">
+                    <header className="bg-transparent text-primary dark:text-primary-fixed-dim font-headline-lg text-headline-lg dark:text-on-surface docked full-width top-0 flex justify-between items-center w-full px-margin-desktop py-md absolute z-10">
+                        <div className="hidden">Sakido</div>
+                        <div className="absolute inset-0 bg-surface-container-highest/20 h-48 -z-10" style={{backgroundImage: `url('${bannerImageUrl}')`, backgroundSize: 'cover', backgroundPosition: 'center'}}></div>
+                        <div className="flex-1 flex justify-end gap-md">
+                            <button onClick={toggleDark} className="w-10 h-10 flex items-center justify-center rounded-full bg-surface/50 border border-outline-variant backdrop-blur-sm text-on-surface-variant hover:opacity-80 transition-opacity cursor-pointer active:scale-95 transition-all">
+                                <span className="material-symbols-outlined text-[20px] font-light">dark_mode</span>
+                            </button>
+                            <button onClick={onEditBanner} className="w-10 h-10 flex items-center justify-center rounded-full bg-surface/50 border border-outline-variant backdrop-blur-sm text-on-surface-variant hover:opacity-80 transition-opacity cursor-pointer active:scale-95 transition-all">
+                                <span className="material-symbols-outlined text-[20px] font-light">edit</span>
+                            </button>
+                        </div>
+                    </header>
+
+                    <div className="px-margin-desktop pt-40 pb-xl flex-1 flex flex-col">
+                        <div className="mb-xxl">
+                            <h2 className="font-display text-display text-on-surface tracking-tight relative">
+                                Good morning, {userName}.
+                            </h2>
+                        </div>
+                        
+                        <div className="grid grid-cols-12 gap-gutter flex-1">
+                            <div className="col-span-4 flex flex-col gap-xl">
+                                <div className="flex flex-col items-start gap-md">
+                                    <div className="analog-clock-container bg-surface-container-lowest">
+                                        <div className="tick" style={{transform: 'translateX(-50%) rotate(0deg)'}}></div>
+                                        <div className="tick" style={{transform: 'translateX(-50%) rotate(90deg)'}}></div>
+                                        <div className="tick" style={{transform: 'translateX(-50%) rotate(180deg)'}}></div>
+                                        <div className="tick" style={{transform: 'translateX(-50%) rotate(270deg)'}}></div>
+                                        <div className="hour-hand"></div>
+                                        <div className="minute-hand"></div>
+                                        <div className="clock-center"></div>
+                                    </div>
+                                    <div className="text-secondary">
+                                        <p className="font-label-caps uppercase tracking-widest text-on-surface-variant">Wednesday</p>
+                                        <p className="font-body-sm mt-xs">October 24</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {renderContent()}
+                        </div>
+                    </div>
+                </main>
+            </div>
+        );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+</script>
+</body></html>
