@@ -1136,15 +1136,30 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     setIsDarkMode((prev) => !prev);
   };
 
-  // Banner editing with storage protection
+  // Banner editing with file upload & URL support
+  const handleFileUploadBanner = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 8 * 1024 * 1024) {
+      alert('File is too large (max 8MB). Please select a smaller GIF or image.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (uploadEvent) => {
+      const result = uploadEvent.target?.result as string;
+      if (result) {
+        setNewBannerInput(result);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSaveBanner = (e: React.FormEvent) => {
     e.preventDefault();
     const url = newBannerInput.trim();
     if (url) {
-      if (url.length > 1500000) {
-        alert('Image URL data is too large for browser storage. Please provide a standard web image URL.');
-        return;
-      }
       setBannerImageUrl(url);
       try {
         localStorage.setItem('sakido_banner_url', url);
@@ -1153,6 +1168,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       }
       setIsEditingBanner(false);
       setNewBannerInput('');
+      setConnectorNotice('🟢 Banner wallpaper updated!');
     }
   };
 
@@ -3070,67 +3086,125 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         </div>
       </main>
 
-      {/* Edit Banner Modal */}
+      {/* Edit Banner Cover Modal */}
       {isEditingBanner && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl max-w-md w-full p-6 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-display font-bold text-lg text-on-surface">Change Banner Cover</h3>
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl max-w-lg w-full p-6 shadow-2xl flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-display font-bold text-xl text-on-surface">Change Banner Wallpaper</h3>
+                <p className="text-xs text-secondary mt-0.5">
+                  Upload any local image/GIF file, paste a link, or pick from curated aesthetic animated GIFs
+                </p>
+              </div>
               <button
                 onClick={() => setIsEditingBanner(false)}
-                className="text-secondary hover:text-on-surface p-1"
+                className="text-secondary hover:text-on-surface p-1.5 rounded-lg hover:bg-surface-container-high transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             <form onSubmit={handleSaveBanner} className="flex flex-col gap-4">
+              {/* Option 1: File Upload */}
+              <div className="p-4 rounded-2xl border border-dashed border-outline-variant/60 bg-surface-container-low/40 flex flex-col items-center justify-center gap-2.5 text-center">
+                <input
+                  type="file"
+                  id="banner-file-input"
+                  accept="image/*,image/gif"
+                  onChange={handleFileUploadBanner}
+                  className="hidden"
+                />
+                <label
+                  htmlFor="banner-file-input"
+                  className="px-4 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container text-on-surface text-xs font-semibold flex items-center gap-2 cursor-pointer transition-colors shadow-2xs"
+                >
+                  <Plus className="w-4 h-4 text-primary" /> Upload GIF or Image File
+                </label>
+                <span className="text-[11px] text-secondary">Supports GIF, PNG, JPG, WebP (max 8MB)</span>
+              </div>
+
+              {/* Option 2: Custom URL Input */}
               <div>
-                <label className="text-xs font-mono text-secondary block mb-1">
-                  Custom Image URL
+                <label className="text-xs font-mono font-semibold text-secondary block mb-1">
+                  Or Paste Custom GIF / Image Link
                 </label>
                 <input
                   type="text"
                   value={newBannerInput}
                   onChange={(e) => setNewBannerInput(e.target.value)}
-                  placeholder="https://images.unsplash.com/..."
-                  className="w-full border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface placeholder:text-secondary/50 focus:outline-hidden"
+                  placeholder="https://media.giphy.com/media/.../giphy.gif"
+                  className="w-full border border-outline-variant/50 rounded-xl p-3 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface placeholder:text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
 
-              <div className="text-xs text-secondary">
-                Or choose preset wallpaper:
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=800',
-                  'https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&q=80&w=800',
-                  'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=800',
-                ].map((preset, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => setNewBannerInput(preset)}
-                    className="h-16 rounded-lg overflow-hidden border border-outline-variant hover:border-primary-container transition-all"
-                  >
-                    <img src={preset} alt={`Preset ${idx + 1}`} className="w-full h-full object-cover" />
-                  </button>
-                ))}
+              {/* Option 3: Curated Preset GIFs & Wallpapers */}
+              <div>
+                <div className="text-xs font-mono font-semibold text-secondary mb-2 flex items-center justify-between">
+                  <span>Curated Aesthetic Preset GIFs & Wallpapers</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2.5">
+                  {[
+                    {
+                      name: 'Lofi Study Room (GIF)',
+                      url: 'https://media.giphy.com/media/l41K3o5TzDQktX14Y/giphy.gif',
+                    },
+                    {
+                      name: 'Cozy Rain Desk (GIF)',
+                      url: 'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExdndnMWc3NG1nd3k1NDB3dnBnNHJpY2oxMHB6cWdhaHlnanhyNDN3ZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3oKIPnAiaMCws8nOsE/giphy.gif',
+                    },
+                    {
+                      name: 'Pixel Art Desk (GIF)',
+                      url: 'https://media.giphy.com/media/d4ce1n86Fq7X5R1D7/giphy.gif',
+                    },
+                    {
+                      name: 'Zen Forest (GIF)',
+                      url: 'https://media.giphy.com/media/26n6WywJyh39n1pBu/giphy.gif',
+                    },
+                    {
+                      name: 'Modern Architecture',
+                      url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=800',
+                    },
+                    {
+                      name: 'Essentialist Workspace',
+                      url: 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?auto=format&fit=crop&q=80&w=800',
+                    },
+                  ].map((preset, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setNewBannerInput(preset.url)}
+                      className={`h-20 rounded-xl overflow-hidden border transition-all relative group cursor-pointer ${
+                        newBannerInput === preset.url
+                          ? 'border-primary ring-2 ring-primary/40 scale-[1.02]'
+                          : 'border-outline-variant/40 hover:border-primary/60'
+                      }`}
+                    >
+                      <img src={preset.url} alt={preset.name} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 transition-colors flex items-end p-1.5">
+                        <span className="text-[10px] font-mono text-white font-medium truncate w-full text-left">
+                          {preset.name}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <div className="flex justify-end gap-2 mt-2">
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 pt-3 border-t border-outline-variant/20">
                 <button
                   type="button"
                   onClick={() => setIsEditingBanner(false)}
-                  className="px-4 py-2 rounded-lg text-xs font-medium text-secondary hover:bg-surface-container-high"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-secondary hover:bg-surface-container-high transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg text-xs font-medium bg-[#8b5e3c] hover:bg-[#6f4627] text-white"
+                  className="px-5 py-2 rounded-xl text-xs font-semibold bg-[#8b5e3c] hover:bg-[#6f4627] text-white shadow-xs transition-colors cursor-pointer"
                 >
-                  Save Banner
+                  Save Wallpaper
                 </button>
               </div>
             </form>
