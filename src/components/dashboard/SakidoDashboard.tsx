@@ -772,7 +772,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     }
 
     const scopeMap = {
-      googleCalendar: 'https://www.googleapis.com/auth/calendar.readonly',
+      googleCalendar: 'https://www.googleapis.com/auth/calendar.events',
       googleDrive: 'https://www.googleapis.com/auth/drive.readonly',
       gmail: 'https://www.googleapis.com/auth/gmail.readonly',
       googleNotes: 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile',
@@ -1707,7 +1707,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                     Synchronize course deadlines, exam timetables, and lecture schedules into your personal dashboard.
                   </p>
                   <span className="text-[10px] font-mono text-secondary/70 mt-1 block">
-                    Scope: <code className="bg-surface-container-high px-1 rounded">https://www.googleapis.com/auth/calendar.readonly</code>
+                    Scope: <code className="bg-surface-container-high px-1 rounded">https://www.googleapis.com/auth/calendar.events</code>
                   </span>
                 </div>
               </div>
