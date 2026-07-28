@@ -252,6 +252,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventDate, setNewEventDate] = useState('');
+  const [newEventTime, setNewEventTime] = useState('10:00');
   const [newEventType, setNewEventType] = useState('Exam');
 
   useEffect(() => {
@@ -302,6 +303,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               id: item.id,
               title: item.summary || 'Google Calendar Event',
               date: item.start?.dateTime ? item.start.dateTime.split('T')[0] : item.start?.date,
+              time: item.start?.dateTime ? item.start.dateTime.split('T')[1]?.substring(0, 5) : '09:00',
               type: 'Google Cal',
               location: item.location || 'Google Sync',
             }));
@@ -320,18 +322,58 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     fetchGoogleEvents();
   }, [connectors.googleCalendar, calendarMonth]);
 
-  const handleAddEvent = (e: React.FormEvent) => {
+  const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEventTitle.trim() || !newEventDate.trim()) return;
-    setEvents((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        title: newEventTitle.trim(),
-        date: newEventDate.trim(),
-        type: newEventType,
-      },
-    ]);
+
+    const title = newEventTitle.trim();
+    const date = newEventDate.trim();
+    const time = newEventTime.trim() || '10:00';
+
+    const newEv = {
+      id: Date.now().toString(),
+      title,
+      date,
+      time,
+      type: newEventType,
+    };
+
+    setEvents((prev) => [...prev, newEv]);
+
+    // Real 2-Way Live Google Calendar API POST Sync
+    if (connectors.googleCalendar) {
+      const token = localStorage.getItem('sakido_provider_token');
+      if (token) {
+        try {
+          const startDt = new Date(`${date}T${time}:00`);
+          const endDt = new Date(startDt.getTime() + 60 * 60 * 1000); // 1 hour duration
+
+          const res = await fetch(
+            `https://www.googleapis.com/calendar/v3/calendars/primary/events`,
+            {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                summary: `[Sakido] ${title}`,
+                description: `Created from Sakido Academic Portal (${newEventType})`,
+                start: { dateTime: startDt.toISOString() },
+                end: { dateTime: endDt.toISOString() },
+              }),
+            }
+          );
+
+          if (res.ok) {
+            setConnectorNotice(`🟢 Event "${title}" posted live to your Google Calendar!`);
+          }
+        } catch (err) {
+          console.warn('Google Calendar POST notice:', err);
+        }
+      }
+    }
+
     setNewEventTitle('');
     setNewEventDate('');
   };

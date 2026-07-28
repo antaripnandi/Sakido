@@ -10,14 +10,14 @@ export const SequenceScrollSection: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const playIntervalRef = useRef<number | null>(null);
 
-  // Synchronize canvas rendering with device pixel ratio
+  // Synchronize canvas rendering with clamped device pixel ratio (prevents high-DPI canvas lag on laptops/mobiles)
   const renderCanvas = useCallback((frame: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     const rect = canvas.getBoundingClientRect();
 
     if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
@@ -33,10 +33,42 @@ export const SequenceScrollSection: React.FC = () => {
     ctx.restore();
   }, []);
 
+  // 6 Snap Steps mapping
+  const STEP_FRAMES = [
+    { label: '01 Overview', frame: 0 },
+    { label: '02 Notes', frame: 48 },
+    { label: '03 Tasks', frame: 96 },
+    { label: '04 Calendar', frame: 144 },
+    { label: '05 Watch Later', frame: 192 },
+    { label: '06 Connectors', frame: 239 },
+  ];
+
+  // Animated frame transition helper
+  const animateToFrame = useCallback((targetFrame: number) => {
+    let current = currentFrame;
+    const step = targetFrame > current ? 3 : -3;
+
+    const animLoop = () => {
+      if (Math.abs(targetFrame - current) <= 3) {
+        setCurrentFrame(targetFrame);
+        renderCanvas(targetFrame);
+        return;
+      }
+      current += step;
+      setCurrentFrame(current);
+      renderCanvas(current);
+      requestAnimationFrame(animLoop);
+    };
+
+    requestAnimationFrame(animLoop);
+  }, [currentFrame, renderCanvas]);
+
   // Handle scroll progress mapping to frame index 0 - 239
   useEffect(() => {
+    let rafId: number | null = null;
+
     const handleScroll = () => {
-      if (isPlaying) return; // Scroll shouldn't override manual playback when active
+      if (isPlaying) return;
       const container = containerRef.current;
       if (!container) return;
 
@@ -46,23 +78,26 @@ export const SequenceScrollSection: React.FC = () => {
 
       if (totalScrollableDistance <= 0) return;
 
-      // Distance from top of container to top of viewport
       const currentScroll = -rect.top;
       const progress = Math.max(0, Math.min(1, currentScroll / totalScrollableDistance));
 
       const targetFrame = Math.min(239, Math.max(0, Math.floor(progress * 240)));
-      setCurrentFrame(targetFrame);
-      renderCanvas(targetFrame);
+
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        setCurrentFrame(targetFrame);
+        renderCanvas(targetFrame);
+      });
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('resize', () => renderCanvas(currentFrame));
 
-    // Initial draw
     renderCanvas(currentFrame);
 
     return () => {
       window.removeEventListener('scroll', handleScroll);
+      if (rafId) cancelAnimationFrame(rafId);
     };
   }, [currentFrame, isPlaying, renderCanvas]);
 
@@ -281,6 +316,26 @@ export const SequenceScrollSection: React.FC = () => {
               <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
+        </div>
+
+        {/* 6 Step Part Snapping Bar */}
+        <div className="flex items-center justify-center gap-1.5 overflow-x-auto max-w-full px-4 py-1.5 z-30">
+          {STEP_FRAMES.map((step, idx) => {
+            const isActive = currentFrame >= step.frame && (idx === STEP_FRAMES.length - 1 || currentFrame < STEP_FRAMES[idx + 1].frame);
+            return (
+              <button
+                key={step.label}
+                onClick={() => animateToFrame(step.frame)}
+                className={`px-3 py-1 rounded-full text-xs font-mono font-bold transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-zinc-900 text-white shadow-xs scale-105'
+                    : 'bg-zinc-100 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-200'
+                }`}
+              >
+                {step.label}
+              </button>
+            );
+          })}
         </div>
 
       </div>
