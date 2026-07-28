@@ -253,7 +253,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           <button
             onClick={() => setIsAuthOpen(true)}
             className="group px-3 py-1.5 rounded-full bg-zinc-900/90 border border-zinc-800 hover:border-zinc-600 text-xs text-zinc-200 flex items-center gap-2.5 transition-all shadow-md backdrop-blur-md cursor-pointer hover:bg-zinc-800"
-            title="Open AUTHORIZED session details"
+            title={currentUser.name || currentUser.email}
           >
             <div className="w-6 h-6 rounded-full bg-black border border-[#444748] flex items-center justify-center text-white overflow-hidden shrink-0 shadow-inner">
               {currentUser.avatarUrl ? (
@@ -270,9 +270,6 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
             <span className="font-mono text-xs text-zinc-200 group-hover:text-white transition-colors">
               {currentUser.name || currentUser.email}
             </span>
-            <div className="w-5 h-5 rounded-full bg-emerald-950/80 border border-emerald-700/80 flex items-center justify-center text-emerald-400 shrink-0">
-              <Check className="w-3 h-3 stroke-[2.5]" />
-            </div>
           </button>
         ) : (
           <button
