@@ -338,22 +338,23 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     }
   };
 
-  // Google Drive AppData 2-Way Sync for Google Notes / Keep
+  // Google Drive Visible Folder 2-Way Sync for Sakido Notes
   const syncNotesToGoogleDrive = async (updatedNotes: any[], accessToken: string) => {
     try {
       let token = accessToken;
 
-      const performSearch = async (tokenStr: string) => {
+      // 1. Search for existing "Sakido Notes" folder in Google Drive root
+      const searchFolder = async (tok: string) => {
         return fetch(
-          "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'sakido_keep_notes.json'",
-          { headers: { Authorization: `Bearer ${tokenStr}` } }
+          "https://www.googleapis.com/drive/v3/files?q=name%3D'Sakido%20Notes'%20and%20mimeType%3D'application/vnd.google-apps.folder'%20and%20trashed%3Dfalse",
+          { headers: { Authorization: `Bearer ${tok}` } }
         );
       };
 
-      let searchRes = await performSearch(token);
+      let folderSearchRes = await searchFolder(token);
 
       // Handle 401 token refresh
-      if (searchRes.status === 401) {
+      if (folderSearchRes.status === 401) {
         const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
         if (refreshToken) {
           const refreshRes = await fetch('/api/refresh-token', {
@@ -365,33 +366,63 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             const refreshData = await refreshRes.json();
             token = refreshData.access_token;
             localStorage.setItem('sakido_provider_token', token);
-            searchRes = await performSearch(token);
+            folderSearchRes = await searchFolder(token);
           }
         }
       }
 
-      if (!searchRes.ok) {
-        const rawErr = await searchRes.text().catch(() => '');
-        let errMsg = rawErr;
-        try {
-          const parsed = JSON.parse(rawErr);
-          errMsg = parsed?.error?.message || rawErr;
-        } catch {}
-        console.warn('Google Drive API search returned status:', searchRes.status, rawErr);
-        setConnectorNotice(`⚠️ Google Drive API returned ${searchRes.status}: ${errMsg || 'Ensure Google Drive API is enabled in Google Cloud Console.'}`);
+      let folderId = null;
+      if (folderSearchRes.ok) {
+        const folderData = await folderSearchRes.json();
+        if (folderData.files && folderData.files.length > 0) {
+          folderId = folderData.files[0].id;
+        }
+      }
+
+      // 2. If folder doesn't exist, create "Sakido Notes" folder
+      if (!folderId) {
+        const createFolderRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: 'Sakido Notes',
+            mimeType: 'application/vnd.google-apps.folder',
+          }),
+        });
+
+        if (createFolderRes.ok) {
+          const folderObj = await createFolderRes.json();
+          folderId = folderObj.id;
+        }
+      }
+
+      if (!folderId) {
+        setConnectorNotice('⚠️ Could not access "Sakido Notes" folder in Google Drive. Ensure Google Drive API is enabled.');
         return;
       }
 
-      const searchData = await searchRes.json();
+      // 3. Search for "sakido_notes_backup.json" inside "Sakido Notes" folder
+      const fileSearchRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files?q=name%3D'sakido_notes_backup.json'%20and%20'${folderId}'%20in%20parents%20and%20trashed%3Dfalse`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
       let fileId = null;
-      if (searchData.files && searchData.files.length > 0) {
-        fileId = searchData.files[0].id;
+      if (fileSearchRes.ok) {
+        const fileData = await fileSearchRes.json();
+        if (fileData.files && fileData.files.length > 0) {
+          fileId = fileData.files[0].id;
+        }
       }
 
-      const fileContent = JSON.stringify(updatedNotes);
+      const fileContent = JSON.stringify(updatedNotes, null, 2);
       const metadata = {
-        name: 'sakido_keep_notes.json',
+        name: 'sakido_notes_backup.json',
         mimeType: 'application/json',
+        parents: [folderId],
       };
 
       let uploadRes;
@@ -411,7 +442,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         const formData = new FormData();
         formData.append(
           'metadata',
-          new Blob([JSON.stringify({ ...metadata, parents: ['appDataFolder'] })], { type: 'application/json' })
+          new Blob([JSON.stringify(metadata)], { type: 'application/json' })
         );
         formData.append('file', new Blob([fileContent], { type: 'application/json' }));
 
@@ -426,20 +457,14 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       }
 
       if (uploadRes.ok) {
-        setConnectorNotice(`🟢 ${updatedNotes.length} Note${updatedNotes.length !== 1 ? 's' : ''} backed up & synced to your Google Account!`);
+        setConnectorNotice(`🟢 Synced to visible "Sakido Notes" folder in your Google Drive!`);
       } else {
         const rawUploadErr = await uploadRes.text().catch(() => '');
-        let uploadErrMsg = rawUploadErr;
-        try {
-          const parsed = JSON.parse(rawUploadErr);
-          uploadErrMsg = parsed?.error?.message || rawUploadErr;
-        } catch {}
-        console.warn('Google Drive API upload status:', uploadRes.status, rawUploadErr);
-        setConnectorNotice(`⚠️ Note saved locally, but Google Drive backup returned ${uploadRes.status}: ${uploadErrMsg}`);
+        setConnectorNotice(`⚠️ Drive file write returned status ${uploadRes.status}: ${rawUploadErr}`);
       }
     } catch (err: any) {
-      console.warn('Google Drive AppData notes sync error:', err);
-      setConnectorNotice(`⚠️ Note saved locally, but Google Drive sync request failed: ${err?.message || err}`);
+      console.warn('Google Drive Notes sync error:', err);
+      setConnectorNotice(`⚠️ Sakido note saved locally, but Drive sync failed: ${err?.message || err}`);
     }
   };
 
@@ -618,7 +643,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     fetchGoogleEvents();
   }, [connectors.googleCalendar, calendarMonth]);
 
-  // Live Google Notes / Keep (Drive AppData) auto-fetch & 2-Way Live Sync
+  // Live Google Drive "Sakido Notes" folder auto-fetch & sync
   useEffect(() => {
     if (!connectors.googleNotes) return;
 
@@ -627,12 +652,12 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       if (!token) return;
 
       try {
-        const searchRes = await fetch(
-          "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'sakido_keep_notes.json'",
+        const folderRes = await fetch(
+          "https://www.googleapis.com/drive/v3/files?q=name%3D'Sakido%20Notes'%20and%20mimeType%3D'application/vnd.google-apps.folder'%20and%20trashed%3Dfalse",
           { headers: { Authorization: `Bearer ${token}` } }
         );
 
-        if (searchRes.status === 401) {
+        if (folderRes.status === 401) {
           const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
           if (refreshToken) {
             const refreshRes = await fetch('/api/refresh-token', {
@@ -648,29 +673,40 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           }
         }
 
-        if (searchRes.ok) {
-          const searchData = await searchRes.json();
-          if (searchData.files && searchData.files.length > 0) {
-            const fileId = searchData.files[0].id;
-            const contentRes = await fetch(
-              `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+        if (folderRes.ok) {
+          const folderData = await folderRes.json();
+          if (folderData.files && folderData.files.length > 0) {
+            const folderId = folderData.files[0].id;
+            const fileRes = await fetch(
+              `https://www.googleapis.com/drive/v3/files?q=name%3D'sakido_notes_backup.json'%20and%20'${folderId}'%20in%20parents%20and%20trashed%3Dfalse`,
               { headers: { Authorization: `Bearer ${token}` } }
             );
 
-            if (contentRes.ok) {
-              const remoteNotes = await contentRes.json();
-              if (Array.isArray(remoteNotes) && remoteNotes.length > 0) {
-                setNotes(remoteNotes);
-                try {
-                  localStorage.setItem('sakido_notes', JSON.stringify(remoteNotes));
-                } catch {}
-                setConnectorNotice(`🟢 Synced ${remoteNotes.length} notes live from Google Keep / Drive!`);
+            if (fileRes.ok) {
+              const fileData = await fileRes.json();
+              if (fileData.files && fileData.files.length > 0) {
+                const fileId = fileData.files[0].id;
+                const contentRes = await fetch(
+                  `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                  { headers: { Authorization: `Bearer ${token}` } }
+                );
+
+                if (contentRes.ok) {
+                  const remoteNotes = await contentRes.json();
+                  if (Array.isArray(remoteNotes) && remoteNotes.length > 0) {
+                    setNotes(remoteNotes);
+                    try {
+                      localStorage.setItem('sakido_notes', JSON.stringify(remoteNotes));
+                    } catch {}
+                    setConnectorNotice(`🟢 Synced ${remoteNotes.length} notes from "Sakido Notes" folder in Google Drive!`);
+                  }
+                }
               }
             }
           }
         }
       } catch (err) {
-        console.warn('Live Google Notes fetch notice:', err);
+        console.warn('Live Drive Notes fetch notice:', err);
       }
     };
 
@@ -1325,14 +1361,14 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       googleCalendar: 'https://www.googleapis.com/auth/calendar.events',
       googleDrive: 'https://www.googleapis.com/auth/drive.readonly',
       gmail: 'https://www.googleapis.com/auth/gmail.readonly',
-      googleNotes: 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile',
+      googleNotes: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile',
     };
 
     const serviceNames = {
       googleCalendar: 'Google Calendar',
       googleDrive: 'Google Drive',
       gmail: 'Gmail Notifications',
-      googleNotes: 'Google Notes / Keep',
+      googleNotes: 'Google Drive Notes Sync',
     };
 
     // Handle Disconnect Action
