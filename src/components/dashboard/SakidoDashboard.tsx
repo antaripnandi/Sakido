@@ -274,6 +274,9 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             if (session.provider_token) {
               localStorage.setItem('sakido_provider_token', session.provider_token);
             }
+            if ((session as any).provider_refresh_token) {
+              localStorage.setItem('sakido_provider_refresh_token', (session as any).provider_refresh_token);
+            }
             setConnectors((prev) => {
               const updated = { ...prev, [pending]: true };
               try {
@@ -489,7 +492,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
     // Real 2-Way Live Google Calendar API POST Sync with Recurrence Rule
     if (connectors.googleCalendar) {
-      const token = localStorage.getItem('sakido_provider_token');
+      let token = localStorage.getItem('sakido_provider_token');
       if (!token) {
         setConnectorNotice('⚠️ Google Calendar is connected, but provider session token is missing. Please click Disconnect / Reauth to renew Google permissions.');
       } else {
@@ -510,17 +513,52 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           if (recurrence === 'monthly') gcalPayload.recurrence = ['RRULE:FREQ=MONTHLY;COUNT=4'];
           if (recurrence === 'weekday') gcalPayload.recurrence = ['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=15'];
 
-          const res = await fetch(
-            `https://www.googleapis.com/calendar/v3/calendars/primary/events`,
-            {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${token}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify(gcalPayload),
+          // Helper: POST event to Google Calendar with a given token
+          const postToGCal = async (accessToken: string) => {
+            return fetch(
+              `https://www.googleapis.com/calendar/v3/calendars/primary/events`,
+              {
+                method: 'POST',
+                headers: {
+                  Authorization: `Bearer ${accessToken}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(gcalPayload),
+              }
+            );
+          };
+
+          let res = await postToGCal(token);
+
+          // If 401 (token expired), try to auto-refresh using the serverless endpoint
+          if (res.status === 401) {
+            const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
+            if (refreshToken) {
+              try {
+                const refreshRes = await fetch('/api/refresh-token', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ refresh_token: refreshToken }),
+                });
+
+                if (refreshRes.ok) {
+                  const refreshData = await refreshRes.json();
+                  token = refreshData.access_token;
+                  localStorage.setItem('sakido_provider_token', token!);
+                  // Retry the POST with the fresh token
+                  res = await postToGCal(token!);
+                } else {
+                  const refreshErr = await refreshRes.json().catch(() => null);
+                  console.warn('Token refresh failed:', refreshErr);
+                  setConnectorNotice(`⚠️ Google token refresh failed. Please Disconnect / Reauth to renew permissions.`);
+                }
+              } catch (refreshErr) {
+                console.warn('Token refresh error:', refreshErr);
+              }
+            } else {
+              setConnectorNotice(`⚠️ Access token expired and no refresh token available. Please Disconnect / Reauth the Google Calendar connector.`);
             }
-          );
+          }
 
           if (res.ok) {
             setConnectorNotice(`🟢 Event "${title}" (${startTime}-${endTime}${recurrence !== 'none' ? `, ${recurrence}` : ''}) posted live to your Google Calendar!`);
@@ -548,10 +586,10 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             } catch (refErr) {
               console.warn('Refinement notice:', refErr);
             }
-          } else {
+          } else if (res.status !== 401) {
             const errJson = await res.json().catch(() => null);
             console.warn('Google Calendar API POST status:', res.status, errJson);
-            setConnectorNotice(`⚠️ Google Calendar API returned ${res.status}: ${errJson?.error?.message || 'Access token may be expired. Click Disconnect / Reauth to re-authorize.'}`);
+            setConnectorNotice(`⚠️ Google Calendar API returned ${res.status}: ${errJson?.error?.message || 'Unknown error. Try Disconnect / Reauth.'}`);
           }
         } catch (err: any) {
           console.warn('Google Calendar POST notice:', err);
