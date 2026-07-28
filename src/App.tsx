@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import { SakidoLandingPage } from './components/SakidoLandingPage';
 import { SakidoDashboard } from './components/dashboard/SakidoDashboard';
 import { getSupabaseClient } from './lib/supabaseClient';
+import { Analytics } from '@vercel/analytics/react';
 
 function AppContent() {
   const navigate = useNavigate();
@@ -128,6 +129,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AppContent />
+      <Analytics />
     </BrowserRouter>
   );
 }
