@@ -1696,12 +1696,12 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
       {/* Sidebar Navigation */}
       <nav
-        className={`fixed lg:sticky top-0 left-0 h-screen w-64 bg-surface-container-low border-r border-outline-variant/30 flex flex-col py-6 px-4 z-50 transition-transform duration-300 ${
+        className={`fixed lg:sticky top-0 left-0 h-screen w-64 bg-surface-container-low border-r border-outline-variant/30 flex flex-col py-6 px-4 pb-24 z-50 transition-transform duration-300 overflow-y-auto ${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
         {/* Brand */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <SakidoLogo size="w-8 h-8" />
             <div>
@@ -1725,10 +1725,10 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         </div>
 
         {/* Student Section */}
-        <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
+        <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0">
           Student Workspace
         </div>
-        <ul className="space-y-1 mb-6">
+        <ul className="space-y-1 mb-6 shrink-0">
           {[
             { name: 'Classes', icon: BookOpen },
             { name: 'Calendar', icon: CalendarIcon },
@@ -1757,10 +1757,10 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         </ul>
 
         {/* Connectors Section */}
-        <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
+        <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0">
           Integrations
         </div>
-        <ul className="space-y-1 mb-6">
+        <ul className="space-y-1 mb-6 shrink-0">
           <li>
             <button
               onClick={() => handleSelectTab('Connectors')}
@@ -1777,10 +1777,10 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         </ul>
 
         {/* Other Section */}
-        <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
+        <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0">
           Modules
         </div>
-        <ul className="space-y-1 mb-6">
+        <ul className="space-y-1 mb-6 shrink-0">
           {['University & People', 'AI Features'].map((item) => (
             <li key={item}>
               <button
@@ -1798,8 +1798,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           ))}
         </ul>
 
-        {/* Footer User Info */}
-        <div className="mt-auto border-t border-outline-variant/30 pt-4 flex items-center justify-between relative">
+        {/* Footer User Info (Fixed at bottom-left corner of sidebar) */}
+        <div className="absolute bottom-0 left-0 right-0 border-t border-outline-variant/30 px-4 py-3.5 bg-surface-container-low flex items-center justify-between z-30 shadow-xs">
           <button
             onClick={() => setIsProfileModalOpen(true)}
             className="flex items-center gap-2.5 min-w-0 hover:bg-surface-container/80 p-1.5 -ml-1.5 rounded-xl transition-all cursor-pointer text-left flex-1"
