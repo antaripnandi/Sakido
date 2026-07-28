@@ -1803,7 +1803,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           <button
             onClick={() => setIsProfileModalOpen(true)}
             className="flex items-center gap-2.5 min-w-0 hover:bg-surface-container/80 p-1.5 -ml-1.5 rounded-xl transition-all cursor-pointer text-left flex-1"
-            title="User Profile & Settings"
+            title={userName}
           >
             <div className="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant/40 flex items-center justify-center overflow-hidden shrink-0">
               {userAvatar ? (
@@ -1812,15 +1812,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 <UserIcon className="w-4 h-4 text-secondary" />
               )}
             </div>
-            <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-xs font-bold text-on-surface truncate">{userName}</span>
-                <div className="w-3.5 h-3.5 rounded-full bg-emerald-950/80 border border-emerald-700/80 flex items-center justify-center text-emerald-400 shrink-0" title="Verified Session">
-                  <Check className="w-2.5 h-2.5 stroke-[3]" />
-                </div>
-              </div>
-              <span className="text-[10px] text-secondary font-mono">Settings & Profile</span>
-            </div>
+            <span className="text-xs font-bold text-on-surface truncate">{userName}</span>
           </button>
 
           {onSignOut && (
@@ -2109,7 +2101,6 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 <div>
                   <div className="flex items-center gap-1.5">
                     <h3 className="font-display font-bold text-lg text-on-surface">{userName}</h3>
-                    <ShieldCheck className="w-4 h-4 text-emerald-500" title="Verified Account" />
                   </div>
                   <p className="text-xs text-secondary font-mono">{currentUser?.email || 'Student Account'}</p>
                 </div>
