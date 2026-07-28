@@ -570,6 +570,65 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     fetchGoogleEvents();
   }, [connectors.googleCalendar, calendarMonth]);
 
+  // Live Google Notes / Keep (Drive AppData) auto-fetch & 2-Way Live Sync
+  useEffect(() => {
+    if (!connectors.googleNotes) return;
+
+    const fetchGoogleNotes = async () => {
+      let token = localStorage.getItem('sakido_provider_token');
+      if (!token) return;
+
+      try {
+        const searchRes = await fetch(
+          "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'sakido_keep_notes.json'",
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+
+        if (searchRes.status === 401) {
+          const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
+          if (refreshToken) {
+            const refreshRes = await fetch('/api/refresh-token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ refresh_token: refreshToken }),
+            });
+            if (refreshRes.ok) {
+              const refreshData = await refreshRes.json();
+              token = refreshData.access_token;
+              localStorage.setItem('sakido_provider_token', token!);
+            }
+          }
+        }
+
+        if (searchRes.ok) {
+          const searchData = await searchRes.json();
+          if (searchData.files && searchData.files.length > 0) {
+            const fileId = searchData.files[0].id;
+            const contentRes = await fetch(
+              `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+
+            if (contentRes.ok) {
+              const remoteNotes = await contentRes.json();
+              if (Array.isArray(remoteNotes) && remoteNotes.length > 0) {
+                setNotes(remoteNotes);
+                try {
+                  localStorage.setItem('sakido_notes', JSON.stringify(remoteNotes));
+                } catch {}
+                setConnectorNotice(`🟢 Synced ${remoteNotes.length} notes live from Google Keep / Drive!`);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Live Google Notes fetch notice:', err);
+      }
+    };
+
+    fetchGoogleNotes();
+  }, [connectors.googleNotes]);
+
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEventTitle.trim()) return;
