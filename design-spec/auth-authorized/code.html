@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en" style=""><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SAKIDO - Authentication Success</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;family=Syne:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-surface": "#e2e2e2",
+                      "primary-fixed-dim": "#c6c6c7",
+                      "surface-container-highest": "#353535",
+                      "on-primary": "#2f3131",
+                      "surface-variant": "#353535",
+                      "primary": "#ffffff",
+                      "surface-container-lowest": "#0e0e0e",
+                      "on-primary-fixed-variant": "#454747",
+                      "on-primary-fixed": "#1a1c1c",
+                      "on-tertiary": "#2f3131",
+                      "on-primary-container": "#636565",
+                      "surface-dim": "#131313",
+                      "on-secondary-fixed-variant": "#474746",
+                      "inverse-primary": "#5d5f5f",
+                      "on-tertiary-fixed": "#1a1c1c",
+                      "surface": "#131313",
+                      "error-container": "#93000a",
+                      "background": "#131313",
+                      "outline": "#8e9192",
+                      "on-surface-variant": "#c4c7c8",
+                      "on-secondary-container": "#b7b5b4",
+                      "surface-container": "#1f1f1f",
+                      "surface-tint": "#c6c6c7",
+                      "on-secondary-fixed": "#1b1c1c",
+                      "tertiary-fixed-dim": "#c6c6c7",
+                      "on-tertiary-fixed-variant": "#454747",
+                      "secondary-fixed": "#e4e2e1",
+                      "tertiary-fixed": "#e2e2e2",
+                      "secondary-fixed-dim": "#c8c6c5",
+                      "on-background": "#e2e2e2",
+                      "secondary-container": "#474746",
+                      "on-error": "#690005",
+                      "error": "#ffb4ab",
+                      "primary-fixed": "#e2e2e2",
+                      "on-error-container": "#ffdad6",
+                      "surface-container-low": "#1b1b1b",
+                      "on-tertiary-container": "#636565",
+                      "surface-container-high": "#2a2a2a",
+                      "secondary": "#c8c6c5",
+                      "primary-container": "#e2e2e2",
+                      "inverse-on-surface": "#303030",
+                      "tertiary-container": "#e2e2e2",
+                      "inverse-surface": "#e2e2e2",
+                      "on-secondary": "#303030",
+                      "tertiary": "#ffffff",
+                      "outline-variant": "#444748",
+                      "surface-bright": "#393939"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "container-max": "1280px",
+                      "margin-desktop": "64px",
+                      "gutter": "24px",
+                      "margin-mobile": "16px",
+                      "unit": "4px"
+              },
+              "fontFamily": {
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "label-md": [
+                              "JetBrains Mono"
+                      ],
+                      "body-lg": [
+                              "Inter"
+                      ],
+                      "headline-md": [
+                              "Syne"
+                      ],
+                      "display": [
+                              "Syne"
+                      ],
+                      "headline-lg": [
+                              "Syne"
+                      ],
+                      "label-sm": [
+                              "JetBrains Mono"
+                      ],
+                      "headline-lg-mobile": [
+                              "Syne"
+                      ]
+              },
+              "fontSize": {
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "label-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.6",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-md": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.3",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "display": [
+                              "64px",
+                              {
+                                      "lineHeight": "1.1",
+                                      "letterSpacing": "-0.04em",
+                                      "fontWeight": "800"
+                              }
+                      ],
+                      "headline-lg": [
+                              "40px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.4",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "32px",
+                              {
+                                      "lineHeight": "1.2",
+                                      "fontWeight": "700"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        body {
+            background-color: #000000;
+        }
+        
+        .fade-in-up {
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        
+        .fade-in-up-delay-1 {
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        .fade-in-up-delay-2 {
+            animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+<body class="text-on-surface antialiased min-h-screen grid place-items-center relative overflow-hidden p-4 sm:p-6 md:p-8">
+<!-- Decorative background elements -->
+<div class="absolute inset-0 pointer-events-none overflow-hidden">
+<div class="absolute top-1/4 left-1/4 w-96 h-96 bg-primary opacity-5 rounded-full blur-3xl mix-blend-screen"></div>
+<div class="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-outline opacity-5 rounded-full blur-3xl mix-blend-screen"></div>
+</div>
+<!-- Main Content Container -->
+<main class="w-full relative z-10 flex flex-col items-center justify-center min-h-[80vh]">
+<div class="w-full max-w-2xl border border-outline-variant p-8 md:p-12 lg:p-16 relative bg-surface/80 backdrop-blur-md shadow-2xl rounded-3xl">
+<div class="flex flex-col gap-12">
+<header class="flex flex-col gap-2 fade-in-up">
+<h1 class="font-display font-bold text-headline-lg-mobile md:text-5xl text-primary tracking-tight uppercase whitespace-nowrap">AUTHORIZED</h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-xs">Identity verified and session established.</p>
+</header>
+<div class="flex flex-col gap-4 fade-in-up-delay-1"><div class="mb-4 flex items-center justify-start"><div class="w-16 h-16 rounded-full bg-black border border-outline-variant flex items-center justify-center shadow-inner"></div></div>
+<div class="border-t border-outline-variant pt-4">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase block mb-1">User</span>
+<span class="font-headline-md text-headline-md text-primary break-all">jane@example.com</span>
+</div>
+<div class="border-t border-outline-variant pt-4">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase block mb-1">Session ID</span>
+<span class="font-label-md text-label-md text-primary opacity-70">SKD-8472-X9</span>
+</div>
+</div>
+<div class="pt-8 fade-in-up-delay-2">
+<a class="group relative inline-flex items-center justify-center w-full md:w-auto bg-primary text-black font-label-md text-label-md uppercase px-8 py-4 transition-all duration-300 hover:bg-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-black rounded-full" href="#">
+<span class="relative z-10 font-bold tracking-widest">GO TO DASHBOARD</span>
+<div class="absolute inset-0 border border-transparent group-hover:border-primary group-hover:scale-105 transition-transform duration-300 pointer-events-none rounded-full"></div>
+</a>
+</div>
+</div>
+</div>
+</main>
+</body></html>

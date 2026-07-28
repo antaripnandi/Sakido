@@ -1,0 +1,76 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>SAKIDO - Verify Passkey</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&amp;family=JetBrains+Mono:wght@500;700&amp;family=Syne:wght@700;800&amp;display=swap" rel="stylesheet">
+<style>
+    body {
+        background-color: #000000;
+        color: #ffffff;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
+</head>
+<body class="antialiased">
+<!-- Auth Modal Container - OTP Screen -->
+<main class="w-full max-w-[480px] p-[32px] md:p-[48px] mx-4 border border-[#262626] rounded-2xl bg-[#000000] shadow-2xl flex flex-col">
+<!-- Header Section -->
+<header class="mb-[36px] text-center">
+<h1 class="font-display text-4xl sm:text-5xl font-extrabold tracking-tighter text-white uppercase mb-3">
+    SAKIDO
+</h1>
+<p class="font-body-lg text-sm text-[#c4c7c8]">
+    Enter 6-digit passkey sent to user@example.com
+</p>
+</header>
+
+<!-- OTP Form Section -->
+<section class="flex flex-col gap-6 w-full">
+<form class="flex flex-col gap-6 w-full" onsubmit="event.preventDefault();">
+    <div class="flex flex-col gap-2 text-left">
+        <label class="font-label-sm text-xs text-[#c4c7c8] uppercase tracking-wider font-medium">
+            6-Digit Passkey
+        </label>
+        <div class="flex items-center justify-between gap-2">
+            <input type="text" maxlength="1" class="w-12 h-14 text-center text-2xl font-mono font-bold bg-transparent border border-[#262626] text-white focus:outline-none focus:border-white transition-all" value="" autofocus>
+            <input type="text" maxlength="1" class="w-12 h-14 text-center text-2xl font-mono font-bold bg-transparent border border-[#262626] text-white focus:outline-none focus:border-white transition-all" value="">
+            <input type="text" maxlength="1" class="w-12 h-14 text-center text-2xl font-mono font-bold bg-transparent border border-[#262626] text-white focus:outline-none focus:border-white transition-all" value="">
+            <input type="text" maxlength="1" class="w-12 h-14 text-center text-2xl font-mono font-bold bg-transparent border border-[#262626] text-white focus:outline-none focus:border-white transition-all" value="">
+            <input type="text" maxlength="1" class="w-12 h-14 text-center text-2xl font-mono font-bold bg-transparent border border-[#262626] text-white focus:outline-none focus:border-white transition-all" value="">
+            <input type="text" maxlength="1" class="w-12 h-14 text-center text-2xl font-mono font-bold bg-transparent border border-[#262626] text-white focus:outline-none focus:border-white transition-all" value="">
+        </div>
+    </div>
+
+    <button type="submit" class="w-full py-4 px-6 bg-white text-black font-label-md text-xs sm:text-sm font-bold tracking-wider uppercase hover:bg-[#E5E5E5] transition-colors duration-200">
+        Verify Code
+    </button>
+
+    <div class="flex items-center justify-between font-label-sm text-xs text-[#8e9192] pt-1">
+        <button type="button" class="hover:text-white uppercase tracking-wider transition-colors">
+            Change email
+        </button>
+        <button type="button" class="hover:text-white uppercase tracking-wider transition-colors">
+            Resend code
+        </button>
+    </div>
+</form>
+</section>
+
+<!-- Footer / Legal Info -->
+<footer class="mt-12 pt-6 border-t border-[#262626] flex flex-col gap-2 text-center">
+<p class="font-label-sm text-xs text-[#c4c7c8]">
+    By continuing, you agree to our 
+    <a class="text-white hover:underline" href="#">Terms</a> and 
+    <a class="text-white hover:underline" href="#">Privacy Policy</a>.
+</p>
+</footer>
+</main>
+</body></html>

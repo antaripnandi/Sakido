@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import Lenis from 'lenis';
 import { FrameCanvas } from './FrameCanvas';
 import { AuthModal } from './auth/AuthModal';
 import { getSupabaseClient } from '../lib/supabaseClient';
-import { User, LogOut } from 'lucide-react';
+import { User, ChevronLeft } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -58,6 +59,7 @@ const FEATURE_CALLOUTS = [
     title: 'Knowledge Inbox',
     text: "Save a link — a video, article, or PDF — so you don't lose it. Share a YouTube link and it plays right on the page.",
     align: 'right',
+    offsetY: 140,
     startFrame: 128,
     peakStart: 136,
     peakEnd: 158,
@@ -125,7 +127,7 @@ export const SakidoLandingPage: React.FC = () => {
   const [displayFrame, setDisplayFrame] = useState<number>(0);
   const [preloadProgress, setPreloadProgress] = useState<number>(0);
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
-  const [currentUser, setCurrentUser] = useState<{ email?: string; name?: string } | null>(null);
+  const [currentUser, setCurrentUser] = useState<{ email?: string; name?: string; avatarUrl?: string } | null>(null);
 
   // Sync Supabase Auth session on mount and upon auth change
   useEffect(() => {
@@ -135,9 +137,11 @@ export const SakidoLandingPage: React.FC = () => {
     // Check initial active session
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) {
+        const u = data.session.user;
         setCurrentUser({
-          email: data.session.user.email,
-          name: data.session.user.user_metadata?.full_name || data.session.user.email?.split('@')[0],
+          email: u.email,
+          name: u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split('@')[0],
+          avatarUrl: u.user_metadata?.avatar_url || u.user_metadata?.picture,
         });
       }
     });
@@ -145,9 +149,11 @@ export const SakidoLandingPage: React.FC = () => {
     // Subscribe to session changes (login, logout, OAuth callback)
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
+        const u = session.user;
         setCurrentUser({
-          email: session.user.email,
-          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
+          email: u.email,
+          name: u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split('@')[0],
+          avatarUrl: u.user_metadata?.avatar_url || u.user_metadata?.picture,
         });
       } else {
         setCurrentUser(null);
@@ -156,6 +162,30 @@ export const SakidoLandingPage: React.FC = () => {
 
     return () => {
       authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  // Initialize Lenis smooth scroll engine
+  useEffect(() => {
+    const lenis = new Lenis({
+      duration: 1.1,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      smoothWheel: true,
+      touchMultiplier: 1.5,
+    });
+
+    lenis.on('scroll', ScrollTrigger.update);
+
+    const updateLenis = (time: number) => {
+      lenis.raf(time * 1000);
+    };
+
+    gsap.ticker.add(updateLenis);
+    gsap.ticker.lagSmoothing(0);
+
+    return () => {
+      gsap.ticker.remove(updateLenis);
+      lenis.destroy();
     };
   }, []);
 
@@ -218,27 +248,33 @@ export const SakidoLandingPage: React.FC = () => {
         {currentUser ? (
           <button
             onClick={() => setIsAuthOpen(true)}
-            className="px-3.5 py-1.5 rounded-full bg-zinc-900/90 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-200 flex items-center gap-2 transition-all shadow-md backdrop-blur-md"
-            title="Account details"
+            className="group px-3 py-1.5 rounded-full bg-zinc-900/90 border border-zinc-800 hover:border-zinc-600 text-xs text-zinc-200 flex items-center gap-2.5 transition-all shadow-md backdrop-blur-md cursor-pointer hover:bg-zinc-800"
+            title="Open AUTHORIZED session details"
           >
-            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="font-mono">{currentUser.name || currentUser.email}</span>
+            <div className="w-6 h-6 rounded-full bg-black border border-[#444748] flex items-center justify-center text-white overflow-hidden shrink-0 shadow-inner">
+              {currentUser.avatarUrl ? (
+                <img
+                  src={currentUser.avatarUrl}
+                  alt={currentUser.name || 'User Profile'}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <User className="w-3.5 h-3.5 text-zinc-300" />
+              )}
+            </div>
+            <span className="font-mono text-xs text-zinc-200 group-hover:text-white transition-colors">
+              {currentUser.name || currentUser.email}
+            </span>
+            <ChevronLeft className="w-4 h-4 text-zinc-400 group-hover:text-white group-hover:-translate-x-0.5 transition-transform" />
           </button>
         ) : (
-          <>
-            <button
-              onClick={() => setIsAuthOpen(true)}
-              className="px-4 py-2 text-xs font-medium text-zinc-300 hover:text-white transition-colors"
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => setIsAuthOpen(true)}
-              className="px-4 py-2 rounded-full bg-white hover:bg-zinc-200 text-black font-semibold text-xs transition-colors shadow-md"
-            >
-              Get Started
-            </button>
-          </>
+          <button
+            onClick={() => setIsAuthOpen(true)}
+            className="px-4 py-2 rounded-full bg-white hover:bg-zinc-200 text-black font-semibold text-xs transition-colors shadow-md cursor-pointer"
+          >
+            Get Started
+          </button>
         )}
       </div>
 
@@ -295,6 +331,7 @@ export const SakidoLandingPage: React.FC = () => {
               if (opacity <= 0.001) return null;
 
               const isLeft = item.align === 'left';
+              const extraY = item.offsetY || 0;
 
               return (
                 <div
@@ -306,7 +343,7 @@ export const SakidoLandingPage: React.FC = () => {
                   }`}
                   style={{
                     opacity,
-                    transform: `translateY(calc(-50% + ${translateY}px))`,
+                    transform: `translateY(calc(-50% + ${translateY + extraY}px))`,
                   }}
                 >
                   <span className="text-xs uppercase tracking-[0.25em] text-zinc-400 font-semibold mb-2 block">

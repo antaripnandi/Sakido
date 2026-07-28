@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import path from 'path';
 import dotenv from 'dotenv';
+import { createServer as createViteServer } from 'vite';
 import { getSupabaseAdmin } from './src/lib/supabaseServer.js';
 
 dotenv.config();
@@ -56,12 +57,9 @@ async function authenticateUser(req: Request & { user?: any }, res: Response, ne
   }
 }
 
-/**
- * Creates and configures the Express application with all middleware and routes.
- * Used both for local development (with Vite middleware) and Vercel serverless.
- */
-export async function createApp() {
+async function startServer() {
   const app = express();
+  const PORT = 3000;
 
   app.use(express.json({ limit: '1mb' }));
 
@@ -129,8 +127,14 @@ export async function createApp() {
   // Express static middleware for public folder
   app.use(express.static(path.join(process.cwd(), 'public')));
 
-  // In production (including Vercel), serve the built Vite static files
-  if (process.env.NODE_ENV === 'production' || process.env.VERCEL === '1') {
+  // Vite development middleware vs production static file serving
+  if (process.env.NODE_ENV !== 'production') {
+    const vite = await createViteServer({
+      server: { middlewareMode: true },
+      appType: 'spa',
+    });
+    app.use(vite.middlewares);
+  } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
@@ -144,46 +148,12 @@ export async function createApp() {
     res.status(500).json({ error: 'An unexpected server error occurred.' });
   });
 
-  return app;
-}
-
-// ============================================================
-// Vercel serverless handler — used when deployed on Vercel
-// ============================================================
-let cachedApp: express.Application | null = null;
-
-export default async function handler(req: Request, res: Response) {
-  if (!cachedApp) {
-    cachedApp = await createApp();
-  }
-  return cachedApp(req, res);
-}
-
-// ============================================================
-// Local development server — starts Express with Vite middleware
-// ============================================================
-if (!process.env.VERCEL) {
-  const PORT = parseInt(process.env.PORT || '3000', 10);
-
-  async function startDevServer() {
-    const app = await createApp();
-
-    if (process.env.NODE_ENV !== 'production') {
-      const { createServer: createViteServer } = await import('vite');
-      const vite = await createViteServer({
-        server: { middlewareMode: true },
-        appType: 'spa',
-      });
-      app.use(vite.middlewares);
-    }
-
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Server running on http://0.0.0.0:${PORT}`);
-    });
-  }
-
-  startDevServer().catch((err) => {
-    console.error('Failed to start server:', err);
-    process.exit(1);
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
   });
 }
+
+startServer().catch((err) => {
+  console.error('Failed to start server:', err);
+  process.exit(1);
+});

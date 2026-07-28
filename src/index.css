@@ -4,12 +4,54 @@
   html, body {
     background-color: #000000;
     color: #ffffff;
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     overflow-x: hidden;
-    scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  h1, h2, h3, h4, h5, h6, .font-display, .font-syne {
+    font-family: 'Syne', sans-serif;
+  }
+}
+
+/* Lenis smooth scroll integration */
+html.lenis, html.lenis body {
+  height: auto;
+}
+
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+.font-display {
+  font-family: 'Syne', sans-serif;
+}
+
+.font-label-md, .font-label-sm, .font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.font-body-lg, .font-body-md {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Form Autofill styles to maintain dark mode aesthetic */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #000000 inset !important;
+    -webkit-text-fill-color: white !important;
+    transition: background-color 5000s ease-in-out 0s;
 }
 
 /* Custom subtle scrollbar for cinematic feel */

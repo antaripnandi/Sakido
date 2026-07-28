@@ -8,6 +8,56 @@ interface AuthModalProps {
   onSuccess?: () => void;
 }
 
+// Helper to extract clean error message from auth responses
+const formatSupabaseAuthError = (error: any): string => {
+  if (!error) return 'An unexpected authentication error occurred.';
+  
+  let errObj: any = error;
+  if (typeof error === 'string') {
+    try {
+      errObj = JSON.parse(error);
+    } catch {
+      errObj = { message: error };
+    }
+  }
+
+  const name = errObj?.name || '';
+  const status = errObj?.status;
+  const rawMsg = errObj?.message || errObj?.error_description || errObj?.msg || '';
+
+  // Handle server 500 / AuthRetryableFetchError
+  if (name === 'AuthRetryableFetchError' || status === 500 || (typeof rawMsg === 'string' && rawMsg.includes('AuthRetryableFetchError'))) {
+    return 'Authentication service returned a 500 error. The default email service may be rate-limited or unavailable. Try signing in with Google or try again in a few minutes.';
+  }
+
+  let msg = typeof rawMsg === 'string' ? rawMsg : '';
+  if (!msg || msg === '{}' || msg === '[]') {
+    try {
+      const str = JSON.stringify(errObj);
+      if (str && str !== '{}' && str !== '[]') {
+        if (str.includes('AuthRetryableFetchError') || str.includes('500')) {
+          return 'Authentication service returned a server error (500). Please try signing in with Google or try again shortly.';
+        }
+        msg = str;
+      }
+    } catch {}
+  }
+
+  if (!msg || msg === '{}') {
+    return 'Authentication request failed. Please check your connection or try signing in with Google.';
+  }
+
+  const lower = msg.toLowerCase();
+  if (lower.includes('rate limit') || lower.includes('security purposes') || lower.includes('over_email_send_rate_limit')) {
+    return 'Default email rate limit reached (3 emails/hr). Please configure custom SMTP or sign in with Google.';
+  }
+  if (lower.includes('disabled') || lower.includes('not allowed')) {
+    return 'Email OTP sign-in is disabled in auth settings. Please enable Email Provider in project settings.';
+  }
+
+  return msg;
+};
+
 export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess }) => {
   const [step, setStep] = useState<'email' | 'otp' | 'success'>('email');
   const [email, setEmail] = useState('');
@@ -15,7 +65,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
-  const [userProfile, setUserProfile] = useState<{ email?: string; name?: string } | null>(null);
+  const [userProfile, setUserProfile] = useState<{
+    id?: string;
+    email?: string;
+    name?: string;
+    avatarUrl?: string;
+    provider?: string;
+    lastSignIn?: string;
+  } | null>(null);
 
   const otpInputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -30,9 +87,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       setInfoMessage(null);
       supabase.auth.getSession().then(({ data }) => {
         if (data.session?.user) {
+          const user = data.session.user;
           setUserProfile({
-            email: data.session.user.email,
-            name: data.session.user.user_metadata?.full_name || data.session.user.email?.split('@')[0],
+            id: user.id,
+            email: user.email,
+            name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0],
+            avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture,
+            provider: user.app_metadata?.provider || 'Google / Email',
+            lastSignIn: user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'Active',
           });
           setStep('success');
         }
@@ -42,9 +104,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     // Subscribe to auth state changes (e.g. after Google OAuth redirect callback)
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
+        const user = session.user;
         setUserProfile({
-          email: session.user.email,
-          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
+          id: user.id,
+          email: user.email,
+          name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split('@')[0],
+          avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture,
+          provider: user.app_metadata?.provider || 'Google / Email',
+          lastSignIn: user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleString() : 'Active',
         });
         setStep('success');
       } else if (event === 'SIGNED_OUT') {
@@ -65,7 +132,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     setErrorMessage(null);
     const supabase = getSupabaseClient();
     if (!supabase) {
-      setErrorMessage('Supabase is not configured yet. Please check environment variables in .env.');
+      setErrorMessage('Authentication is not configured yet. Please check environment variables in .env.');
       return;
     }
 
@@ -81,7 +148,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
       if (error) {
         if (error.message?.includes('provider is not enabled') || (error as any).code === 400) {
-          setErrorMessage('Google Sign-In is not enabled in your Supabase Dashboard yet. Please go to Supabase > Authentication > Providers > Google to enable it, or use Email OTP below.');
+          setErrorMessage('Google Sign-In is not enabled in auth settings yet. Please use Email OTP below.');
         } else {
           setErrorMessage(error.message || 'Failed to connect to Google. Please try email verification.');
         }
@@ -100,10 +167,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
           const checkInterval = setInterval(async () => {
             const { data: sessionData } = await supabase.auth.getSession();
             if (sessionData?.session?.user) {
+              const u = sessionData.session.user;
               clearInterval(checkInterval);
               setUserProfile({
-                email: sessionData.session.user.email,
-                name: sessionData.session.user.user_metadata?.full_name || sessionData.session.user.email?.split('@')[0],
+                id: u.id,
+                email: u.email,
+                name: u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split('@')[0],
+                avatarUrl: u.user_metadata?.avatar_url || u.user_metadata?.picture,
+                provider: 'Google OAuth',
+                lastSignIn: new Date().toLocaleString(),
               });
               setStep('success');
               if (onSuccess) onSuccess();
@@ -157,11 +229,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       });
 
       if (error) {
-        if (error.message?.includes('rate limit')) {
-          setErrorMessage('Supabase default email rate limit reached (3/hr). To fix this, enter Resend SMTP credentials in Supabase Dashboard > Authentication > SMTP Settings.');
-        } else {
-          setErrorMessage(`Supabase Auth Error: ${error.message}`);
-        }
+        setErrorMessage(formatSupabaseAuthError(error));
       } else {
         setStep('otp');
         setInfoMessage(`We've sent a 6-digit passkey to ${cleanEmail}`);
@@ -229,7 +297,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       setLoading(true);
       setTimeout(() => {
         setLoading(false);
-        setUserProfile({ email, name: email.split('@')[0] });
+        setUserProfile({
+          id: 'usr_' + Math.random().toString(36).substring(2, 10),
+          email,
+          name: email.split('@')[0],
+          provider: 'Email Passkey (Demo)',
+          lastSignIn: new Date().toLocaleString(),
+        });
         setStep('success');
         if (onSuccess) onSuccess();
       }, 500);
@@ -245,11 +319,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
       });
 
       if (error) {
-        setErrorMessage('Invalid or expired code. Please request a new passkey.');
+        setErrorMessage(formatSupabaseAuthError(error) || 'Invalid or expired code. Please request a new passkey.');
       } else if (data.session?.user) {
+        const u = data.session.user;
         setUserProfile({
-          email: data.session.user.email,
-          name: data.session.user.user_metadata?.full_name || data.session.user.email?.split('@')[0],
+          id: u.id,
+          email: u.email,
+          name: u.user_metadata?.full_name || u.user_metadata?.name || u.email?.split('@')[0],
+          avatarUrl: u.user_metadata?.avatar_url || u.user_metadata?.picture,
+          provider: 'Email Passkey',
+          lastSignIn: new Date().toLocaleString(),
         });
         setStep('success');
         if (onSuccess) onSuccess();
@@ -274,241 +353,260 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn">
       {/* Click outside backdrop */}
       <div className="absolute inset-0" onClick={onClose} />
 
       {/* Main Modal Card */}
-      <div className="relative w-full max-w-md bg-zinc-950 border border-zinc-800/80 rounded-2xl shadow-2xl overflow-hidden z-10 p-6 sm:p-8 text-white">
+      <div className="relative w-full max-w-[480px] p-8 md:p-12 mx-4 border border-[#262626] rounded-2xl bg-[#000000] shadow-2xl flex flex-col z-10 text-white">
         {/* Top Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-900 rounded-lg transition-colors"
+          className="absolute top-6 right-6 p-2 text-[#8e9192] hover:text-white hover:bg-[#1a1a1a] transition-colors rounded-lg"
           aria-label="Close dialog"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* Modal Header */}
-        <div className="mb-6">
-          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-400 mb-3">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Secure Auth</span>
-          </div>
-          <h2 className="text-2xl font-bold tracking-tight text-white">
-            {step === 'success' ? 'Welcome to Sakido' : 'Get started'}
-          </h2>
-          <p className="mt-1 text-sm text-zinc-400">
-            {step === 'email' && 'Sign in or create your account to sync your school workspace.'}
-            {step === 'otp' && `Enter the 6-digit code sent to ${email}`}
-            {step === 'success' && 'Your account is verified and connected.'}
+        {/* Header Section */}
+        <header className="mb-8 text-center">
+          <h1 className={`font-display font-extrabold tracking-tight text-white uppercase mb-3 ${
+            step === 'success' ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl md:text-5xl'
+          }`}>
+            {step === 'success' ? 'AUTHORIZED' : 'SAKIDO'}
+          </h1>
+          <p className="font-body-lg text-sm text-[#c4c7c8]">
+            {step === 'email' && 'Get started to continue.'}
+            {step === 'otp' && `Enter 6-digit passkey sent to ${email}`}
+            {step === 'success' && 'Identity verified and session established.'}
           </p>
-        </div>
+        </header>
 
         {/* Status Error / Info Messages */}
         {errorMessage && (
-          <div className="mb-4 p-3 bg-red-950/50 border border-red-800/50 rounded-xl flex items-start gap-2.5 text-red-200 text-xs leading-relaxed">
+          <div className="mb-6 p-3.5 bg-red-950/60 border border-red-800/80 rounded-none flex items-start gap-2.5 text-red-200 text-xs font-mono leading-relaxed">
             <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
             <span>{errorMessage}</span>
           </div>
         )}
 
         {infoMessage && (
-          <div className="mb-4 p-3 bg-zinc-900 border border-zinc-800 rounded-xl flex items-start gap-2.5 text-zinc-300 text-xs leading-relaxed">
+          <div className="mb-6 p-3.5 bg-[#171717] border border-[#262626] rounded-none flex items-start gap-2.5 text-zinc-300 text-xs font-mono leading-relaxed">
             <Mail className="w-4 h-4 text-white shrink-0 mt-0.5" />
             <span>{infoMessage}</span>
           </div>
         )}
 
         {!isSupabaseConfigured && (
-          <div className="mb-5 p-3 bg-zinc-900/80 border border-zinc-800 rounded-xl text-xs text-zinc-400 leading-relaxed">
-            <span className="font-semibold text-white block mb-1">Notice for local development:</span>
-            Supabase URL & Publishable keys are currently using fallback settings. To enable live Resend email delivery & OAuth, provide environment variables in <code className="text-zinc-200 font-mono bg-zinc-950 px-1 py-0.5 rounded">.env</code>.
+          <div className="mb-6 p-3 bg-[#171717] border border-[#262626] text-xs text-[#8e9192] font-mono leading-relaxed">
+            <span className="font-semibold text-white block mb-1">Local Development Notice:</span>
+            Authentication is in preview mode. Passkeys and OAuth redirect safely within session state.
           </div>
         )}
 
-        {/* STEP 1: EMAIL ENTRY & GOOGLE OAUTH */}
-        {step === 'email' && (
-          <div className="space-y-4">
-            {/* Google OAuth Button */}
-            <button
-              onClick={handleGoogleSignIn}
-              disabled={loading}
-              className="w-full h-11 px-4 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl font-medium text-sm text-white flex items-center justify-center gap-3 transition-colors disabled:opacity-50"
-            >
-              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                <path
-                  fill="#EA4335"
-                  d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.1 9 5 12 5z"
-                />
-                <path
-                  fill="#4285F4"
-                  d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 10.8 0 12s.7 2.3 1.9 4.7l3.7-2.9z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.1-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"
-                />
-              </svg>
-              <span>Continue with Google</span>
-            </button>
+        {/* Auth Actions Section */}
+        <section className="flex flex-col gap-6 w-full">
+          {/* STEP 1: EMAIL ENTRY & GOOGLE OAUTH */}
+          {step === 'email' && (
+            <>
+              {/* Google OAuth Button */}
+              <button
+                onClick={handleGoogleSignIn}
+                disabled={loading}
+                className="w-full flex items-center justify-center gap-3 py-4 px-6 border border-[#262626] bg-transparent hover:bg-white hover:text-[#000000] text-white font-label-md text-xs sm:text-sm font-semibold tracking-wider uppercase transition-colors duration-200 group disabled:opacity-50 cursor-pointer"
+              >
+                <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                  <path
+                    fill="#EA4335"
+                    d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.7 14.8 1 12 1 7.5 1 3.7 3.6 1.9 7.3l3.7 2.9C6.5 7.1 9 5 12 5z"
+                  />
+                  <path
+                    fill="#4285F4"
+                    d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.6 14.8c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.9 7.3C.7 9.7 0 10.8 0 12s.7 2.3 1.9 4.7l3.7-2.9z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3 0-5.5-2.1-6.4-5.2L1.9 16C3.7 19.7 7.5 23 12 23z"
+                  />
+                </svg>
+                <span>Continue with Google</span>
+              </button>
 
-            {/* Divider */}
-            <div className="relative py-1 flex items-center justify-center">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-zinc-800/80" />
+              {/* Divider */}
+              <div className="flex items-center gap-4">
+                <hr className="flex-grow border-t border-[#262626]" />
+                <span className="font-label-sm text-xs text-[#8e9192] uppercase tracking-widest">OR</span>
+                <hr className="flex-grow border-t border-[#262626]" />
               </div>
-              <span className="relative px-3 bg-zinc-950 text-xs font-mono uppercase tracking-wider text-zinc-500">
-                Or with email
-              </span>
-            </div>
 
-            {/* Email Input Form */}
-            <form onSubmit={handleSendOtp} className="space-y-3">
-              <div>
-                <label htmlFor="email-input" className="block text-xs font-medium text-zinc-300 mb-1.5">
-                  Email address
+              {/* Email Input Form */}
+              <form onSubmit={handleSendOtp} className="flex flex-col gap-6 w-full">
+                <div className="flex flex-col gap-2 text-left">
+                  <label className="font-label-sm text-xs text-[#c4c7c8] uppercase tracking-wider font-medium" htmlFor="email-input">
+                    Email Address
+                  </label>
+                  <input
+                    id="email-input"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="hello@example.com"
+                    required
+                    className="w-full bg-transparent border border-[#262626] focus:border-white focus:ring-0 text-white font-body-md text-sm py-3 px-4 outline-none transition-colors duration-200"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading || !email.trim()}
+                  className="w-full py-4 px-6 bg-white text-[#000000] font-label-md text-xs sm:text-sm font-bold tracking-wider uppercase hover:bg-[#E5E5E5] transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  {loading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin text-black" />
+                      <span>Sending code...</span>
+                    </>
+                  ) : (
+                    <span>Send Code</span>
+                  )}
+                </button>
+              </form>
+            </>
+          )}
+
+          {/* STEP 2: 6-DIGIT OTP VERIFICATION */}
+          {step === 'otp' && (
+            <form onSubmit={handleVerifyOtp} className="flex flex-col gap-6 w-full">
+              <div className="flex flex-col gap-2 text-left">
+                <label className="font-label-sm text-xs text-[#c4c7c8] uppercase tracking-wider font-medium">
+                  6-Digit Passkey
                 </label>
-                <input
-                  id="email-input"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@university.edu"
-                  required
-                  className="w-full h-11 px-3.5 bg-zinc-900/90 border border-zinc-800 rounded-xl text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-all"
-                />
+                <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+                  {otpCode.map((digit, index) => (
+                    <input
+                      key={index}
+                      ref={(el) => (otpInputsRef.current[index] = el)}
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={1}
+                      value={digit}
+                      onChange={(e) => handleOtpChange(index, e.target.value)}
+                      onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                      onPaste={index === 0 ? handleOtpPaste : undefined}
+                      className="w-11 h-12 text-center text-xl font-mono font-bold bg-transparent border border-[#262626] text-white focus:outline-none focus:border-white transition-all"
+                    />
+                  ))}
+                </div>
               </div>
 
               <button
                 type="submit"
-                disabled={loading || !email.trim()}
-                className="w-full h-11 px-4 bg-white hover:bg-zinc-200 text-black font-semibold text-sm rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading || otpCode.join('').length !== 6}
+                className="w-full py-4 px-6 bg-white text-[#000000] font-label-md text-xs sm:text-sm font-bold tracking-wider uppercase hover:bg-[#E5E5E5] transition-colors duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 {loading ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin text-black" />
-                    <span>Sending code...</span>
+                    <span>Verifying...</span>
                   </>
                 ) : (
                   <>
-                    <span>Send 6-digit code</span>
-                    <ArrowRight className="w-4 h-4" />
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Verify Code</span>
                   </>
                 )}
               </button>
+
+              <div className="flex items-center justify-between font-label-sm text-xs text-[#8e9192] pt-1">
+                <button
+                  type="button"
+                  onClick={() => setStep('email')}
+                  className="hover:text-white uppercase tracking-wider transition-colors"
+                >
+                  Change email
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSendOtp()}
+                  disabled={loading}
+                  className="hover:text-white uppercase tracking-wider transition-colors disabled:opacity-50"
+                >
+                  Resend code
+                </button>
+              </div>
             </form>
-          </div>
-        )}
+          )}
 
-        {/* STEP 2: 6-DIGIT OTP VERIFICATION */}
-        {step === 'otp' && (
-          <form onSubmit={handleVerifyOtp} className="space-y-5">
-            <div>
-              <label className="block text-xs font-medium text-zinc-300 mb-2">
-                Enter 6-digit passkey code
-              </label>
-              <div className="flex items-center justify-between gap-1.5 sm:gap-2">
-                {otpCode.map((digit, index) => (
-                  <input
-                    key={index}
-                    ref={(el) => (otpInputsRef.current[index] = el)}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit}
-                    onChange={(e) => handleOtpChange(index, e.target.value)}
-                    onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                    onPaste={index === 0 ? handleOtpPaste : undefined}
-                    className="w-11 h-12 text-center text-xl font-mono font-bold bg-zinc-900 border border-zinc-800 rounded-xl text-white focus:outline-none focus:border-white focus:ring-1 focus:ring-white transition-all"
-                  />
-                ))}
+          {/* STEP 3: SUCCESSFUL AUTH STATE */}
+          {step === 'success' && (
+            <div className="flex flex-col gap-5 text-left">
+              <div className="flex items-center justify-start">
+                <div className="w-14 h-14 rounded-full bg-black border border-[#444748] flex items-center justify-center text-white overflow-hidden shrink-0 shadow-inner">
+                  {userProfile?.avatarUrl ? (
+                    <img
+                      src={userProfile.avatarUrl}
+                      alt={userProfile.name || 'User Profile'}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    <User className="w-7 h-7 text-white" />
+                  )}
+                </div>
+              </div>
+
+              <div className="border-t border-[#444748] pt-3.5">
+                <span className="font-label-sm text-[11px] text-[#c4c7c8] uppercase block mb-1">Authenticated Account</span>
+                <span className="font-display font-bold text-base sm:text-lg text-white break-all">{userProfile?.email || 'user@example.com'}</span>
+              </div>
+
+              <div className="border-t border-[#444748] pt-3.5">
+                <span className="font-label-sm text-[11px] text-[#c4c7c8] uppercase block mb-1">User ID</span>
+                <span className="font-label-md text-xs sm:text-sm font-mono text-white/90 break-all select-all">{userProfile?.id || 'usr_active_session'}</span>
+              </div>
+
+              <div className="border-t border-[#444748] pt-3.5 flex items-center justify-between">
+                <div>
+                  <span className="font-label-sm text-[11px] text-[#c4c7c8] uppercase block mb-0.5">Method</span>
+                  <span className="font-label-md text-xs text-white capitalize">{userProfile?.provider || 'Email OTP'}</span>
+                </div>
+                <div className="text-right">
+                  <span className="font-label-sm text-[11px] text-[#c4c7c8] uppercase block mb-0.5">Status</span>
+                  <span className="font-label-md text-xs text-emerald-400 font-semibold tracking-wider">VERIFIED</span>
+                </div>
+              </div>
+
+              <div className="pt-3 flex flex-col sm:flex-row items-center gap-3">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-full sm:flex-1 py-3.5 px-6 bg-white text-black font-label-md text-xs sm:text-sm font-bold tracking-widest uppercase hover:bg-[#E5E5E5] transition-all duration-200 cursor-pointer text-center"
+                >
+                  GO TO DASHBOARD
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="w-full sm:w-auto py-3.5 px-6 border border-[#262626] bg-transparent hover:bg-[#1a1a1a] text-[#c4c7c8] hover:text-white font-label-md text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer"
+                >
+                  Sign Out
+                </button>
               </div>
             </div>
+          )}
+        </section>
 
-            <button
-              type="submit"
-              disabled={loading || otpCode.join('').length !== 6}
-              className="w-full h-11 px-4 bg-white hover:bg-zinc-200 text-black font-semibold text-sm rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin text-black" />
-                  <span>Verifying...</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Verify passkey</span>
-                </>
-              )}
-            </button>
-
-            <div className="flex items-center justify-between text-xs pt-1 text-zinc-400">
-              <button
-                type="button"
-                onClick={() => setStep('email')}
-                className="hover:text-white underline underline-offset-4 transition-colors"
-              >
-                Change email
-              </button>
-              <button
-                type="button"
-                onClick={() => handleSendOtp()}
-                disabled={loading}
-                className="hover:text-white underline underline-offset-4 transition-colors disabled:opacity-50"
-              >
-                Resend code
-              </button>
-            </div>
-          </form>
-        )}
-
-        {/* STEP 3: SUCCESSFUL AUTH STATE */}
-        {step === 'success' && (
-          <div className="space-y-5 text-center py-2">
-            <div className="w-14 h-14 bg-emerald-950/60 border border-emerald-800/60 rounded-full flex items-center justify-center mx-auto text-emerald-400">
-              <User className="w-7 h-7" />
-            </div>
-
-            <div className="space-y-1">
-              <p className="text-sm font-semibold text-white">{userProfile?.name || 'Authenticated User'}</p>
-              <p className="text-xs text-zinc-400 font-mono">{userProfile?.email}</p>
-            </div>
-
-            <div className="p-3 bg-zinc-900/80 border border-zinc-800 rounded-xl text-xs text-zinc-300 text-left space-y-1.5">
-              <div className="flex items-center justify-between">
-                <span className="text-zinc-500">Status:</span>
-                <span className="text-emerald-400 font-mono font-medium">Session Active</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-zinc-500">Profile Row:</span>
-                <span className="text-zinc-300 font-mono">Auto-created via Postgres Trigger</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={handleSignOut}
-                className="flex-1 h-10 px-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 text-xs font-medium rounded-xl transition-colors"
-              >
-                Sign Out
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="flex-1 h-10 px-3 bg-white hover:bg-zinc-200 text-black text-xs font-semibold rounded-xl transition-colors"
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Footer / Legal Info */}
+        <footer className="mt-12 pt-6 border-t border-[#262626] flex flex-col gap-2 text-center">
+          <p className="font-label-sm text-xs text-[#c4c7c8]">
+            By continuing, you agree to our{' '}
+            <a className="text-white hover:underline" href="#">Terms</a> and{' '}
+            <a className="text-white hover:underline" href="#">Privacy Policy</a>.
+          </p>
+        </footer>
       </div>
     </div>
   );
