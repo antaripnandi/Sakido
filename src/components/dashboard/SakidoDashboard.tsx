@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Sun,
   Moon,
@@ -32,6 +33,29 @@ import {
 } from 'lucide-react';
 import { getSupabaseClient } from '../../lib/supabaseClient';
 
+const TAB_SLUG_MAP: Record<string, string> = {
+  classes: 'Classes',
+  calendar: 'Calendar',
+  tasks: 'Tasks & Grades',
+  watch: 'Watch Later',
+  'watch-later': 'Watch Later',
+  notes: 'Notes',
+  connectors: 'Connectors',
+  university: 'University & People',
+  ai: 'AI Features',
+};
+
+const TAB_NAME_TO_SLUG: Record<string, string> = {
+  Classes: 'classes',
+  Calendar: 'calendar',
+  'Tasks & Grades': 'tasks',
+  'Watch Later': 'watch-later',
+  Notes: 'notes',
+  Connectors: 'connectors',
+  'University & People': 'university',
+  'AI Features': 'ai',
+};
+
 interface SakidoDashboardProps {
   currentUser?: {
     email?: string;
@@ -48,16 +72,27 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   onBackToLanding,
   onSignOut,
 }) => {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Derive active tab from URL path
+  const subPath = location.pathname.replace(/^\/dashboard\/?/, '').toLowerCase() || 'classes';
+  const activeTab = TAB_SLUG_MAP[subPath] || 'Classes';
+
+  const handleSelectTab = (tabName: string) => {
+    const slug = TAB_NAME_TO_SLUG[tabName] || 'classes';
+    navigate(`/dashboard/${slug}`);
+    setIsMobileMenuOpen(false);
+  };
+
   // Theme state
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     return document.documentElement.classList.contains('dark');
   });
 
-  // Active Tab state
-  const [activeTab, setActiveTab] = useState<string>('Classes');
-
   // Mobile sidebar drawer state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+
 
   // Banner image state
   const [bannerImageUrl, setBannerImageUrl] = useState<string>(
@@ -1159,10 +1194,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             return (
               <li key={item.name}>
                 <button
-                  onClick={() => {
-                    setActiveTab(item.name);
-                    setIsMobileMenuOpen(false);
-                  }}
+                  onClick={() => handleSelectTab(item.name)}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                     isActive
                       ? 'text-primary dark:text-primary-fixed-dim font-bold bg-surface-container-low dark:bg-[#28201a] border border-primary-container/20 shadow-2xs'
@@ -1184,10 +1216,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         <ul className="space-y-1 mb-6">
           <li>
             <button
-              onClick={() => {
-                setActiveTab('Connectors');
-                setIsMobileMenuOpen(false);
-              }}
+              onClick={() => handleSelectTab('Connectors')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                 activeTab === 'Connectors'
                   ? 'text-primary dark:text-primary-fixed-dim font-bold bg-surface-container-low dark:bg-[#28201a] border border-primary-container/20 shadow-2xs'
@@ -1208,10 +1237,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           {['University & People', 'AI Features'].map((item) => (
             <li key={item}>
               <button
-                onClick={() => {
-                  setActiveTab(item);
-                  setIsMobileMenuOpen(false);
-                }}
+                onClick={() => handleSelectTab(item)}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                   activeTab === item
                     ? 'text-primary dark:text-primary-fixed-dim font-bold bg-surface-container-low dark:bg-[#28201a]'

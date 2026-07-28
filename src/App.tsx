@@ -1,20 +1,25 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { SakidoLandingPage } from './components/SakidoLandingPage';
 import { SakidoDashboard } from './components/dashboard/SakidoDashboard';
 import { getSupabaseClient } from './lib/supabaseClient';
 
-export default function App() {
-  const [viewMode, setViewMode] = useState<'dashboard' | 'landing'>('landing');
+function AppContent() {
+  const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<{
     email?: string;
     name?: string;
     avatarUrl?: string;
     id?: string;
   } | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
     const supabase = getSupabaseClient();
-    if (!supabase) return;
+    if (!supabase) {
+      setIsAuthLoading(false);
+      return;
+    }
 
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) {
@@ -26,6 +31,7 @@ export default function App() {
           avatarUrl: u.user_metadata?.avatar_url || u.user_metadata?.picture,
         });
       }
+      setIsAuthLoading(false);
     });
 
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -39,7 +45,6 @@ export default function App() {
         });
       } else {
         setCurrentUser(null);
-        setViewMode('landing');
       }
     });
 
@@ -54,24 +59,52 @@ export default function App() {
       await supabase.auth.signOut();
     }
     setCurrentUser(null);
-    setViewMode('landing');
+    navigate('/');
   };
 
-  // Guard: Dashboard is ONLY accessible when user is logged in
-  if (viewMode === 'dashboard' && currentUser) {
+  if (isAuthLoading) {
     return (
-      <SakidoDashboard
-        currentUser={currentUser}
-        onBackToLanding={() => setViewMode('landing')}
-        onSignOut={handleSignOut}
-      />
+      <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center font-mono text-xs">
+        Loading Sakido...
+      </div>
     );
   }
 
   return (
-    <SakidoLandingPage
-      onOpenDashboard={() => setViewMode('dashboard')}
-    />
+    <Routes>
+      <Route
+        path="/"
+        element={
+          <SakidoLandingPage
+            onOpenDashboard={() => navigate('/dashboard')}
+          />
+        }
+      />
+      <Route
+        path="/dashboard/*"
+        element={
+          currentUser ? (
+            <SakidoDashboard
+              currentUser={currentUser}
+              onBackToLanding={() => navigate('/')}
+              onSignOut={handleSignOut}
+            />
+          ) : (
+            <Navigate to="/" replace />
+          )
+        }
+      />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppContent />
+    </BrowserRouter>
+  );
+}
+
 
