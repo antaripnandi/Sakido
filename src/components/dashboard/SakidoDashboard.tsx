@@ -382,6 +382,19 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   // Calendar State
   const [selectedDateEvents, setSelectedDateEvents] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [activeDayInspector, setActiveDayInspector] = useState<{
+    dateStr: string;
+    displayDate: string;
+    dayNum: number;
+  } | null>(null);
+
+  // Task Filter State ('all' | 'pending' | 'completed')
+  const [taskFilter, setTaskFilter] = useState<'all' | 'pending' | 'completed'>('all');
+
+  // Notes Search & Modal State
+  const [notesSearchQuery, setNotesSearchQuery] = useState('');
+  const [activeNoteModal, setActiveNoteModal] = useState<any | null>(null);
 
   const [connectingService, setConnectingService] = useState<string | null>(null);
   const [connectorNotice, setConnectorNotice] = useState<string | null>(null);
@@ -876,30 +889,31 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 const matchedTasks = tasks.filter((t) => !t.completed && (t.dueDate?.includes(dateStr) || (isToday && t.dueDate?.toLowerCase().includes('today'))));
 
                 const firstEvent = matchedEvents[0] || (matchedTasks[0] ? { title: matchedTasks[0].title, type: 'Task' } : null);
+                const isSelected = selectedDate === dateStr;
 
                 return (
                   <button
                     key={`day-${d}`}
                     onClick={() => {
-                      const eventDetails = matchedEvents.map((e) => `• [${e.type}] ${e.title}`).join('\n');
-                      const taskDetails = matchedTasks.map((t) => `• [Task] ${t.title}`).join('\n');
-                      const combined = [eventDetails, taskDetails].filter(Boolean).join('\n');
-
-                      setSelectedDateEvents(
-                        combined
-                          ? `Scheduled for ${monthName.split(' ')[0]} ${d}:\n${combined}`
-                          : `No scheduled events or deadlines for ${monthName.split(' ')[0]} ${d}.`
-                      );
+                      setSelectedDate(dateStr);
+                      setNewEventDate(dateStr);
+                      setActiveDayInspector({
+                        dateStr,
+                        displayDate: `${monthName.split(' ')[0]} ${d}, ${year}`,
+                        dayNum: d,
+                      });
                     }}
                     className={`h-16 rounded-lg p-2 flex flex-col justify-between items-start text-left border transition-all cursor-pointer ${
-                      isToday
+                      isSelected
+                        ? 'border-[#8b5e3c] ring-2 ring-[#8b5e3c]/40 bg-[#8b5e3c]/10 font-bold shadow-xs'
+                        : isToday
                         ? 'border-primary-container bg-primary-container/10 font-bold'
-                        : 'border-outline-variant/20 bg-surface-container-low/50 hover:border-outline-variant'
+                        : 'border-outline-variant/20 bg-surface-container-low/50 hover:border-outline-variant hover:bg-surface-container-low'
                     }`}
                   >
                     <span
                       className={`text-xs font-mono rounded-full w-5 h-5 flex items-center justify-center ${
-                        isToday
+                        isToday || isSelected
                           ? 'bg-[#8b5e3c] text-white'
                           : 'text-on-surface'
                       }`}
@@ -972,18 +986,24 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     }
 
     if (activeTab === 'Tasks & Grades') {
+      const filteredTasks = tasks.filter((t) => {
+        if (taskFilter === 'pending') return !t.completed;
+        if (taskFilter === 'completed') return t.completed;
+        return true;
+      });
+
       return (
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 pl-0 lg:pl-8 border-t lg:border-t-0 lg:border-l border-outline-variant/30 pt-6 lg:pt-0">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <h3 className="font-display text-2xl font-bold text-on-surface">Tasks & Grades</h3>
-              <p className="text-sm text-secondary dark:text-secondary-fixed-dim mt-0.5">
+              <p className="text-sm text-secondary mt-0.5">
                 Assignment tracker and grade point average
               </p>
             </div>
 
             {avgGrade !== null && (
-              <div className="px-4 py-2 rounded-xl bg-primary-container/10 dark:bg-primary-container/20 border border-primary-container/40 text-primary-container font-mono font-bold text-sm flex items-center gap-2">
+              <div className="px-4 py-2 rounded-xl bg-primary-container/10 border border-primary-container/40 text-primary-container font-mono font-bold text-sm flex items-center gap-2">
                 <GraduationCap className="w-4 h-4" />
                 <span>Grade Avg: {avgGrade}%</span>
               </div>
@@ -991,7 +1011,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           </div>
 
           {/* Add Task Form */}
-          <form onSubmit={handleAddTask} className="p-4 rounded-xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#201915] shadow-xs flex flex-col gap-3">
+          <form onSubmit={handleAddTask} className="p-4 rounded-xl border border-outline-variant/40 bg-surface-container-lowest shadow-xs flex flex-col gap-3">
             <div className="text-xs font-bold uppercase tracking-wider text-secondary">
               New Assignment or Task
             </div>
@@ -1000,8 +1020,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 type="text"
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
-                placeholder="Task Title"
-                className="sm:col-span-2 border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container"
+                placeholder="Task Title (e.g. Problem Set 4)"
+                className="sm:col-span-2 border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container"
               />
               <input
                 type="number"
@@ -1010,7 +1030,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 value={newTaskGrade}
                 onChange={(e) => setNewTaskGrade(e.target.value)}
                 placeholder="Grade % (Optional)"
-                className="border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container font-mono"
+                className="border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container font-mono"
               />
             </div>
             <div className="flex gap-3 justify-between items-center">
@@ -1019,7 +1039,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 value={newTaskCourse}
                 onChange={(e) => setNewTaskCourse(e.target.value)}
                 placeholder="Course Tag (e.g. CS 301)"
-                className="w-1/2 border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container"
+                className="w-1/2 border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container"
               />
               <button
                 type="submit"
@@ -1030,12 +1050,33 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             </div>
           </form>
 
+          {/* Task Filter Pills */}
+          <div className="flex items-center gap-2">
+            {[
+              { id: 'all', label: `All (${tasks.length})` },
+              { id: 'pending', label: `Pending (${tasks.filter(t => !t.completed).length})` },
+              { id: 'completed', label: `Completed (${tasks.filter(t => t.completed).length})` },
+            ].map((f) => (
+              <button
+                key={f.id}
+                onClick={() => setTaskFilter(f.id as any)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all cursor-pointer ${
+                  taskFilter === f.id
+                    ? 'bg-[#8b5e3c] text-white shadow-xs'
+                    : 'bg-surface-container-high text-secondary hover:text-on-surface'
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+
           {/* Task List */}
           <div className="flex flex-col gap-2.5">
-            {tasks.map((t) => (
+            {filteredTasks.map((t) => (
               <div
                 key={t.id}
-                className="flex items-center justify-between p-3.5 border border-outline-variant/40 rounded-xl bg-surface-container-low dark:bg-[#251e19] hover:border-outline-variant transition-all"
+                className="flex items-center justify-between p-3.5 border border-outline-variant/40 rounded-xl bg-surface-container-low hover:border-outline-variant transition-all"
               >
                 <div className="flex items-center gap-3.5 flex-1 min-w-0 pr-3">
                   <input
@@ -1060,7 +1101,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
                 <div className="flex items-center gap-3 shrink-0">
                   {t.grade && (
-                    <span className="px-2.5 py-1 rounded-md bg-surface-container-high dark:bg-[#342a23] font-mono text-xs font-bold text-primary dark:text-primary-fixed-dim">
+                    <span className="px-2.5 py-1 rounded-md bg-surface-container-high font-mono text-xs font-bold text-primary">
                       {t.grade}%
                     </span>
                   )}
@@ -1075,10 +1116,10 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               </div>
             ))}
 
-            {tasks.length === 0 && (
+            {filteredTasks.length === 0 && (
               <div className="w-full h-36 border border-outline-variant/50 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 text-secondary p-6">
                 <CheckCircle2 className="w-6 h-6 text-primary-container" />
-                <span className="text-sm font-medium">No tasks recorded yet</span>
+                <span className="text-sm font-medium">No tasks found for this view</span>
               </div>
             )}
           </div>
@@ -2060,6 +2101,145 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 Log Out
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Day Inspector & Event Planner Modal */}
+      {activeDayInspector && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl max-w-lg w-full p-6 shadow-2xl flex flex-col gap-5 max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div>
+                <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-[#8b5e3c]/15 text-[#8b5e3c] dark:text-amber-400 border border-[#8b5e3c]/20">
+                  Day Inspector • {activeDayInspector.dateStr}
+                </span>
+                <h3 className="font-display font-bold text-xl text-on-surface mt-1">
+                  {activeDayInspector.displayDate}
+                </h3>
+              </div>
+              <button
+                onClick={() => setActiveDayInspector(null)}
+                className="p-1.5 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Scheduled Items List for this Date */}
+            <div className="flex flex-col gap-3">
+              <div className="text-xs font-mono font-bold uppercase text-secondary">
+                Scheduled Events & Deadlines
+              </div>
+
+              {(() => {
+                const dayEvents = [...events, ...(connectors.googleCalendar ? googleCalendarEvents : [])].filter(
+                  (e) => e.date === activeDayInspector.dateStr || e.date === String(activeDayInspector.dayNum)
+                );
+                const dayTasks = tasks.filter(
+                  (t) => !t.completed && (t.dueDate?.includes(activeDayInspector.dateStr) || t.dueDate?.toLowerCase().includes('today'))
+                );
+
+                if (dayEvents.length === 0 && dayTasks.length === 0) {
+                  return (
+                    <div className="p-4 rounded-xl border border-outline-variant/40 bg-surface-container-low/50 text-center flex flex-col items-center gap-2">
+                      <CalendarIcon className="w-8 h-8 text-secondary/50" />
+                      <p className="text-sm font-medium text-on-surface">No events or exams scheduled for this day</p>
+                      <p className="text-xs text-secondary">Use the quick form below to add a deadline or lecture for this date.</p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div className="flex flex-col gap-2">
+                    {dayEvents.map((ev, idx) => (
+                      <div
+                        key={`de-ev-${idx}`}
+                        className="flex items-center justify-between p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                              ev.type === 'Google Cal'
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                : 'bg-[#8b5e3c]/10 text-[#8b5e3c] border border-[#8b5e3c]/20'
+                            }`}
+                          >
+                            {ev.type || 'Event'}
+                          </span>
+                          <span className="text-sm font-medium text-on-surface">{ev.title}</span>
+                        </div>
+                        {ev.id && !ev.id.startsWith('gcal-') && (
+                          <button
+                            onClick={() => handleDeleteEvent(ev.id)}
+                            className="text-secondary/60 hover:text-error transition-colors p-1"
+                            title="Delete event"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+
+                    {dayTasks.map((t) => (
+                      <div
+                        key={`de-tk-${t.id}`}
+                        className="flex items-center justify-between p-3 rounded-xl border border-outline-variant/30 bg-surface-container-low"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                            Task
+                          </span>
+                          <span className="text-sm font-medium text-on-surface">{t.title}</span>
+                        </div>
+                        <span className="text-xs font-mono text-secondary">{t.course}</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Quick Add Event Form inside Modal */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newEventTitle.trim()) return;
+                handleAddEvent(e);
+              }}
+              className="p-4 rounded-xl border border-outline-variant/40 bg-surface-container-low flex flex-col gap-3 pt-3"
+            >
+              <div className="text-xs font-mono font-bold uppercase text-secondary">
+                Quick Add Event to {activeDayInspector.displayDate}
+              </div>
+              <input
+                type="text"
+                value={newEventTitle}
+                onChange={(e) => setNewEventTitle(e.target.value)}
+                placeholder="Event / Exam Title"
+                className="w-full border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest text-on-surface focus:outline-hidden focus:border-primary-container"
+              />
+              <div className="flex gap-2 justify-between">
+                <select
+                  value={newEventType}
+                  onChange={(e) => setNewEventType(e.target.value)}
+                  className="flex-1 border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest text-on-surface focus:outline-hidden"
+                >
+                  <option value="Exam">Exam / Midterm</option>
+                  <option value="Lecture">Lecture / Class</option>
+                  <option value="Deadline">Assignment Deadline</option>
+                  <option value="Event">Academic Milestone</option>
+                </select>
+                <button
+                  type="submit"
+                  className="bg-[#8b5e3c] hover:bg-[#6f4627] text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
+                >
+                  <Plus className="w-4 h-4" /> Save
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
