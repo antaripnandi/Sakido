@@ -535,6 +535,21 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     return () => clearInterval(timer);
   }, []);
 
+  // Auto-reset connecting status when user returns or closes OAuth window
+  useEffect(() => {
+    const handleWindowFocus = () => {
+      setConnectingService(null);
+    };
+
+    window.addEventListener('focus', handleWindowFocus);
+    document.addEventListener('visibilitychange', handleWindowFocus);
+
+    return () => {
+      window.removeEventListener('focus', handleWindowFocus);
+      document.removeEventListener('visibilitychange', handleWindowFocus);
+    };
+  }, []);
+
   // Sync dark mode class on document element & localStorage
   useEffect(() => {
     try {
@@ -704,6 +719,13 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   // OAuth Connector Handler
   const handleConnectOAuth = async (serviceKey: 'googleCalendar' | 'googleDrive' | 'gmail' | 'googleNotes') => {
+    // If currently connecting, clicking again cancels the pending state immediately
+    if (connectingService === serviceKey) {
+      setConnectingService(null);
+      localStorage.removeItem('sakido_pending_connector');
+      return;
+    }
+
     const scopeMap = {
       googleCalendar: 'https://www.googleapis.com/auth/calendar.readonly',
       googleDrive: 'https://www.googleapis.com/auth/drive.readonly',
@@ -735,6 +757,11 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     // Handle Connect Action (Initiate OAuth without premature state change)
     setConnectingService(serviceKey);
     setConnectorNotice(null);
+
+    // Timeout safety reset: if user returns/cancels or popup closes, clear connecting status after 4s
+    setTimeout(() => {
+      setConnectingService((curr) => (curr === serviceKey ? null : curr));
+    }, 4000);
 
     const supabase = getSupabaseClient();
     if (supabase) {
