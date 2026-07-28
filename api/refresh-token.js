@@ -1,4 +1,14 @@
 export default async function handler(req, res) {
+  // CORS & Security Headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
@@ -6,8 +16,8 @@ export default async function handler(req, res) {
 
   const { refresh_token } = req.body || {};
 
-  if (!refresh_token) {
-    return res.status(400).json({ error: 'Missing refresh_token in request body' });
+  if (!refresh_token || typeof refresh_token !== 'string' || refresh_token.length > 2048) {
+    return res.status(400).json({ error: 'Invalid or missing refresh_token' });
   }
 
   // Google OAuth client credentials from Vercel env vars
@@ -15,7 +25,7 @@ export default async function handler(req, res) {
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    return res.status(500).json({ error: 'Server missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET env vars' });
+    return res.status(500).json({ error: 'Server configuration issue: missing Google OAuth keys' });
   }
 
   try {
