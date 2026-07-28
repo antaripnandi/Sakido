@@ -1,9 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { SakidoLandingPage } from './components/SakidoLandingPage';
-import { SakidoDashboard } from './components/dashboard/SakidoDashboard';
 import { getSupabaseClient } from './lib/supabaseClient';
 import { Analytics } from '@vercel/analytics/react';
+
+const SakidoDashboard = lazy(() =>
+  import('./components/dashboard/SakidoDashboard').then((module) => ({
+    default: module.SakidoDashboard,
+  }))
+);
 
 function AppContent() {
   const navigate = useNavigate();
@@ -110,11 +115,19 @@ function AppContent() {
         path="/dashboard/*"
         element={
           currentUser ? (
-            <SakidoDashboard
-              currentUser={currentUser}
-              onBackToLanding={() => navigate('/')}
-              onSignOut={handleSignOut}
-            />
+            <Suspense
+              fallback={
+                <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center font-mono text-xs">
+                  Loading Workspace...
+                </div>
+              }
+            >
+              <SakidoDashboard
+                currentUser={currentUser}
+                onBackToLanding={() => navigate('/')}
+                onSignOut={handleSignOut}
+              />
+            </Suspense>
           ) : (
             <Navigate to="/" replace />
           )
