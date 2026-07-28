@@ -183,11 +183,46 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     } catch {}
   }, [notes]);
 
+  // Custom events state for Academic Calendar
+  const [events, setEvents] = useState<any[]>(() => {
+    try {
+      const saved = localStorage.getItem('sakido_events');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [newEventTitle, setNewEventTitle] = useState('');
+  const [newEventDate, setNewEventDate] = useState('');
+  const [newEventType, setNewEventType] = useState('Exam');
+
   useEffect(() => {
     try {
-      localStorage.setItem('sakido_connectors', JSON.stringify(connectors));
+      localStorage.setItem('sakido_events', JSON.stringify(events));
     } catch {}
-  }, [connectors]);
+  }, [events]);
+
+  const handleAddEvent = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newEventTitle.trim() || !newEventDate.trim()) return;
+    setEvents((prev) => [
+      ...prev,
+      {
+        id: Date.now().toString(),
+        title: newEventTitle.trim(),
+        date: newEventDate.trim(),
+        type: newEventType,
+      },
+    ]);
+    setNewEventTitle('');
+    setNewEventDate('');
+  };
+
+  const handleDeleteEvent = (id: string) => {
+    setEvents((prev) => prev.filter((ev) => ev.id !== id));
+  };
+
 
   // Form states
   const [newClassName, setNewClassName] = useState('');
@@ -608,6 +643,46 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             </div>
           </div>
 
+          {/* Add Event Form */}
+          <form onSubmit={handleAddEvent} className="p-4 rounded-xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#201915] shadow-xs flex flex-col gap-3">
+            <div className="text-xs font-bold uppercase tracking-wider text-secondary">
+              Schedule New Event / Exam
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <input
+                type="text"
+                value={newEventTitle}
+                onChange={(e) => setNewEventTitle(e.target.value)}
+                placeholder="Event Title (e.g. Physics Midterm)"
+                className="sm:col-span-2 border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container"
+              />
+              <input
+                type="date"
+                value={newEventDate}
+                onChange={(e) => setNewEventDate(e.target.value)}
+                className="border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container font-mono"
+              />
+            </div>
+            <div className="flex gap-3 justify-between items-center">
+              <select
+                value={newEventType}
+                onChange={(e) => setNewEventType(e.target.value)}
+                className="w-1/2 border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-hidden focus:border-primary-container"
+              >
+                <option value="Exam">Exam / Midterm</option>
+                <option value="Lecture">Lecture / Class</option>
+                <option value="Deadline">Assignment Deadline</option>
+                <option value="Event">Academic Milestone</option>
+              </select>
+              <button
+                type="submit"
+                className="bg-[#8b5e3c] hover:bg-[#6f4627] text-white px-5 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors cursor-pointer"
+              >
+                <Plus className="w-4 h-4" /> Add to Calendar
+              </button>
+            </div>
+          </form>
+
           {/* Calendar Grid */}
           <div className="border border-outline-variant/40 rounded-xl bg-surface-container-lowest dark:bg-[#201915] p-4 shadow-xs">
             <div className="grid grid-cols-7 gap-1 text-center font-mono text-xs font-bold text-secondary uppercase mb-3 border-b border-outline-variant/20 pb-2">
@@ -627,18 +702,28 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
               {daysArray.map((d) => {
                 const isToday = isCurrentMonth && d === todayDate;
-                const hasEvent = d % 4 === 0 || d === 15 || d === 24;
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                
+                const matchedEvents = events.filter((e) => e.date === dateStr || e.date === String(d));
+                const matchedTasks = tasks.filter((t) => !t.completed && (t.dueDate?.includes(dateStr) || (isToday && t.dueDate?.toLowerCase().includes('today'))));
+                const matchedClasses = classes.filter(() => d % 2 === 0); // Active registered classes
+
+                const firstEvent = matchedEvents[0] || (matchedTasks[0] ? { title: matchedTasks[0].title, type: 'Task' } : null);
 
                 return (
                   <button
                     key={`day-${d}`}
-                    onClick={() =>
+                    onClick={() => {
+                      const eventDetails = matchedEvents.map((e) => `• [${e.type}] ${e.title}`).join('\n');
+                      const taskDetails = matchedTasks.map((t) => `• [Task] ${t.title}`).join('\n');
+                      const combined = [eventDetails, taskDetails].filter(Boolean).join('\n');
+
                       setSelectedDateEvents(
-                        hasEvent
-                          ? `Scheduled: CS 301 Lecture @ 10:00 AM & Assignment Due Date`
-                          : `No scheduled exams or deadlines for ${monthName.split(' ')[0]} ${d}.`
-                      )
-                    }
+                        combined
+                          ? `Scheduled for ${monthName.split(' ')[0]} ${d}:\n${combined}`
+                          : `No scheduled events or deadlines for ${monthName.split(' ')[0]} ${d}.`
+                      );
+                    }}
                     className={`h-16 rounded-lg p-2 flex flex-col justify-between items-start text-left border transition-all cursor-pointer ${
                       isToday
                         ? 'border-primary-container bg-primary-container/10 dark:bg-primary-container/20 font-bold'
@@ -654,9 +739,9 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                     >
                       {d}
                     </span>
-                    {hasEvent && (
+                    {firstEvent && (
                       <span className="w-full text-[10px] font-mono truncate px-1 py-0.5 rounded bg-surface-container-high dark:bg-[#342a23] text-primary dark:text-primary-fixed-dim">
-                        {d === 15 ? 'Midterm Exam' : 'CS Lecture'}
+                        {firstEvent.title}
                       </span>
                     )}
                   </button>
@@ -665,15 +750,47 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             </div>
           </div>
 
+          {/* User Events List */}
+          {events.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <div className="text-xs font-bold uppercase tracking-wider text-secondary">
+                Scheduled Calendar Milestones ({events.length})
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {events.map((ev) => (
+                  <div
+                    key={ev.id}
+                    className="p-3 border border-outline-variant/40 rounded-xl bg-surface-container-low dark:bg-[#251e19] flex items-center justify-between"
+                  >
+                    <div>
+                      <span className="text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-surface-container-high text-primary">
+                        {ev.type}
+                      </span>
+                      <h5 className="font-bold text-sm text-on-surface mt-1">{ev.title}</h5>
+                      <span className="text-xs text-secondary font-mono">{ev.date}</span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteEvent(ev.id)}
+                      className="text-secondary/60 hover:text-error p-1 transition-colors"
+                      title="Delete event"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {selectedDateEvents && (
             <div className="p-4 rounded-xl border border-primary-container/40 bg-surface-container-low dark:bg-[#251e19] flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <CalendarIcon className="w-5 h-5 text-primary-container" />
-                <span className="text-sm font-medium text-on-surface">{selectedDateEvents}</span>
+                <CalendarIcon className="w-5 h-5 text-primary-container shrink-0" />
+                <span className="text-sm font-medium text-on-surface whitespace-pre-line">{selectedDateEvents}</span>
               </div>
               <button
                 onClick={() => setSelectedDateEvents(null)}
-                className="text-xs text-secondary hover:text-on-surface"
+                className="text-xs text-secondary hover:text-on-surface shrink-0"
               >
                 Dismiss
               </button>
