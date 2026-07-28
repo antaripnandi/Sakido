@@ -7,3 +7,6 @@ build/
 !.env.example
 *.zip
 .vercel
+AGENTS.md
+agent.md
+.agents/
