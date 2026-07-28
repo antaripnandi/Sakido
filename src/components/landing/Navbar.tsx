@@ -1,5 +1,6 @@
 import React from 'react';
 import { Github, ArrowUpRight } from 'lucide-react';
+import { SakidoLogo } from '../common/SakidoLogo';
 
 interface NavbarProps {
   onOpenGetStarted: () => void;
@@ -16,10 +17,9 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Logo */}
         <button
           onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-          className="text-lg font-bold tracking-tight text-zinc-900 hover:opacity-80 transition-opacity flex items-center gap-2"
+          className="text-lg font-bold tracking-tight text-zinc-900 hover:opacity-80 transition-opacity flex items-center gap-2 cursor-pointer"
         >
-          <span className="w-2.5 h-2.5 bg-zinc-900 rounded-full" />
-          Sakido
+          <SakidoLogo size="w-6 h-6" showText textClassName="text-lg font-bold tracking-tight text-zinc-900" />
         </button>
 
         {/* Center Nav Links */}

@@ -36,6 +36,7 @@ import {
   RotateCw
 } from 'lucide-react';
 import { getSupabaseClient } from '../../lib/supabaseClient';
+import { SakidoLogo } from '../common/SakidoLogo';
 
 const TAB_SLUG_MAP: Record<string, string> = {
   classes: 'Classes',
@@ -1638,7 +1639,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           >
             {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-          <span className="font-display font-bold text-lg text-on-surface">Sakido</span>
+          <SakidoLogo size="w-6 h-6" showText textClassName="font-display font-bold text-lg text-on-surface" />
         </div>
 
         <div className="flex items-center gap-2">
@@ -1659,13 +1660,16 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       >
         {/* Brand */}
         <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="font-display text-2xl font-bold tracking-tight text-on-surface">
-              Sakido
-            </h1>
-            <p className="text-secondary text-xs mt-0.5 font-mono">
-              Productivity Portal
-            </p>
+          <div className="flex items-center gap-3">
+            <SakidoLogo size="w-8 h-8" />
+            <div>
+              <h1 className="font-display text-2xl font-bold tracking-tight text-on-surface">
+                Sakido
+              </h1>
+              <p className="text-secondary text-xs mt-0.5 font-mono">
+                Productivity Portal
+              </p>
+            </div>
           </div>
           {onBackToLanding && (
             <button
