@@ -94,12 +94,27 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
 
-  // Banner image state
-  const [bannerImageUrl, setBannerImageUrl] = useState<string>(
-    'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=1200'
-  );
+  // Banner image state with safe localStorage persistence
+  const [bannerImageUrl, setBannerImageUrl] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('sakido_banner_url');
+      return saved || 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=1200';
+    } catch {
+      return 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=1200';
+    }
+  });
   const [isEditingBanner, setIsEditingBanner] = useState<boolean>(false);
   const [newBannerInput, setNewBannerInput] = useState<string>('');
+
+  useEffect(() => {
+    try {
+      if (bannerImageUrl) {
+        localStorage.setItem('sakido_banner_url', bannerImageUrl);
+      }
+    } catch (e) {
+      console.warn('Storage error for banner URL:', e);
+    }
+  }, [bannerImageUrl]);
 
   // Live time & date state
   const [now, setNow] = useState<Date>(new Date());
@@ -287,11 +302,21 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     setIsDarkMode((prev) => !prev);
   };
 
-  // Banner editing
+  // Banner editing with storage protection
   const handleSaveBanner = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newBannerInput.trim()) {
-      setBannerImageUrl(newBannerInput.trim());
+    const url = newBannerInput.trim();
+    if (url) {
+      if (url.length > 1500000) {
+        alert('Image URL data is too large for browser storage. Please provide a standard web image URL.');
+        return;
+      }
+      setBannerImageUrl(url);
+      try {
+        localStorage.setItem('sakido_banner_url', url);
+      } catch (err) {
+        console.warn('Could not persist banner to localStorage:', err);
+      }
       setIsEditingBanner(false);
       setNewBannerInput('');
     }
