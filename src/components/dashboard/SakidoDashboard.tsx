@@ -610,7 +610,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       googleCalendar: 'https://www.googleapis.com/auth/calendar.readonly',
       googleDrive: 'https://www.googleapis.com/auth/drive.readonly',
       gmail: 'https://www.googleapis.com/auth/gmail.readonly',
-      googleNotes: 'https://www.googleapis.com/auth/keep.readonly',
+      googleNotes: 'https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile',
     };
 
     const serviceNames = {
@@ -2240,26 +2240,29 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
       {/* Sign Out Confirmation Modal */}
       {isLogoutConfirmOpen && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest border border-outline-variant rounded-2xl max-w-sm w-full p-6 shadow-2xl flex flex-col gap-4">
-            <div className="flex items-center gap-3 text-amber-500">
-              <div className="w-10 h-10 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
-                <LogOut className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-              </div>
+        <div className="fixed inset-0 z-[60] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-[500px] bg-surface-container-lowest border border-outline-variant rounded-[32px] p-8 sm:p-10 shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            {/* Header Section */}
+            <div className="flex items-start gap-5 mb-4">
+              <LogOut className="w-8 h-8 text-on-surface mt-1 shrink-0" />
               <div>
-                <h3 className="font-display font-bold text-base text-on-surface">Confirm Sign Out</h3>
-                <span className="text-xs text-secondary font-mono">End Active Session</span>
+                <h2 className="text-on-surface tracking-tight font-display font-bold text-2xl sm:text-3xl">Confirm Sign Out</h2>
+                <p className="font-manrope text-sm sm:text-base text-on-surface-variant font-medium">End Active Session</p>
               </div>
             </div>
 
-            <p className="text-sm text-on-surface leading-relaxed">
-              Are you sure you want to log out of your Sakido workspace?
-            </p>
+            {/* Body Content */}
+            <div className="sm:pl-[52px] mb-8">
+              <p className="font-manrope text-base sm:text-lg text-on-surface leading-relaxed">
+                Are you sure you want to log out of your Sakido workspace?
+              </p>
+            </div>
 
-            <div className="flex items-center justify-end gap-3 pt-2">
+            {/* Footer Actions */}
+            <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-2">
               <button
                 onClick={() => setIsLogoutConfirmOpen(false)}
-                className="px-4 py-2 rounded-lg border border-outline-variant text-xs font-semibold text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+                className="w-full sm:w-auto px-8 py-3 border border-outline-variant text-on-surface font-manrope font-semibold text-base hover:bg-surface-container-highest transition-colors rounded-full cursor-pointer"
               >
                 Cancel
               </button>
@@ -2268,7 +2271,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   setIsLogoutConfirmOpen(false);
                   if (onSignOut) onSignOut();
                 }}
-                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                className="w-full sm:w-auto px-8 py-3 bg-primary-container text-on-primary font-display font-bold text-base hover:opacity-90 transition-opacity rounded-full cursor-pointer shadow-md"
               >
                 Log Out
               </button>
