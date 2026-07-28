@@ -341,18 +341,51 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   // Google Drive AppData 2-Way Sync for Google Notes / Keep
   const syncNotesToGoogleDrive = async (updatedNotes: any[], accessToken: string) => {
     try {
-      // Search for sakido_keep_notes.json in appDataFolder
-      const searchRes = await fetch(
-        "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'sakido_keep_notes.json'",
-        { headers: { Authorization: `Bearer ${accessToken}` } }
-      );
+      let token = accessToken;
 
-      let fileId = null;
-      if (searchRes.ok) {
-        const searchData = await searchRes.json();
-        if (searchData.files && searchData.files.length > 0) {
-          fileId = searchData.files[0].id;
+      const performSearch = async (tokenStr: string) => {
+        return fetch(
+          "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'sakido_keep_notes.json'",
+          { headers: { Authorization: `Bearer ${tokenStr}` } }
+        );
+      };
+
+      let searchRes = await performSearch(token);
+
+      // Handle 401 token refresh
+      if (searchRes.status === 401) {
+        const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
+        if (refreshToken) {
+          const refreshRes = await fetch('/api/refresh-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: refreshToken }),
+          });
+          if (refreshRes.ok) {
+            const refreshData = await refreshRes.json();
+            token = refreshData.access_token;
+            localStorage.setItem('sakido_provider_token', token);
+            searchRes = await performSearch(token);
+          }
         }
+      }
+
+      if (!searchRes.ok) {
+        const rawErr = await searchRes.text().catch(() => '');
+        let errMsg = rawErr;
+        try {
+          const parsed = JSON.parse(rawErr);
+          errMsg = parsed?.error?.message || rawErr;
+        } catch {}
+        console.warn('Google Drive API search returned status:', searchRes.status, rawErr);
+        setConnectorNotice(`⚠️ Google Drive API returned ${searchRes.status}: ${errMsg || 'Ensure Google Drive API is enabled in Google Cloud Console.'}`);
+        return;
+      }
+
+      const searchData = await searchRes.json();
+      let fileId = null;
+      if (searchData.files && searchData.files.length > 0) {
+        fileId = searchData.files[0].id;
       }
 
       const fileContent = JSON.stringify(updatedNotes);
@@ -361,13 +394,14 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         mimeType: 'application/json',
       };
 
+      let uploadRes;
       if (fileId) {
-        await fetch(
+        uploadRes = await fetch(
           `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
           {
             method: 'PATCH',
             headers: {
-              Authorization: `Bearer ${accessToken}`,
+              Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json',
             },
             body: fileContent,
@@ -381,17 +415,31 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         );
         formData.append('file', new Blob([fileContent], { type: 'application/json' }));
 
-        await fetch(
+        uploadRes = await fetch(
           'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
           {
             method: 'POST',
-            headers: { Authorization: `Bearer ${accessToken}` },
+            headers: { Authorization: `Bearer ${token}` },
             body: formData,
           }
         );
       }
-    } catch (err) {
-      console.warn('Google Drive AppData notes sync notice:', err);
+
+      if (uploadRes.ok) {
+        setConnectorNotice(`🟢 ${updatedNotes.length} Note${updatedNotes.length !== 1 ? 's' : ''} backed up & synced to your Google Account!`);
+      } else {
+        const rawUploadErr = await uploadRes.text().catch(() => '');
+        let uploadErrMsg = rawUploadErr;
+        try {
+          const parsed = JSON.parse(rawUploadErr);
+          uploadErrMsg = parsed?.error?.message || rawUploadErr;
+        } catch {}
+        console.warn('Google Drive API upload status:', uploadRes.status, rawUploadErr);
+        setConnectorNotice(`⚠️ Note saved locally, but Google Drive backup returned ${uploadRes.status}: ${uploadErrMsg}`);
+      }
+    } catch (err: any) {
+      console.warn('Google Drive AppData notes sync error:', err);
+      setConnectorNotice(`⚠️ Note saved locally, but Google Drive sync request failed: ${err?.message || err}`);
     }
   };
 
