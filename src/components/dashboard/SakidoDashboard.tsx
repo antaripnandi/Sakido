@@ -2187,15 +2187,15 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-3">
-                <h3 className="font-display text-2xl font-bold text-on-surface">Google Notes & Keep</h3>
+                <h3 className="font-display text-2xl font-bold text-on-surface">Notes & Study Scratchpad</h3>
                 {connectors.googleNotes && (
                   <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-medium flex items-center gap-1">
-                    <Check className="w-3.5 h-3.5" /> 2-Way Google Drive Sync Active
+                    <Check className="w-3.5 h-3.5" /> Google Drive Cloud Backup Active
                   </span>
                 )}
               </div>
               <p className="text-sm text-secondary dark:text-secondary-fixed-dim mt-0.5">
-                Lecture summaries, colored checklists, and study scratchpad with 2-way Google Keep sync
+                Lecture summaries, colored checklists, and study scratchpad backed up to your Google Drive account
               </p>
             </div>
 
@@ -2693,7 +2693,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               </button>
             </div>
 
-            {/* Google Notes (Keep) */}
+            {/* Google Cloud Notes Backup (Drive AppData) */}
             <div className="p-5 rounded-2xl border border-outline-variant/40 bg-surface-container-low flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
@@ -2701,7 +2701,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h4 className="font-display font-bold text-base text-on-surface">Google Notes & Keep</h4>
+                    <h4 className="font-display font-bold text-base text-on-surface">Google Drive Notes Backup</h4>
                     {connectors.googleNotes ? (
                       <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-mono font-medium flex items-center gap-1">
                         <Check className="w-3 h-3" /> Connected
@@ -2713,10 +2713,10 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                     )}
                   </div>
                   <p className="text-xs text-secondary mt-1 max-w-md">
-                    Synchronize lecture notes, study checklists, and flashcard ideas directly from Google Keep.
+                    Securely backs up your Sakido notes, checklists, and color themes to your Google Drive Cloud storage slot. Restores across devices upon connection.
                   </p>
                   <span className="text-[10px] font-mono text-secondary/70 mt-1 block">
-                    Scope: <code className="bg-surface-container-high px-1 rounded">https://www.googleapis.com/auth/keep.readonly</code>
+                    Scope: <code className="bg-surface-container-high px-1 rounded">https://www.googleapis.com/auth/drive.appdata</code>
                   </span>
                 </div>
               </div>
@@ -2735,7 +2735,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 ) : connectors.googleNotes ? (
                   'Disconnect / Reauth'
                 ) : (
-                  <>Connect Google Notes <ArrowRight className="w-3.5 h-3.5" /></>
+                  <>Connect Notes Backup <ArrowRight className="w-3.5 h-3.5" /></>
                 )}
               </button>
             </div>
