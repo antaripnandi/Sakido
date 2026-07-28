@@ -34,7 +34,13 @@ import {
   Settings,
   ShieldCheck,
   RotateCw,
-  Layers
+  Layers,
+  Pin,
+  Archive,
+  Palette,
+  CheckSquare,
+  Square,
+  Tag
 } from 'lucide-react';
 import { getSupabaseClient } from '../../lib/supabaseClient';
 import { normalizeToISODate, safeCreateDateTime } from '../../lib/dateUtils';
@@ -332,6 +338,63 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     }
   };
 
+  // Google Drive AppData 2-Way Sync for Google Notes / Keep
+  const syncNotesToGoogleDrive = async (updatedNotes: any[], accessToken: string) => {
+    try {
+      // Search for sakido_keep_notes.json in appDataFolder
+      const searchRes = await fetch(
+        "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'sakido_keep_notes.json'",
+        { headers: { Authorization: `Bearer ${accessToken}` } }
+      );
+
+      let fileId = null;
+      if (searchRes.ok) {
+        const searchData = await searchRes.json();
+        if (searchData.files && searchData.files.length > 0) {
+          fileId = searchData.files[0].id;
+        }
+      }
+
+      const fileContent = JSON.stringify(updatedNotes);
+      const metadata = {
+        name: 'sakido_keep_notes.json',
+        mimeType: 'application/json',
+      };
+
+      if (fileId) {
+        await fetch(
+          `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,
+          {
+            method: 'PATCH',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: fileContent,
+          }
+        );
+      } else {
+        const formData = new FormData();
+        formData.append(
+          'metadata',
+          new Blob([JSON.stringify({ ...metadata, parents: ['appDataFolder'] })], { type: 'application/json' })
+        );
+        formData.append('file', new Blob([fileContent], { type: 'application/json' }));
+
+        await fetch(
+          'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',
+          {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${accessToken}` },
+            body: formData,
+          }
+        );
+      }
+    } catch (err) {
+      console.warn('Google Drive AppData notes sync notice:', err);
+    }
+  };
+
   // Verify pending connector ONLY after user completes OAuth authorization callback
   useEffect(() => {
     const verifyOAuthCallback = async () => {
@@ -371,6 +434,9 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             if (pending === 'googleCalendar' && session.provider_token) {
               // Slight delay to let the UI update first
               setTimeout(() => bulkSyncEventsToGCal(session.provider_token!), 500);
+            }
+            if (pending === 'googleNotes' && session.provider_token) {
+              setTimeout(() => syncNotesToGoogleDrive(notes, session.provider_token!), 500);
             }
           } else {
             console.log('OAuth authorization was closed or unfulfilled.');
@@ -830,6 +896,12 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const [newNoteTitle, setNewNoteTitle] = useState('');
   const [newNoteContent, setNewNoteContent] = useState('');
   const [newNoteCourse, setNewNoteCourse] = useState('');
+  const [newNoteColor, setNewNoteColor] = useState<string>('default');
+  const [newNoteIsChecklist, setNewNoteIsChecklist] = useState<boolean>(false);
+  const [newNoteChecklistRaw, setNewNoteChecklistRaw] = useState<string>('');
+  const [noteTabFilter, setNoteTabFilter] = useState<'active' | 'archived'>('active');
+  const [selectedNoteTag, setSelectedNoteTag] = useState<string>('all');
+  const [activeEditingNote, setActiveEditingNote] = useState<any | null>(null);
 
   // Calendar View Mode ('month' | 'timetable')
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'timetable'>('month');
@@ -1033,27 +1105,104 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     setWatchLater((prev) => prev.filter((w) => w.id !== id));
   };
 
-  // Notes Handlers
+  // Notes Handlers (Google Keep style with 2-way Google Drive AppData sync)
   const handleAddNote = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newNoteTitle.trim()) return;
-    setNotes((prev) => [
-      ...prev,
-      {
-        id: Date.now().toString(),
-        title: newNoteTitle.trim(),
-        content: newNoteContent.trim() || 'No additional details provided.',
-        course: newNoteCourse.trim() || 'General',
-        date: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      },
-    ]);
+
+    let checklistItems: { id: string; text: string; completed: boolean }[] = [];
+    if (newNoteIsChecklist && newNoteChecklistRaw.trim()) {
+      checklistItems = newNoteChecklistRaw
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((text, idx) => ({
+          id: `${Date.now()}-${idx}`,
+          text,
+          completed: false,
+        }));
+    }
+
+    const newNote = {
+      id: Date.now().toString(),
+      title: newNoteTitle.trim(),
+      content: newNoteContent.trim() || (newNoteIsChecklist ? '' : 'No additional details provided.'),
+      course: newNoteCourse.trim() || 'General',
+      date: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      color: newNoteColor || 'default',
+      pinned: false,
+      archived: false,
+      isChecklist: newNoteIsChecklist,
+      checklistItems,
+    };
+
+    setNotes((prev) => {
+      const updated = [newNote, ...prev];
+      if (connectors.googleNotes) {
+        const token = localStorage.getItem('sakido_provider_token');
+        if (token) syncNotesToGoogleDrive(updated, token);
+      }
+      return updated;
+    });
+
     setNewNoteTitle('');
     setNewNoteContent('');
     setNewNoteCourse('');
+    setNewNoteColor('default');
+    setNewNoteIsChecklist(false);
+    setNewNoteChecklistRaw('');
+    setConnectorNotice('🟢 Note saved & synced!');
   };
 
   const handleDeleteNote = (id: string) => {
-    setNotes((prev) => prev.filter((n) => n.id !== id));
+    setNotes((prev) => {
+      const updated = prev.filter((n) => n.id !== id);
+      if (connectors.googleNotes) {
+        const token = localStorage.getItem('sakido_provider_token');
+        if (token) syncNotesToGoogleDrive(updated, token);
+      }
+      return updated;
+    });
+    setConnectorNotice('🟢 Note deleted.');
+  };
+
+  const handleTogglePinNote = (id: string) => {
+    setNotes((prev) => {
+      const updated = prev.map((n) => (n.id === id ? { ...n, pinned: !n.pinned } : n));
+      if (connectors.googleNotes) {
+        const token = localStorage.getItem('sakido_provider_token');
+        if (token) syncNotesToGoogleDrive(updated, token);
+      }
+      return updated;
+    });
+  };
+
+  const handleToggleArchiveNote = (id: string) => {
+    setNotes((prev) => {
+      const updated = prev.map((n) => (n.id === id ? { ...n, archived: !n.archived } : n));
+      if (connectors.googleNotes) {
+        const token = localStorage.getItem('sakido_provider_token');
+        if (token) syncNotesToGoogleDrive(updated, token);
+      }
+      return updated;
+    });
+  };
+
+  const handleToggleChecklistItem = (noteId: string, itemId: string) => {
+    setNotes((prev) => {
+      const updated = prev.map((n) => {
+        if (n.id !== noteId) return n;
+        const updatedItems = (n.checklistItems || []).map((item: any) =>
+          item.id === itemId ? { ...item, completed: !item.completed } : item
+        );
+        return { ...n, checklistItems: updatedItems };
+      });
+      if (connectors.googleNotes) {
+        const token = localStorage.getItem('sakido_provider_token');
+        if (token) syncNotesToGoogleDrive(updated, token);
+      }
+      return updated;
+    });
   };
 
   // OAuth Connector Handler
@@ -1863,87 +2012,405 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     }
 
     if (activeTab === 'Notes') {
+      const NOTE_COLOR_MAP: Record<string, { bg: string; border: string; badge: string; dot: string }> = {
+        default: {
+          bg: 'bg-surface-container-low dark:bg-[#251e19]',
+          border: 'border-outline-variant/40',
+          badge: 'bg-surface-container-high dark:bg-[#342a23] text-primary dark:text-primary-fixed-dim',
+          dot: 'bg-stone-400',
+        },
+        amber: {
+          bg: 'bg-amber-500/10 dark:bg-amber-950/30',
+          border: 'border-amber-500/40',
+          badge: 'bg-amber-500/20 text-amber-700 dark:text-amber-300',
+          dot: 'bg-amber-500',
+        },
+        emerald: {
+          bg: 'bg-emerald-500/10 dark:bg-emerald-950/30',
+          border: 'border-emerald-500/40',
+          badge: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300',
+          dot: 'bg-emerald-500',
+        },
+        sky: {
+          bg: 'bg-sky-500/10 dark:bg-sky-950/30',
+          border: 'border-sky-500/40',
+          badge: 'bg-sky-500/20 text-sky-700 dark:text-sky-300',
+          dot: 'bg-sky-500',
+        },
+        rose: {
+          bg: 'bg-rose-500/10 dark:bg-rose-950/30',
+          border: 'border-rose-500/40',
+          badge: 'bg-rose-500/20 text-rose-700 dark:text-rose-300',
+          dot: 'bg-rose-500',
+        },
+        purple: {
+          bg: 'bg-purple-500/10 dark:bg-purple-950/30',
+          border: 'border-purple-500/40',
+          badge: 'bg-purple-500/20 text-purple-700 dark:text-purple-300',
+          dot: 'bg-purple-500',
+        },
+      };
+
+      const filteredNotes = notes.filter((n) => {
+        // Tab filter: active vs archived
+        if (noteTabFilter === 'active' && n.archived) return false;
+        if (noteTabFilter === 'archived' && !n.archived) return false;
+        // Tag filter
+        if (selectedNoteTag !== 'all' && n.course?.toLowerCase() !== selectedNoteTag.toLowerCase()) return false;
+        // Search query
+        if (notesSearchQuery.trim()) {
+          const q = notesSearchQuery.toLowerCase();
+          const titleMatch = n.title?.toLowerCase().includes(q);
+          const contentMatch = n.content?.toLowerCase().includes(q);
+          const courseMatch = n.course?.toLowerCase().includes(q);
+          return titleMatch || contentMatch || courseMatch;
+        }
+        return true;
+      });
+
+      const pinnedNotes = filteredNotes.filter((n) => n.pinned);
+      const otherNotes = filteredNotes.filter((n) => !n.pinned);
+
+      // Extract unique tags for tag pill filter
+      const allTags = Array.from(new Set(notes.map((n) => n.course).filter(Boolean)));
+
       return (
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 pl-0 lg:pl-8 border-t lg:border-t-0 lg:border-l border-outline-variant/30 pt-6 lg:pt-0">
-          <div>
-            <h3 className="font-display text-2xl font-bold text-on-surface">Class Notes</h3>
-            <p className="text-sm text-secondary dark:text-secondary-fixed-dim mt-0.5">
-              Lecture summaries, key terms, and study scratchpad
-            </p>
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3">
+                <h3 className="font-display text-2xl font-bold text-on-surface">Google Notes & Keep</h3>
+                {connectors.googleNotes && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-medium flex items-center gap-1">
+                    <Check className="w-3.5 h-3.5" /> 2-Way Google Drive Sync Active
+                  </span>
+                )}
+              </div>
+              <p className="text-sm text-secondary dark:text-secondary-fixed-dim mt-0.5">
+                Lecture summaries, colored checklists, and study scratchpad with 2-way Google Keep sync
+              </p>
+            </div>
+
+            {/* Active vs Archived View Toggle */}
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-surface-container-high dark:bg-[#201915] border border-outline-variant/40 shrink-0 self-start sm:self-auto">
+              <button
+                onClick={() => setNoteTabFilter('active')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                  noteTabFilter === 'active' ? 'bg-[#8b5e3c] text-white font-bold shadow-2xs' : 'text-secondary hover:text-on-surface'
+                }`}
+              >
+                Notes ({notes.filter((n) => !n.archived).length})
+              </button>
+              <button
+                onClick={() => setNoteTabFilter('archived')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer ${
+                  noteTabFilter === 'archived' ? 'bg-[#8b5e3c] text-white font-bold shadow-2xs' : 'text-secondary hover:text-on-surface'
+                }`}
+              >
+                <Archive className="w-3.5 h-3.5" /> Archive ({notes.filter((n) => n.archived).length})
+              </button>
+            </div>
           </div>
 
-          {/* Add Note Form */}
-          <form onSubmit={handleAddNote} className="p-4 rounded-xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#201915] shadow-xs flex flex-col gap-3">
-            <div className="text-xs font-bold uppercase tracking-wider text-secondary">
-              Write New Note
+          {/* Add Note Form (Google Keep style) */}
+          <form onSubmit={handleAddNote} className="p-5 rounded-2xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#201915] shadow-xs flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div className="text-xs font-bold uppercase tracking-wider text-secondary font-mono flex items-center gap-2">
+                <FileText className="w-4 h-4 text-primary" /> Take a Note...
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setNewNoteIsChecklist(!newNoteIsChecklist)}
+                  className={`text-xs font-mono px-2.5 py-1 rounded-lg border transition-colors flex items-center gap-1 cursor-pointer ${
+                    newNoteIsChecklist
+                      ? 'bg-primary/10 border-primary text-primary font-bold'
+                      : 'border-outline-variant/50 text-secondary hover:text-on-surface'
+                  }`}
+                >
+                  <CheckSquare className="w-3.5 h-3.5" /> Checklist
+                </button>
+              </div>
             </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <input
                 type="text"
                 value={newNoteTitle}
                 onChange={(e) => setNewNoteTitle(e.target.value)}
-                placeholder="Note Title"
-                className="border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container"
+                placeholder="Note Title..."
+                required
+                className="border border-outline-variant/50 rounded-xl p-3 text-sm bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container font-medium"
               />
               <input
                 type="text"
                 value={newNoteCourse}
                 onChange={(e) => setNewNoteCourse(e.target.value)}
-                placeholder="Course Tag (e.g. CS 301)"
-                className="border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container"
+                placeholder="Course / Tag (e.g. CS301)"
+                className="border border-outline-variant/50 rounded-xl p-3 text-sm bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container"
               />
             </div>
-            <textarea
-              rows={3}
-              value={newNoteContent}
-              onChange={(e) => setNewNoteContent(e.target.value)}
-              placeholder="Lecture notes content..."
-              className="border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container resize-none"
-            ></textarea>
-            <button
-              type="submit"
-              className="mt-1 self-end bg-[#8b5e3c] hover:bg-[#6f4627] text-white px-5 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors cursor-pointer"
-            >
-              <Plus className="w-4 h-4" /> Save Note
-            </button>
+
+            {newNoteIsChecklist ? (
+              <textarea
+                rows={3}
+                value={newNoteChecklistRaw}
+                onChange={(e) => setNewNoteChecklistRaw(e.target.value)}
+                placeholder="Enter checklist items (one per line)...&#10;• Review Chapter 4 slides&#10;• Complete problem set 2&#10;• Email professor about office hours"
+                className="border border-outline-variant/50 rounded-xl p-3 text-sm bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container resize-none font-mono text-xs leading-relaxed"
+              ></textarea>
+            ) : (
+              <textarea
+                rows={3}
+                value={newNoteContent}
+                onChange={(e) => setNewNoteContent(e.target.value)}
+                placeholder="Note details, lecture concepts, study scratchpad..."
+                className="border border-outline-variant/50 rounded-xl p-3 text-sm bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container resize-none leading-relaxed"
+              ></textarea>
+            )}
+
+            {/* Color Palette Selector & Action Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2 border-t border-outline-variant/20">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-mono text-secondary flex items-center gap-1 mr-1">
+                  <Palette className="w-3.5 h-3.5" /> Theme:
+                </span>
+                {Object.keys(NOTE_COLOR_MAP).map((cKey) => (
+                  <button
+                    key={cKey}
+                    type="button"
+                    onClick={() => setNewNoteColor(cKey)}
+                    className={`w-5 h-5 rounded-full ${NOTE_COLOR_MAP[cKey].dot} border-2 transition-all cursor-pointer ${
+                      newNoteColor === cKey ? 'border-primary ring-2 ring-primary/40 scale-110' : 'border-transparent hover:scale-105'
+                    }`}
+                    title={`Color: ${cKey}`}
+                  ></button>
+                ))}
+              </div>
+
+              <button
+                type="submit"
+                className="bg-[#8b5e3c] hover:bg-[#6f4627] text-white px-5 py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer shadow-xs"
+              >
+                <Plus className="w-4 h-4" /> Save to Keep Notes
+              </button>
+            </div>
           </form>
 
-          {/* Notes Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {notes.map((n) => (
-              <div
-                key={n.id}
-                className="p-5 border border-outline-variant/40 rounded-xl bg-surface-container-low dark:bg-[#251e19] shadow-xs flex flex-col justify-between relative group hover:border-primary-container/60 transition-all"
-              >
+          {/* Search Bar & Tag Filter Pills */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary" />
+              <input
+                type="text"
+                value={notesSearchQuery}
+                onChange={(e) => setNotesSearchQuery(e.target.value)}
+                placeholder="Search notes by title, tag, or checklist item..."
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#1a1411] text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+            {allTags.length > 0 && (
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
                 <button
-                  onClick={() => handleDeleteNote(n.id)}
-                  className="absolute top-4 right-4 text-secondary/60 hover:text-error transition-colors p-1"
-                  title="Delete note"
+                  onClick={() => setSelectedNoteTag('all')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors whitespace-nowrap cursor-pointer ${
+                    selectedNoteTag === 'all'
+                      ? 'bg-primary/20 text-primary font-bold border border-primary/30'
+                      : 'bg-surface-container-high text-secondary hover:text-on-surface'
+                  }`}
                 >
-                  <Trash2 className="w-4 h-4" />
+                  #all
                 </button>
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-surface-container-high dark:bg-[#342a23] text-primary dark:text-primary-fixed-dim">
-                      {n.course}
-                    </span>
-                    <span className="text-[10px] text-secondary font-mono">{n.date}</span>
-                  </div>
-                  <h4 className="font-display font-bold text-base text-on-surface mb-2">
-                    {n.title}
-                  </h4>
-                  <p className="text-xs text-secondary dark:text-secondary-fixed-dim leading-relaxed line-clamp-3">
-                    {n.content}
-                  </p>
-                </div>
+                {allTags.map((tag) => (
+                  <button
+                    key={tag}
+                    onClick={() => setSelectedNoteTag(tag)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors whitespace-nowrap cursor-pointer ${
+                      selectedNoteTag === tag
+                        ? 'bg-primary/20 text-primary font-bold border border-primary/30'
+                        : 'bg-surface-container-high text-secondary hover:text-on-surface'
+                    }`}
+                  >
+                    #{tag}
+                  </button>
+                ))}
               </div>
-            ))}
+            )}
           </div>
 
-          {notes.length === 0 && (
-            <div className="w-full h-36 border border-outline-variant/50 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 text-secondary p-6">
-              <FileText className="w-6 h-6 text-primary-container" />
-              <span className="text-sm font-medium">No notes created yet</span>
+          {/* Pinned Notes Section */}
+          {pinnedNotes.length > 0 && (
+            <div className="space-y-3">
+              <div className="text-xs font-bold font-mono text-secondary uppercase tracking-widest flex items-center gap-1.5">
+                <Pin className="w-3.5 h-3.5 text-primary rotate-45" /> Pinned Notes ({pinnedNotes.length})
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {pinnedNotes.map((n) => {
+                  const style = NOTE_COLOR_MAP[n.color || 'default'] || NOTE_COLOR_MAP.default;
+                  return (
+                    <div
+                      key={n.id}
+                      className={`p-5 border ${style.border} ${style.bg} rounded-2xl shadow-xs flex flex-col justify-between relative group hover:shadow-md transition-all`}
+                    >
+                      <div className="flex items-center gap-1 absolute top-4 right-4">
+                        <button
+                          onClick={() => handleTogglePinNote(n.id)}
+                          className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+                          title="Unpin note"
+                        >
+                          <Pin className="w-4 h-4 fill-current rotate-45" />
+                        </button>
+                        <button
+                          onClick={() => handleToggleArchiveNote(n.id)}
+                          className="p-1.5 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+                          title={n.archived ? 'Unarchive note' : 'Archive note'}
+                        >
+                          <Archive className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteNote(n.id)}
+                          className="p-1.5 rounded-lg text-secondary/60 hover:text-error transition-colors cursor-pointer"
+                          title="Delete note"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-2 mb-2 pr-24">
+                          <span className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded-md ${style.badge}`}>
+                            {n.course}
+                          </span>
+                          <span className="text-[10px] text-secondary font-mono">{n.date}</span>
+                        </div>
+
+                        <h4 className="font-display font-bold text-base text-on-surface mb-2 pr-24">
+                          {n.title}
+                        </h4>
+
+                        {n.isChecklist && n.checklistItems?.length ? (
+                          <div className="space-y-1.5 my-2">
+                            {n.checklistItems.map((item: any) => (
+                              <label
+                                key={item.id}
+                                className="flex items-center gap-2 text-xs text-on-surface cursor-pointer select-none"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={item.completed}
+                                  onChange={() => handleToggleChecklistItem(n.id, item.id)}
+                                  className="rounded border-outline-variant text-primary focus:ring-primary w-3.5 h-3.5"
+                                />
+                                <span className={item.completed ? 'line-through text-secondary' : ''}>
+                                  {item.text}
+                                </span>
+                              </label>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-secondary dark:text-secondary-fixed-dim leading-relaxed line-clamp-4 whitespace-pre-wrap">
+                            {n.content}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Others / Active Notes Section */}
+          <div className="space-y-3">
+            {pinnedNotes.length > 0 && otherNotes.length > 0 && (
+              <div className="text-xs font-bold font-mono text-secondary uppercase tracking-widest">
+                Others ({otherNotes.length})
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {otherNotes.map((n) => {
+                const style = NOTE_COLOR_MAP[n.color || 'default'] || NOTE_COLOR_MAP.default;
+                return (
+                  <div
+                    key={n.id}
+                    className={`p-5 border ${style.border} ${style.bg} rounded-2xl shadow-xs flex flex-col justify-between relative group hover:shadow-md transition-all`}
+                  >
+                    <div className="flex items-center gap-1 absolute top-4 right-4">
+                      <button
+                        onClick={() => handleTogglePinNote(n.id)}
+                        className="p-1.5 rounded-lg text-secondary/60 hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+                        title="Pin note to top"
+                      >
+                        <Pin className="w-4 h-4 rotate-45" />
+                      </button>
+                      <button
+                        onClick={() => handleToggleArchiveNote(n.id)}
+                        className="p-1.5 rounded-lg text-secondary/60 hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+                        title={n.archived ? 'Unarchive note' : 'Archive note'}
+                      >
+                        <Archive className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteNote(n.id)}
+                        className="p-1.5 rounded-lg text-secondary/60 hover:text-error transition-colors cursor-pointer"
+                        title="Delete note"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div>
+                      <div className="flex items-center gap-2 mb-2 pr-24">
+                        <span className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded-md ${style.badge}`}>
+                          {n.course}
+                        </span>
+                        <span className="text-[10px] text-secondary font-mono">{n.date}</span>
+                      </div>
+
+                      <h4 className="font-display font-bold text-base text-on-surface mb-2 pr-24">
+                        {n.title}
+                      </h4>
+
+                      {n.isChecklist && n.checklistItems?.length ? (
+                        <div className="space-y-1.5 my-2">
+                          {n.checklistItems.map((item: any) => (
+                            <label
+                              key={item.id}
+                              className="flex items-center gap-2 text-xs text-on-surface cursor-pointer select-none"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={item.completed}
+                                onChange={() => handleToggleChecklistItem(n.id, item.id)}
+                                className="rounded border-outline-variant text-primary focus:ring-primary w-3.5 h-3.5"
+                              />
+                              <span className={item.completed ? 'line-through text-secondary' : ''}>
+                                {item.text}
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-secondary dark:text-secondary-fixed-dim leading-relaxed line-clamp-4 whitespace-pre-wrap">
+                          {n.content}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {filteredNotes.length === 0 && (
+            <div className="w-full h-40 border border-outline-variant/50 border-dashed rounded-2xl flex flex-col items-center justify-center gap-2 text-secondary p-6">
+              <FileText className="w-8 h-8 text-primary-container" />
+              <span className="text-sm font-medium">No notes found</span>
+              <p className="text-xs text-secondary/70">
+                {noteTabFilter === 'archived' ? 'Your archived notes folder is empty.' : 'Write a new note or checklist above to get started.'}
+              </p>
             </div>
           )}
         </div>
