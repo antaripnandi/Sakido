@@ -257,30 +257,49 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     } catch {}
   }, [connectors]);
 
-  // Lock in pending connector after OAuth redirect return
+  // Verify pending connector ONLY after user completes OAuth authorization callback
   useEffect(() => {
-    try {
-      const pending = localStorage.getItem('sakido_pending_connector');
-      if (pending) {
+    const verifyOAuthCallback = async () => {
+      try {
+        const pending = localStorage.getItem('sakido_pending_connector');
+        if (!pending) return;
+
+        const supabase = getSupabaseClient();
+        if (supabase) {
+          const { data } = await supabase.auth.getSession();
+          const session = data.session;
+
+          // Only mark as connected if user returned with an active session containing valid provider token or Google identity
+          if (session && (session.provider_token || session.user?.identities?.some(i => i.provider === 'google'))) {
+            if (session.provider_token) {
+              localStorage.setItem('sakido_provider_token', session.provider_token);
+            }
+            setConnectors((prev) => {
+              const updated = { ...prev, [pending]: true };
+              try {
+                localStorage.setItem('sakido_connectors', JSON.stringify(updated));
+              } catch {}
+              return updated;
+            });
+            const serviceNames: Record<string, string> = {
+              googleCalendar: 'Google Calendar',
+              googleDrive: 'Google Drive',
+              gmail: 'Gmail Notifications',
+              googleNotes: 'Google Notes / Keep',
+            };
+            setConnectorNotice(`Successfully connected ${serviceNames[pending] || pending}! Permissions & API synchronization active.`);
+          } else {
+            console.log('OAuth authorization was closed or unfulfilled.');
+          }
+        }
         localStorage.removeItem('sakido_pending_connector');
-        setConnectors((prev) => {
-          const updated = { ...prev, [pending as keyof typeof prev]: true };
-          try {
-            localStorage.setItem('sakido_connectors', JSON.stringify(updated));
-          } catch {}
-          return updated;
-        });
-        const serviceNames: Record<string, string> = {
-          googleCalendar: 'Google Calendar',
-          googleDrive: 'Google Drive',
-          gmail: 'Gmail Notifications',
-          googleNotes: 'Google Notes / Keep',
-        };
-        setConnectorNotice(`Successfully connected ${serviceNames[pending] || pending}! Permissions & synchronization active.`);
+      } catch (e) {
+        console.warn('Connector restoration notice:', e);
+        localStorage.removeItem('sakido_pending_connector');
       }
-    } catch (e) {
-      console.warn('Connector restoration notice:', e);
-    }
+    };
+
+    verifyOAuthCallback();
   }, []);
 
   // Persistence effects for user data
@@ -685,9 +704,6 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   // OAuth Connector Handler
   const handleConnectOAuth = async (serviceKey: 'googleCalendar' | 'googleDrive' | 'gmail' | 'googleNotes') => {
-    setConnectingService(serviceKey);
-    setConnectorNotice(null);
-
     const scopeMap = {
       googleCalendar: 'https://www.googleapis.com/auth/calendar.readonly',
       googleDrive: 'https://www.googleapis.com/auth/drive.readonly',
@@ -702,10 +718,26 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       googleNotes: 'Google Notes / Keep',
     };
 
-    const targetState = !connectors[serviceKey];
+    // Handle Disconnect Action
+    if (connectors[serviceKey]) {
+      setConnectors((prev) => {
+        const updated = { ...prev, [serviceKey]: false };
+        try {
+          localStorage.setItem('sakido_connectors', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+      setConnectorNotice(`Disconnected ${serviceNames[serviceKey]}.`);
+      setConnectingService(null);
+      return;
+    }
+
+    // Handle Connect Action (Initiate OAuth without premature state change)
+    setConnectingService(serviceKey);
+    setConnectorNotice(null);
 
     const supabase = getSupabaseClient();
-    if (supabase && targetState) {
+    if (supabase) {
       try {
         localStorage.setItem('sakido_auth_return_url', '/dashboard/connectors');
         localStorage.setItem('sakido_pending_connector', serviceKey);
@@ -722,24 +754,10 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         });
       } catch (err: any) {
         console.warn('OAuth prompt notice:', err);
+        localStorage.removeItem('sakido_pending_connector');
+        setConnectingService(null);
       }
     }
-
-    // Always toggle & persist connector state locally
-    setConnectors((prev) => {
-      const updated = { ...prev, [serviceKey]: targetState };
-      try {
-        localStorage.setItem('sakido_connectors', JSON.stringify(updated));
-      } catch {}
-      return updated;
-    });
-
-    setConnectorNotice(
-      targetState
-        ? `Connected ${serviceNames[serviceKey]}! Permissions & API synchronization active.`
-        : `Disconnected ${serviceNames[serviceKey]}.`
-    );
-    setConnectingService(null);
   };
 
 
