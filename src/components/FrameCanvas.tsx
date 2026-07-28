@@ -17,7 +17,7 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
   const imagesRef = useRef<(HTMLImageElement | null)[]>(new Array(totalFrames).fill(null));
   const [loadedCount, setLoadedCount] = useState<number>(0);
 
-  // Preload frame images from /frames/ folder in priority order
+  // Preload frame images from /frames/ folder
   useEffect(() => {
     let isMounted = true;
     let count = 0;
@@ -25,6 +25,7 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
     const loadFrame = (index: number) => {
       const i = index + 1;
       const numStr = String(i).padStart(3, '0');
+      const url = `/frames/ezgif-frame-${numStr}.jpg`;
       const img = new Image();
 
       const handleLoad = () => {
@@ -42,6 +43,7 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
 
       const handleError = () => {
         if (!isMounted) return;
+        console.error('Failed to load frame:', url);
         count++;
         setLoadedCount(count);
         const progress = Math.min(100, Math.round((count / totalFrames) * 100));
@@ -50,14 +52,19 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
 
       img.onload = handleLoad;
       img.onerror = handleError;
-      img.src = `/frames/ezgif-frame-${numStr}.jpg`;
 
+      // This line was previously missing from the initial load path —
+      // it was misplaced inside onerror, so no request was ever made.
+      img.src = url;
+
+      // Handle the case where the image is served from cache and is
+      // already complete by the time we attach handlers.
       if (img.complete && img.naturalWidth > 0) {
         handleLoad();
       }
     };
 
-    // Load all 240 frames
+    // Load all frames
     for (let i = 0; i < totalFrames; i++) {
       loadFrame(i);
     }
@@ -137,6 +144,49 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
         const dy = (height - drawHeight) / 2;
 
         ctx.drawImage(img, dx, dy, drawWidth, drawHeight);
+
+        // Square filter directly over the AI star watermark in bottom-right corner
+        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+          const starX = dx + drawWidth * 0.905;
+          const starY = dy + drawHeight * 0.825;
+          const boxSize = Math.max(52, Math.min(drawWidth, drawHeight) * 0.085);
+          const boxX = starX - boxSize / 2;
+          const boxY = starY - boxSize / 2;
+
+          ctx.save();
+
+          // 1. Sample clean studio floor texture nearby (at x=80%) where there is NO star watermark
+          const sampleW = img.naturalWidth * 0.085;
+          const sampleH = img.naturalHeight * 0.085;
+          const sampleX = img.naturalWidth * 0.80 - sampleW / 2;
+          const sampleY = img.naturalHeight * 0.825 - sampleH / 2;
+
+          // Draw the clean floor background texture directly into the square filter box
+          ctx.filter = 'blur(2px)';
+          ctx.drawImage(
+            img,
+            sampleX, sampleY, sampleW, sampleH,
+            boxX, boxY, boxSize, boxSize
+          );
+
+          // 2. Apply a light, subtle tone blend to match ambient studio shade while keeping floor texture clearly visible
+          ctx.filter = 'none';
+          ctx.fillStyle = 'rgba(12, 12, 14, 0.18)';
+          ctx.fillRect(boxX, boxY, boxSize, boxSize);
+
+          // 3. Add a delicate edge-feathering gradient around the square filter box so it dissolves seamlessly into surrounding floor
+          const edgeGrad = ctx.createRadialGradient(
+            starX, starY, boxSize * 0.35,
+            starX, starY, boxSize * 0.65
+          );
+          edgeGrad.addColorStop(0, 'rgba(12, 12, 14, 0)');
+          edgeGrad.addColorStop(1, 'rgba(12, 12, 14, 0.25)');
+
+          ctx.fillStyle = edgeGrad;
+          ctx.fillRect(boxX, boxY, boxSize, boxSize);
+
+          ctx.restore();
+        }
       }
 
       ctx.restore();
@@ -167,6 +217,3 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
     </div>
   );
 };
-
-
-

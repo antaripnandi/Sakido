@@ -2,6 +2,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { FrameCanvas } from './FrameCanvas';
+import { AuthModal } from './auth/AuthModal';
+import { getSupabaseClient } from '../lib/supabaseClient';
+import { User, LogOut } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -121,6 +124,40 @@ export const SakidoLandingPage: React.FC = () => {
   const [targetFrame, setTargetFrame] = useState<number>(0);
   const [displayFrame, setDisplayFrame] = useState<number>(0);
   const [preloadProgress, setPreloadProgress] = useState<number>(0);
+  const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<{ email?: string; name?: string } | null>(null);
+
+  // Sync Supabase Auth session on mount and upon auth change
+  useEffect(() => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    // Check initial active session
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session?.user) {
+        setCurrentUser({
+          email: data.session.user.email,
+          name: data.session.user.user_metadata?.full_name || data.session.user.email?.split('@')[0],
+        });
+      }
+    });
+
+    // Subscribe to session changes (login, logout, OAuth callback)
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setCurrentUser({
+          email: session.user.email,
+          name: session.user.user_metadata?.full_name || session.user.email?.split('@')[0],
+        });
+      } else {
+        setCurrentUser(null);
+      }
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
 
   // GSAP Ticker for fluid frame interpolation
   useEffect(() => {
@@ -176,6 +213,35 @@ export const SakidoLandingPage: React.FC = () => {
 
   return (
     <div className="bg-black text-white min-h-screen font-sans selection:bg-white selection:text-black">
+      {/* Top Floating Buttons (No background bar) */}
+      <div className="fixed top-5 right-6 z-40 flex items-center gap-3">
+        {currentUser ? (
+          <button
+            onClick={() => setIsAuthOpen(true)}
+            className="px-3.5 py-1.5 rounded-full bg-zinc-900/90 border border-zinc-800 hover:border-zinc-700 text-xs text-zinc-200 flex items-center gap-2 transition-all shadow-md backdrop-blur-md"
+            title="Account details"
+          >
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-mono">{currentUser.name || currentUser.email}</span>
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={() => setIsAuthOpen(true)}
+              className="px-4 py-2 text-xs font-medium text-zinc-300 hover:text-white transition-colors"
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => setIsAuthOpen(true)}
+              className="px-4 py-2 rounded-full bg-white hover:bg-zinc-200 text-black font-semibold text-xs transition-colors shadow-md"
+            >
+              Get Started
+            </button>
+          </>
+        )}
+      </div>
+
       {/* Main GSAP Pinned Scroll Track */}
       <div ref={scrollContainerRef} className="relative w-full bg-black">
         <div
@@ -276,14 +342,17 @@ export const SakidoLandingPage: React.FC = () => {
 
           <div className="pt-6">
             <button
-              className="inline-block px-8 py-3.5 rounded-full bg-white text-black font-semibold text-sm transition-opacity opacity-90 cursor-default select-none pointer-events-none"
-              tabIndex={-1}
+              onClick={() => setIsAuthOpen(true)}
+              className="inline-block px-8 py-3.5 rounded-full bg-white hover:bg-zinc-200 text-black font-semibold text-sm transition-all hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
             >
               Get Started
             </button>
           </div>
         </div>
       </section>
+
+      {/* Auth Modal Flow */}
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
     </div>
   );
 };
