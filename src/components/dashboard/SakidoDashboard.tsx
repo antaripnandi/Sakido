@@ -692,10 +692,126 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     setNewEventDate('');
   };
 
-  const handleDeleteEvent = (id: string) => {
-    setEvents((prev) => prev.filter((ev) => ev.id !== id));
-  };
+  const handleDeleteEvent = async (id: string) => {
+    // Case A: Deleting a Google Calendar imported event (starts with 'gcal-')
+    if (id.startsWith('gcal-')) {
+      const gcalEventId = id.replace('gcal-', '');
+      setGoogleCalendarEvents((prev) => prev.filter((ev) => ev.id !== id));
 
+      if (connectors.googleCalendar) {
+        let token = localStorage.getItem('sakido_provider_token');
+        if (token) {
+          try {
+            const deleteGCal = async (accessToken: string) => {
+              return fetch(
+                `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(gcalEventId)}`,
+                {
+                  method: 'DELETE',
+                  headers: { Authorization: `Bearer ${accessToken}` },
+                }
+              );
+            };
+
+            let res = await deleteGCal(token);
+            if (res.status === 401) {
+              const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
+              if (refreshToken) {
+                const refreshRes = await fetch('/api/refresh-token', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ refresh_token: refreshToken }),
+                });
+                if (refreshRes.ok) {
+                  const refreshData = await refreshRes.json();
+                  token = refreshData.access_token;
+                  localStorage.setItem('sakido_provider_token', token!);
+                  res = await deleteGCal(token!);
+                }
+              }
+            }
+
+            if (res.ok || res.status === 204) {
+              setConnectorNotice('🟢 Deleted live from Google Calendar!');
+            } else {
+              setConnectorNotice(`⚠️ Removed locally, but Google Calendar API returned ${res.status}`);
+            }
+          } catch (err: any) {
+            console.warn('GCal delete error:', err);
+          }
+        }
+      }
+      return;
+    }
+
+    // Case B: Deleting a local Sakido event (and matching Google Calendar event if synced)
+    const targetEv = events.find((ev) => ev.id === id);
+    setEvents((prev) => prev.filter((ev) => ev.id !== id));
+
+    if (targetEv && connectors.googleCalendar) {
+      let token = localStorage.getItem('sakido_provider_token');
+      if (token) {
+        try {
+          const deleteGCal = async (gcalId: string, accessToken: string) => {
+            return fetch(
+              `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(gcalId)}`,
+              {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${accessToken}` },
+              }
+            );
+          };
+
+          // Search Google Calendar API for matching event titled "[Sakido] {title}" or "{title}"
+          const searchTitle = targetEv.title.startsWith('[Sakido]') ? targetEv.title : `[Sakido] ${targetEv.title}`;
+          const searchRes = await fetch(
+            `https://www.googleapis.com/calendar/v3/calendars/primary/events?q=${encodeURIComponent(targetEv.title)}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            const matched = (searchData.items || []).find(
+              (item: any) => item.summary === searchTitle || item.summary === targetEv.title
+            );
+
+            if (matched?.id) {
+              let res = await deleteGCal(matched.id, token);
+              if (res.status === 401) {
+                const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
+                if (refreshToken) {
+                  const refreshRes = await fetch('/api/refresh-token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ refresh_token: refreshToken }),
+                  });
+                  if (refreshRes.ok) {
+                    const refreshData = await refreshRes.json();
+                    token = refreshData.access_token;
+                    localStorage.setItem('sakido_provider_token', token!);
+                    res = await deleteGCal(matched.id, token!);
+                  }
+                }
+              }
+
+              if (res.ok || res.status === 204) {
+                setConnectorNotice(`🟢 Event "${targetEv.title}" deleted from Sakido & Google Calendar!`);
+                // Also remove from googleCalendarEvents list
+                setGoogleCalendarEvents((prev) => prev.filter((ge) => ge.id !== `gcal-${matched.id}`));
+              }
+            } else {
+              setConnectorNotice(`🟢 Event "${targetEv.title}" removed from Sakido schedule.`);
+            }
+          }
+        } catch (err) {
+          console.warn('Sync delete notice:', err);
+        }
+      } else {
+        setConnectorNotice(`🟢 Event "${targetEv?.title || 'Event'}" removed from Sakido schedule.`);
+      }
+    } else {
+      setConnectorNotice(`🟢 Event "${targetEv?.title || 'Event'}" removed from Sakido schedule.`);
+    }
+  };
 
   // Form states
   const [newClassName, setNewClassName] = useState('');
@@ -734,6 +850,16 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   const [connectingService, setConnectingService] = useState<string | null>(null);
   const [connectorNotice, setConnectorNotice] = useState<string | null>(null);
+
+  // Auto-dismiss notification toast after 6 seconds
+  useEffect(() => {
+    if (connectorNotice) {
+      const timer = setTimeout(() => {
+        setConnectorNotice(null);
+      }, 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [connectorNotice]);
 
   // Profile & Logout Modal states
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
@@ -2753,7 +2879,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                               {ev.time && <span className="text-xs font-mono text-secondary">{ev.time}</span>}
                             </div>
                           </div>
-                          {ev.id && !ev.id.startsWith('gcal-') && (
+                          {ev.id && (
                             <button
                               onClick={() => handleDeleteEvent(ev.id)}
                               className="text-secondary/60 hover:text-error transition-colors p-1.5 rounded-lg hover:bg-error/10 cursor-pointer"
