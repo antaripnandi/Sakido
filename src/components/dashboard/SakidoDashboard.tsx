@@ -436,6 +436,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     const supabase = getSupabaseClient();
     if (supabase && targetState) {
       try {
+        localStorage.setItem('sakido_auth_return_url', '/dashboard/connectors');
         await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {

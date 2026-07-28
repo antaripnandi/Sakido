@@ -53,6 +53,19 @@ function AppContent() {
     };
   }, []);
 
+  // Handle return URL restoration after OAuth redirect
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const savedReturnUrl = localStorage.getItem('sakido_auth_return_url');
+    if (savedReturnUrl) {
+      localStorage.removeItem('sakido_auth_return_url');
+      navigate(savedReturnUrl, { replace: true });
+    } else if (window.location.pathname === '/' && (window.location.hash.includes('access_token') || window.location.search.includes('code'))) {
+      navigate('/dashboard/connectors', { replace: true });
+    }
+  }, [currentUser, navigate]);
+
   const handleSignOut = async () => {
     const supabase = getSupabaseClient();
     if (supabase) {
