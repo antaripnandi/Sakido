@@ -1694,112 +1694,115 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         </div>
       </div>
 
-      {/* Sidebar Navigation */}
+      {/* Sidebar Navigation - Fixed 256px Layout */}
       <nav
-        className={`fixed lg:sticky top-0 left-0 h-screen w-64 bg-surface-container-low border-r border-outline-variant/30 flex flex-col py-6 px-4 pb-24 z-50 transition-transform duration-300 overflow-y-auto ${
+        className={`fixed top-0 left-0 h-screen w-64 bg-surface-container-low border-r border-outline-variant/30 flex flex-col z-50 transition-transform duration-300 ${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        {/* Brand */}
-        <div className="mb-6 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <SakidoLogo size="w-8 h-8" />
-            <div>
-              <h1 className="font-display text-2xl font-bold tracking-tight text-on-surface">
-                Sakido
-              </h1>
-              <p className="text-secondary text-xs mt-0.5 font-mono">
-                Productivity Portal
-              </p>
+        {/* Scrollable Navigation Links */}
+        <div className="flex-1 overflow-y-auto py-6 px-4 flex flex-col">
+          {/* Brand */}
+          <div className="mb-6 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-3">
+              <SakidoLogo size="w-8 h-8" />
+              <div>
+                <h1 className="font-display text-2xl font-bold tracking-tight text-on-surface">
+                  Sakido
+                </h1>
+                <p className="text-secondary text-xs mt-0.5 font-mono">
+                  Productivity Portal
+                </p>
+              </div>
             </div>
-          </div>
-          {onBackToLanding && (
-            <button
-              onClick={onBackToLanding}
-              className="p-1.5 rounded-lg border border-outline-variant/40 hover:bg-surface-container text-secondary hover:text-on-surface transition-colors cursor-pointer"
-              title="Return to Landing Page"
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </button>
-          )}
-        </div>
-
-        {/* Student Section */}
-        <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0">
-          Student Workspace
-        </div>
-        <ul className="space-y-1 mb-6 shrink-0">
-          {[
-            { name: 'Classes', icon: BookOpen },
-            { name: 'Calendar', icon: CalendarIcon },
-            { name: 'Tasks & Grades', icon: CheckCircle2 },
-            { name: 'Watch Later', icon: Video },
-            { name: 'Notes', icon: FileText },
-          ].map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.name;
-            return (
-              <li key={item.name}>
-                <button
-                  onClick={() => handleSelectTab(item.name)}
-                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-                    isActive
-                      ? 'text-primary font-bold bg-surface-container border border-primary-container/20 shadow-2xs'
-                      : 'text-secondary hover:text-on-surface hover:bg-surface-container/60'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{item.name}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-
-        {/* Connectors Section */}
-        <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0">
-          Integrations
-        </div>
-        <ul className="space-y-1 mb-6 shrink-0">
-          <li>
-            <button
-              onClick={() => handleSelectTab('Connectors')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-                activeTab === 'Connectors'
-                  ? 'text-primary font-bold bg-surface-container border border-primary-container/20 shadow-2xs'
-                  : 'text-secondary hover:text-on-surface hover:bg-surface-container/60'
-              }`}
-            >
-              <Sliders className="w-4 h-4" />
-              <span>Connectors</span>
-            </button>
-          </li>
-        </ul>
-
-        {/* Other Section */}
-        <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0">
-          Modules
-        </div>
-        <ul className="space-y-1 mb-6 shrink-0">
-          {['University & People', 'AI Features'].map((item) => (
-            <li key={item}>
+            {onBackToLanding && (
               <button
-                onClick={() => handleSelectTab(item)}
+                onClick={onBackToLanding}
+                className="p-1.5 rounded-lg border border-outline-variant/40 hover:bg-surface-container text-secondary hover:text-on-surface transition-colors cursor-pointer"
+                title="Return to Landing Page"
+              >
+                <ArrowLeft className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {/* Student Section */}
+          <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0">
+            Student Workspace
+          </div>
+          <ul className="space-y-1 mb-6 shrink-0">
+            {[
+              { name: 'Classes', icon: BookOpen },
+              { name: 'Calendar', icon: CalendarIcon },
+              { name: 'Tasks & Grades', icon: CheckCircle2 },
+              { name: 'Watch Later', icon: Video },
+              { name: 'Notes', icon: FileText },
+            ].map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.name;
+              return (
+                <li key={item.name}>
+                  <button
+                    onClick={() => handleSelectTab(item.name)}
+                    className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                      isActive
+                        ? 'text-primary font-bold bg-surface-container border border-primary-container/20 shadow-2xs'
+                        : 'text-secondary hover:text-on-surface hover:bg-surface-container/60'
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span>{item.name}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Connectors Section */}
+          <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0">
+            Integrations
+          </div>
+          <ul className="space-y-1 mb-6 shrink-0">
+            <li>
+              <button
+                onClick={() => handleSelectTab('Connectors')}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
-                  activeTab === item
+                  activeTab === 'Connectors'
                     ? 'text-primary font-bold bg-surface-container border border-primary-container/20 shadow-2xs'
                     : 'text-secondary hover:text-on-surface hover:bg-surface-container/60'
                 }`}
               >
-                <Info className="w-4 h-4 text-secondary/60" />
-                <span>{item}</span>
+                <Sliders className="w-4 h-4" />
+                <span>Connectors</span>
               </button>
             </li>
-          ))}
-        </ul>
+          </ul>
 
-        {/* Footer User Info (Fixed at bottom-left corner of sidebar) */}
-        <div className="absolute bottom-0 left-0 right-0 border-t border-outline-variant/30 px-4 py-3.5 bg-surface-container-low flex items-center justify-between z-30 shadow-xs">
+          {/* Other Section */}
+          <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0">
+            Modules
+          </div>
+          <ul className="space-y-1 mb-6 shrink-0">
+            {['University & People', 'AI Features'].map((item) => (
+              <li key={item}>
+                <button
+                  onClick={() => handleSelectTab(item)}
+                  className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                    activeTab === item
+                      ? 'text-primary font-bold bg-surface-container border border-primary-container/20 shadow-2xs'
+                      : 'text-secondary hover:text-on-surface hover:bg-surface-container/60'
+                  }`}
+                >
+                  <Info className="w-4 h-4 text-secondary/60" />
+                  <span>{item}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Footer User Info (Pinned at bottom of fixed sidebar) */}
+        <div className="border-t border-outline-variant/30 px-4 py-3.5 bg-surface-container-low flex items-center justify-between shrink-0 shadow-xs">
           <button
             onClick={() => setIsProfileModalOpen(true)}
             className="flex items-center gap-2.5 min-w-0 hover:bg-surface-container/80 p-1.5 -ml-1.5 rounded-xl transition-all cursor-pointer text-left flex-1"
@@ -1827,8 +1830,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         </div>
       </nav>
 
-      {/* Main Container */}
-      <main className="flex-1 flex flex-col min-h-screen pt-16 lg:pt-0 w-full overflow-x-hidden">
+      {/* Main Container with lg:pl-64 Sidebar Offset */}
+      <main className="flex-1 lg:pl-64 flex flex-col min-h-screen pt-16 lg:pt-0 w-full overflow-x-hidden">
         {/* Banner Hero Section - Fixes Overlap Bug! */}
         <div className="relative w-full px-4 sm:px-8 lg:px-12 pt-6">
           <div
