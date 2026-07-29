@@ -2520,11 +2520,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                     )}
                   </div>
                   <p className="text-xs text-secondary mt-1 max-w-md">
-                    Synchronize course deadlines, exam timetables, and lecture schedules into your personal dashboard.
+                    Sync deadlines, exam timetables, and lecture schedules.
                   </p>
-                  <span className="text-[10px] font-mono text-secondary/70 mt-1 block">
-                    Scope: <code className="bg-surface-container-high px-1 rounded">https://www.googleapis.com/auth/calendar.events</code>
-                  </span>
                 </div>
               </div>
 
@@ -2567,11 +2564,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                     )}
                   </div>
                   <p className="text-xs text-secondary mt-1 max-w-md">
-                    Access course syllabi, lecture slides, and automatically sync your Sakido notes to a visible &ldquo;Sakido Notes&rdquo; folder in your Google Drive.
+                    Auto-sync course notes and lecture slides to Google Drive.
                   </p>
-                  <span className="text-[10px] font-mono text-secondary/70 mt-1 block">
-                    Scope: <code className="bg-surface-container-high px-1 rounded">https://www.googleapis.com/auth/drive.file</code>
-                  </span>
                 </div>
               </div>
 
@@ -2614,11 +2608,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                     )}
                   </div>
                   <p className="text-xs text-secondary mt-1 max-w-md">
-                    Surface professor announcements, grade releases, and campus notifications directly.
+                    Receive announcements, grade releases, and campus alerts.
                   </p>
-                  <span className="text-[10px] font-mono text-secondary/70 mt-1 block">
-                    Scope: <code className="bg-surface-container-high px-1 rounded">https://www.googleapis.com/auth/gmail.readonly</code>
-                  </span>
                 </div>
               </div>
 
