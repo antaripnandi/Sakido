@@ -419,7 +419,6 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               googleCalendar: 'Google Calendar',
               googleDrive: 'Google Drive',
               gmail: 'Gmail Notifications',
-              googleNotes: 'Google Notes / Keep',
             };
             setConnectorNotice(`Successfully connected ${serviceNames[pending] || pending}! Syncing existing events...`);
 
@@ -427,9 +426,6 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             if (pending === 'googleCalendar' && session.provider_token) {
               // Slight delay to let the UI update first
               setTimeout(() => bulkSyncEventsToGCal(session.provider_token!), 500);
-            }
-            if (pending === 'googleNotes' && session.provider_token) {
-              setTimeout(() => syncNotesToGoogleDrive(notes, session.provider_token!), 500);
             }
           } else {
             console.log('OAuth authorization was closed or unfulfilled.');
@@ -1647,7 +1643,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                         {classes.filter((_, i) => (idx === 3 && i === 0) || (idx === 7 && i === 1)).slice(0, 1).map((c, i) => (
                           <div key={i} className="px-3 py-1 rounded-lg bg-primary-container/15 text-primary border border-primary-container/30 text-xs font-semibold flex items-center gap-2 shrink-0">
                             <span>{c.code}: {c.name}</span>
-                            <span className="text-[10px] font-mono text-secondary">({c.prof})</span>
+                            <span className="text-[10px] font-mono text-secondary">({c.professor})</span>
                           </div>
                         ))}
                       </div>
@@ -1678,7 +1674,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   const isToday = isCurrentMonth && d === todayDate;
                   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                   
-                  const matchedEvents = allEvents.filter((e) => e.date === dateStr || e.date === String(d));
+                  const matchedEvents = allEvents.filter((e) => e.date === dateStr);
                   const matchedTasks = tasks.filter((t) => !t.completed && (t.dueDate?.includes(dateStr) || (isToday && t.dueDate?.toLowerCase().includes('today'))));
 
                   const firstEvent = matchedEvents[0] || (matchedTasks[0] ? { title: matchedTasks[0].title, type: 'Task' } : null);
@@ -3143,7 +3139,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   {userName}
                 </h2>
                 <p className="font-manrope text-sm text-secondary">
-                  {currentUser?.email || 'bantarip4@gmail.com'}
+                  {currentUser?.email}
                 </p>
                 <div className="flex items-center justify-center sm:justify-start gap-2 mt-1">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />

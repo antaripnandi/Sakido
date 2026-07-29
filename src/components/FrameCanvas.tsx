@@ -17,12 +17,33 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imagesRef = useRef<(HTMLImageElement | null)[]>(new Array(totalFrames).fill(null));
 
-  // Preload frame images efficiently from /frames/ folder
+  // Preload frame images efficiently with Frame 1 high-priority loading
   useEffect(() => {
     let isMounted = true;
     let count = 0;
 
-    for (let i = 0; i < totalFrames; i++) {
+    // 1. Prioritize frame 1 (index 0) immediately so canvas displays instantly on load (no initial black screen)
+    const firstImg = new Image();
+    try {
+      (firstImg as unknown as { fetchPriority: string }).fetchPriority = 'high';
+    } catch {}
+
+    const onFirstLoad = () => {
+      if (!isMounted) return;
+      imagesRef.current[0] = firstImg;
+      count++;
+      if (onPreloadProgress) onPreloadProgress(Math.min(100, Math.round((count / totalFrames) * 100)));
+    };
+    firstImg.onload = onFirstLoad;
+    firstImg.onerror = onFirstLoad;
+    firstImg.src = '/frames/ezgif-frame-001.jpg';
+
+    if (firstImg.complete && firstImg.naturalWidth > 0) {
+      onFirstLoad();
+    }
+
+    // 2. Preload remaining frame images
+    for (let i = 1; i < totalFrames; i++) {
       const frameNum = String(i + 1).padStart(3, '0');
       const url = `/frames/ezgif-frame-${frameNum}.jpg`;
       const img = new Image();
@@ -81,7 +102,7 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
       // Fetch loaded image or fallback to nearest available loaded frame
       let img = imagesRef.current[safeIndex];
       if (!img || !img.complete || img.naturalWidth === 0) {
-        for (let offset = 1; offset < 30; offset++) {
+        for (let offset = 1; offset < 40; offset++) {
           const prev = safeIndex - offset;
           if (prev >= 0 && imagesRef.current[prev]?.complete && imagesRef.current[prev]!.naturalWidth > 0) {
             img = imagesRef.current[prev];
@@ -113,33 +134,47 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
         const dx = (width - drawWidth) / 2;
         const dy = (height - drawHeight) / 2;
 
-        // Single ultra-fast 2D canvas draw call
+        // Draw main frame image
         ctx.drawImage(img, dx, dy, drawWidth, drawHeight);
 
-        // Tight square filter patch directly over the AI star watermark in bottom-right corner
+        // Expanded square filter patch with radial edge-feathering to cover all star points invisibly
         if (img.naturalWidth > 0 && img.naturalHeight > 0) {
           const starX = dx + drawWidth * 0.905;
           const starY = dy + drawHeight * 0.825;
-          const boxSize = Math.max(38, Math.min(drawWidth, drawHeight) * 0.055);
+          const boxSize = Math.max(54, Math.min(drawWidth, drawHeight) * 0.088);
           const boxX = starX - boxSize / 2;
           const boxY = starY - boxSize / 2;
 
-          // Sample clean studio floor background texture nearby (x=80%) where there is NO star watermark
-          const sampleW = img.naturalWidth * 0.055;
-          const sampleH = img.naturalHeight * 0.055;
+          const sampleW = img.naturalWidth * 0.088;
+          const sampleH = img.naturalHeight * 0.088;
           const sampleX = img.naturalWidth * 0.80 - sampleW / 2;
           const sampleY = img.naturalHeight * 0.825 - sampleH / 2;
 
-          // Draw clean floor texture directly into tight square filter box
+          ctx.save();
+
+          // 1. Draw clean studio floor background texture into expanded filter box
           ctx.drawImage(
             img,
             sampleX, sampleY, sampleW, sampleH,
             boxX, boxY, boxSize, boxSize
           );
 
-          // Apply a subtle ambient tone blend so the patch dissolves seamlessly into the floor
-          ctx.fillStyle = 'rgba(12, 12, 14, 0.15)';
+          // 2. Light ambient tone blend matching studio shadow
+          ctx.fillStyle = 'rgba(12, 12, 14, 0.16)';
           ctx.fillRect(boxX, boxY, boxSize, boxSize);
+
+          // 3. Delicate edge-feathering gradient so filter box dissolves seamlessly into studio floor
+          const edgeGrad = ctx.createRadialGradient(
+            starX, starY, boxSize * 0.32,
+            starX, starY, boxSize * 0.65
+          );
+          edgeGrad.addColorStop(0, 'rgba(12, 12, 14, 0)');
+          edgeGrad.addColorStop(1, 'rgba(12, 12, 14, 0.32)');
+
+          ctx.fillStyle = edgeGrad;
+          ctx.fillRect(boxX, boxY, boxSize, boxSize);
+
+          ctx.restore();
         }
       } else {
         ctx.fillStyle = '#000000';

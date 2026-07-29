@@ -6,6 +6,8 @@ build/
 .env.production
 !.env.example
 *.zip
+*.png
+*.jpg
 .vercel
 AGENTS.md
 agent.md

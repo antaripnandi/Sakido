@@ -79,7 +79,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           pin: pinnedRef.current,
           start: 'top top',
           end: 'bottom bottom',
-          scrub: true, // 1:1 instant linear scroll binding (zero lag, native smooth physics)
+          scrub: 1.0, // Smooth 1.0s catchup scrub for slow, steady playback on any scroll speed
           onUpdate: (self) => {
             frameRef.current = frameObjRef.current.value;
             const newSection = Math.min(
