@@ -80,13 +80,17 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           pin: pinnedRef.current,
           start: 'top top',
           end: 'bottom bottom',
-          scrub: prefersReducedMotion ? false : 0.5,
+          scrub: prefersReducedMotion ? false : 0.8, // Smooth 0.8s catchup scrub
+          snap: prefersReducedMotion ? undefined : {
+            snapTo: 1 / (TOTAL_SECTIONS - 1),
+            duration: { min: 0.25, max: 0.6 },
+            delay: 0.05,
+            ease: 'power2.inOut',
+          },
           onUpdate: (self) => {
-            const progress = self.progress;
-            // Map progress 0..1 evenly across 8 section indices (0 to 7)
             const newSection = Math.min(
               TOTAL_SECTIONS - 1,
-              Math.floor(progress * TOTAL_SECTIONS)
+              Math.max(0, Math.round(self.progress * (TOTAL_SECTIONS - 1)))
             );
             if (newSection !== currentSectionRef.current) {
               currentSectionRef.current = newSection;
