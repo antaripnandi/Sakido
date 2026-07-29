@@ -193,11 +193,15 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
   );
 
   const lastDrawnFrameRef = useRef<number>(-1);
+  const lastLoadedCountRef = useRef<number>(0);
 
   // Redraw smoothly on animation frame updates
   useEffect(() => {
     const roundedFrame = Math.round(currentFrame * 10) / 10;
-    if (roundedFrame === lastDrawnFrameRef.current) return;
+    const loadedCountChanged = loadedCount !== lastLoadedCountRef.current;
+    lastLoadedCountRef.current = loadedCount;
+
+    if (roundedFrame === lastDrawnFrameRef.current && !loadedCountChanged) return;
     lastDrawnFrameRef.current = roundedFrame;
 
     let animId = requestAnimationFrame(() => {

@@ -244,6 +244,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     });
 
     lenisRef.current = lenis;
+    lenis.stop(); // Prevent user from free scrolling
     lenis.on('scroll', ScrollTrigger.update);
 
     const updateLenis = (time: number) => {
@@ -321,16 +322,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     let touchStartY = 0;
     let touchStartTime = 0;
 
-    const isInsidePinnedSection = () => {
-      const container = scrollContainerRef.current;
-      if (!container) return false;
-      const rect = container.getBoundingClientRect();
-      return rect.top <= 20 && rect.bottom >= window.innerHeight - 20;
-    };
-
     const handleWheel = (e: WheelEvent) => {
-      if (!isInsidePinnedSection()) return;
-
       e.preventDefault();
       if (isAnimatingRef.current) return;
 
@@ -349,8 +341,6 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     };
 
     const handleTouchEnd = (e: TouchEvent) => {
-      if (!isInsidePinnedSection()) return;
-
       const touchEndY = e.changedTouches[0].clientY;
       const deltaY = touchStartY - touchEndY;
       const deltaTime = Date.now() - touchStartTime;
@@ -367,8 +357,6 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!isInsidePinnedSection()) return;
-
       if (['ArrowDown', 'PageDown', 'Space'].includes(e.key)) {
         if (currentSectionRef.current < SECTION_PROGRESS.length - 1) {
           e.preventDefault();
@@ -442,32 +430,6 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
             Get Started
           </button>
         )}
-      </div>
-
-      {/* Floating Dot Navigation Bar */}
-      <div className="fixed right-6 top-1/2 -translate-y-1/2 z-40 hidden sm:flex flex-col items-center gap-3">
-        {SECTION_NAMES.map((name, idx) => {
-          const isActive = activeSectionIdx === idx;
-          return (
-            <button
-              key={`dot-${idx}`}
-              onClick={() => animateToSection(idx)}
-              className="group relative flex items-center justify-center p-1.5 cursor-pointer focus:outline-none"
-              title={name}
-            >
-              <span
-                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                  isActive
-                    ? 'bg-white scale-125 ring-4 ring-white/20'
-                    : 'bg-zinc-600 hover:bg-zinc-400'
-                }`}
-              />
-              <span className="absolute right-8 px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 text-[10px] font-mono text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-md">
-                {name}
-              </span>
-            </button>
-          );
-        })}
       </div>
 
       {/* Main GSAP Pinned Scroll Track */}
