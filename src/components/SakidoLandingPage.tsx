@@ -107,8 +107,16 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     };
   }, []);
 
+  // Hide side scrollbar on front landing page
+  useEffect(() => {
+    document.body.classList.add('landing-page-active');
+    return () => {
+      document.body.classList.remove('landing-page-active');
+    };
+  }, []);
+
   return (
-    <div className="bg-black text-white font-sans selection:bg-white selection:text-black overflow-x-hidden relative">
+    <div className="bg-black text-white font-sans selection:bg-white selection:text-black overflow-x-hidden relative no-scrollbar">
       {/* Native Scroll Container (700dvh for 6 scroll intervals) */}
       <div ref={containerRef} className="h-[700dvh] relative w-full">
         {/* Pinned Viewport Container (Pinned by GSAP ScrollTrigger) */}
