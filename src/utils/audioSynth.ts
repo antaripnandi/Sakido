@@ -119,6 +119,29 @@ class AmbientSoundSynth {
     }
   }
 
+  public playCompletionChime() {
+    this.initCtx();
+    if (!this.ctx) return;
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523.25, now);
+      osc.frequency.exponentialRampToValueAtTime(659.25, now + 0.15);
+      osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.3);
+      osc.frequency.exponentialRampToValueAtTime(1046.50, now + 0.45);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 1.2);
+    } catch {
+      // Ignore audio context errors
+    }
+  }
+
   public getStatus() {
     return { isPlaying: this.isPlaying, currentType: this.currentType };
   }
