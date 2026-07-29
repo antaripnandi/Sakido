@@ -48,6 +48,7 @@ import { SakidoLogo } from '../common/SakidoLogo';
 import { FlashcardModule } from '../flashcards/FlashcardModule';
 import { Flashcard } from '../../types';
 import { useLocalStorageState } from '../../hooks/useLocalStorageState';
+import { FocusTimer } from '../focus/FocusTimer';
 
 const TAB_SLUG_MAP: Record<string, string> = {
   classes: 'Classes',
@@ -107,6 +108,9 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const [isDarkMode, setIsDarkMode] = useLocalStorageState<boolean>('sakido_theme_mode', () => {
     return document.documentElement.classList.contains('dark');
   });
+
+  // Focus timer overlay state
+  const [isFocusTimerOpen, setIsFocusTimerOpen] = useState<boolean>(false);
 
   // Mobile sidebar drawer state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
@@ -2742,6 +2746,22 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             </li>
           </ul>
 
+          {/* Focus Timer */}
+          <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0">
+            Focus
+          </div>
+          <ul className="space-y-1 mb-6 shrink-0">
+            <li>
+              <button
+                onClick={() => setIsFocusTimerOpen(true)}
+                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer text-secondary hover:text-on-surface hover:bg-surface-container/60"
+              >
+                <Clock className="w-4 h-4" />
+                <span>Focus Timer</span>
+              </button>
+            </li>
+          </ul>
+
           {/* Other Section */}
           <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0">
             Modules
@@ -3513,6 +3533,11 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Focus Timer fullscreen overlay */}
+      {isFocusTimerOpen && (
+        <FocusTimer onClose={() => setIsFocusTimerOpen(false)} />
       )}
     </div>
   );
