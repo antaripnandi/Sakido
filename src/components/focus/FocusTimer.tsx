@@ -218,11 +218,6 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
       {/* Top Bar */}
       <header className="w-full flex justify-between items-center px-4 md:px-10 py-4 z-10">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full border border-outline-variant text-primary">
-            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
-              timer
-            </span>
-          </div>
           <div className="flex flex-col">
             <span className="font-syne text-lg font-semibold text-primary tracking-tight">Focus</span>
           </div>

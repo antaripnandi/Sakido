@@ -28,11 +28,11 @@ const NORMAL_PRESETS = [
   { value: 90, title: '90m', label: 'Sprint' },
 ];
 
-const POMODORO_RATIOS: { key: PomodoroRatioKey; title: string; defaultFocus: number; label: string }[] = [
-  { key: '5:1', title: '5 : 1', defaultFocus: 25, label: '5:1 ratio' },
-  { key: '45:15', title: '3 : 1', defaultFocus: 45, label: '3:1 ratio' },
-  { key: '52:17', title: '52 : 17', defaultFocus: 52, label: '52:17 ratio' },
-  { key: '2:1', title: '2 : 1', defaultFocus: 30, label: '2:1 ratio' },
+const POMODORO_RATIOS: { key: PomodoroRatioKey; title: string; defaultFocus: number }[] = [
+  { key: '5:1', title: '5 : 1', defaultFocus: 25 },
+  { key: '45:15', title: '3 : 1', defaultFocus: 45 },
+  { key: '52:17', title: '52 : 17', defaultFocus: 52 },
+  { key: '2:1', title: '2 : 1', defaultFocus: 30 },
 ];
 
 const CYCLE_PRESETS = [1, 2, 3, 4, 6, 8];
@@ -88,19 +88,8 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
     <div className="font-body-md bg-background text-on-background flex flex-col min-h-[calc(100vh-5rem)] selection:bg-primary-fixed-dim selection:text-primary rounded-3xl overflow-hidden p-4 md:p-8">
       {/* Top Header */}
       <header className="relative z-10 flex justify-between items-center px-4 md:px-8 py-4 mb-4 border-b border-outline-variant/30">
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
-            timer
-          </span>
-          <div>
-            <h1 className="font-syne text-xl font-bold tracking-tight text-on-surface">Focus</h1>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-on-surface-variant font-medium hidden sm:inline">
-            Setup mode — Fullscreen on start
-          </span>
+        <div>
+          <h1 className="font-syne text-xl font-bold tracking-tight text-on-surface">Focus</h1>
         </div>
       </header>
 
@@ -215,16 +204,13 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                           key={r.key}
                           type="button"
                           onClick={() => handleRatioSelect(r.key)}
-                          className={`p-4 rounded-2xl border transition-all text-left flex flex-col justify-between cursor-pointer ${
+                          className={`p-4 rounded-2xl border transition-all text-center flex flex-col justify-center items-center cursor-pointer ${
                             isActive
                               ? 'bg-primary text-on-primary border-primary shadow-xs'
                               : 'bg-surface-container border-outline-variant text-on-surface hover:bg-surface-container-high'
                           }`}
                         >
                           <span className="font-syne font-bold text-base md:text-lg">{r.title}</span>
-                          <span className={`text-[11px] mt-1 font-mono ${isActive ? 'text-white/80 dark:text-[#51361c]' : 'text-on-surface-variant'}`}>
-                            {r.label}
-                          </span>
                         </button>
                       );
                     })}
