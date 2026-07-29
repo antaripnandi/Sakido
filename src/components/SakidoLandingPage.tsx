@@ -5,7 +5,7 @@ import { Observer } from 'gsap/Observer';
 import { FrameCanvas } from './FrameCanvas';
 import { AuthModal } from './auth/AuthModal';
 import { getSupabaseClient } from '../lib/supabaseClient';
-import { User, ArrowRight, Sparkles } from 'lucide-react';
+import { User } from 'lucide-react';
 
 gsap.registerPlugin(ScrollToPlugin, Observer);
 
@@ -13,7 +13,6 @@ gsap.registerPlugin(ScrollToPlugin, Observer);
  * =========================================================================
  * FRAME MAP — 240 frames across 7 main sections + 1 solid black CTA section
  *
- * Each frame section snaps to a specific "rest frame" representing that feature:
  *  Section 0 — Hero "Sakido"           → Frame 0   (bag closed, front view)
  *  Section 1 — Notes                   → Frame 40  (straps unbuckled, flap opening)
  *  Section 2 — Calendar                → Frame 80  (bag opening wider, laptop visible)
@@ -21,14 +20,14 @@ gsap.registerPlugin(ScrollToPlugin, Observer);
  *  Section 4 — Knowledge Inbox         → Frame 160 (items fully spread out)
  *  Section 5 — Chat                    → Frame 200 (items settled into layout)
  *  Section 6 — Dashboard               → Frame 239 (final frame state)
- *  Section 7 — Final CTA               → Frame 239 + Solid black background cover
+ *  Section 7 — Final CTA               → Frame 239 + Solid black background cover (older style)
  * =========================================================================
  */
 
 const SECTION_FRAMES = [0, 40, 80, 120, 160, 200, 239];
 const TOTAL_SECTIONS = 8; // 7 frame sections + 1 solid black CTA section
-const COOLDOWN_MS = 600; // Cooldown timer to prevent spam-scrolling and glitches
-const FRAME_ANIM_DURATION = 0.65; // Snappy, clean transition between frame checkpoints
+const COOLDOWN_MS = 600; // Anti-spam cooldown timer between section changes
+const FRAME_ANIM_DURATION = 0.65;
 
 const FEATURE_CALLOUTS = [
   {
@@ -92,7 +91,6 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ email?: string; name?: string; avatarUrl?: string } | null>(null);
 
-  // Refs for animation state & cooldown locking
   const currentSectionRef = useRef(0);
   const isCoolingDown = useRef(false);
   const frameAnimRef = useRef<gsap.core.Tween | null>(null);
@@ -133,8 +131,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
   }, []);
 
   /**
-   * Transition to a specific section index.
-   * Smoothly animates canvas frames or reveals the final CTA section.
+   * Transition to target section index.
    */
   const goToSection = useCallback(
     (targetIndex: number) => {
@@ -148,7 +145,6 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
       currentSectionRef.current = clamped;
       setCurrentSection(clamped);
 
-      // If transitioning to Section 7 (CTA), hold frame at 239
       const targetFrame = clamped < SECTION_FRAMES.length ? SECTION_FRAMES[clamped] : 239;
 
       frameAnimRef.current = gsap.to(frameObjRef.current, {
@@ -160,7 +156,6 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
         },
       });
 
-      // Activate cooldown lock to prevent spam-scrolling
       isCoolingDown.current = true;
       setTimeout(() => {
         isCoolingDown.current = false;
@@ -169,7 +164,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     []
   );
 
-  // Intercept wheel/touch/pointer gestures using GSAP Observer
+  // GSAP Observer for discrete snapping
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       return;
@@ -193,7 +188,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           goToSection(prev);
         }
       },
-      tolerance: 12, // Sensitivity threshold in px to ignore stray micro-touches
+      tolerance: 12,
     });
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -223,29 +218,6 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [goToSection]);
-
-  // Compute Hero title opacity
-  const heroOpacity = currentSection === 0 ? 1 : Math.max(0, 1 - (displayFrame / SECTION_FRAMES[1]));
-  const heroY = (1 - heroOpacity) * -24;
-
-  // Compute callout visibility per section
-  const getCalloutOpacity = (sectionIndex: number): number => {
-    if (currentSection === sectionIndex) return 1;
-    if (currentSection === 7) return 0; // Hide callouts when final CTA is up
-
-    const targetFrame = SECTION_FRAMES[sectionIndex];
-    const dist = Math.abs(displayFrame - targetFrame);
-    const range = 25;
-    if (dist > range) return 0;
-    return 1 - dist / range;
-  };
-
-  const getCalloutY = (sectionIndex: number): number => {
-    const targetFrame = SECTION_FRAMES[sectionIndex];
-    const diff = displayFrame - targetFrame;
-    if (Math.abs(diff) > 25) return diff > 0 ? -20 : 20;
-    return (diff / 25) * -20;
-  };
 
   return (
     <div className="bg-black text-white min-h-screen font-sans selection:bg-white selection:text-black overflow-hidden relative">
@@ -283,23 +255,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
         )}
       </div>
 
-      {/* Section indicator dots (8 sections total) */}
-      <div className="fixed right-6 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2.5">
-        {Array.from({ length: TOTAL_SECTIONS }).map((_, i) => (
-          <button
-            key={i}
-            onClick={() => goToSection(i)}
-            className={`w-2 h-2 rounded-full transition-all duration-500 cursor-pointer ${
-              currentSection === i
-                ? 'bg-white scale-125 shadow-[0_0_8px_rgba(255,255,255,0.8)]'
-                : 'bg-zinc-600 hover:bg-zinc-400 scale-100'
-            }`}
-            aria-label={`Go to section ${i + 1}`}
-          />
-        ))}
-      </div>
-
-      {/* Full-screen Canvas Background (Frames 0 to 239) */}
+      {/* Full-screen Canvas Background */}
       <div className="fixed inset-0 z-10 w-full h-full pointer-events-none">
         <FrameCanvas
           currentFrame={displayFrame}
@@ -313,15 +269,14 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
       <div className="fixed inset-0 z-20 pointer-events-none">
         {/* Hero Title (Section 0) */}
         <div
-          className="absolute inset-0 flex flex-col justify-between items-center pt-24 sm:pt-32 pb-12 px-6 sm:px-12 transition-all duration-300"
-          style={{
-            opacity: heroOpacity,
-            transform: `translateY(${heroY}px)`,
-            pointerEvents: currentSection === 0 ? 'auto' : 'none',
-          }}
+          className={`absolute inset-0 flex flex-col justify-between items-center pt-24 sm:pt-32 pb-12 px-6 sm:px-12 transition-all duration-700 cubic-bezier(0.16, 1, 0.3, 1) ${
+            currentSection === 0
+              ? 'opacity-100 translate-y-0 pointer-events-auto'
+              : 'opacity-0 -translate-y-24 pointer-events-none'
+          }`}
         >
           <div className="text-center max-w-3xl">
-            <h1 className="text-6xl sm:text-8xl md:text-9xl font-extrabold tracking-tighter text-white drop-shadow-sm">
+            <h1 className="text-6xl sm:text-8xl md:text-9xl font-extrabold tracking-tighter text-white">
               Sakido
             </h1>
             <p className="mt-6 text-lg sm:text-2xl text-zinc-300 font-normal tracking-tight leading-relaxed max-w-2xl mx-auto">
@@ -329,36 +284,50 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
             </p>
           </div>
 
-          <div className="text-center text-xs text-zinc-500 font-medium tracking-[0.2em] uppercase mb-6 animate-pulse">
+          <div className="text-center text-xs text-zinc-500 font-medium tracking-[0.2em] uppercase mb-6">
             Scroll to unpack
           </div>
         </div>
 
         {/* Feature Callouts (Sections 1–6) */}
         {FEATURE_CALLOUTS.map((item) => {
-          const opacity = getCalloutOpacity(item.sectionIndex);
-          const translateY = getCalloutY(item.sectionIndex);
+          const isCurrent = currentSection === item.sectionIndex;
+          const isPassed = currentSection > item.sectionIndex;
+          const isFuture = currentSection < item.sectionIndex;
+
           const isLeft = item.align === 'left';
 
-          if (opacity <= 0.01) return null;
+          // Smooth transition: if passed -> disappears upwards (-80px), if future -> waits downwards (+80px)
+          let transformStyle = 'translateY(calc(-50% + 80px))';
+          let opacityStyle = 0;
+
+          if (isCurrent) {
+            transformStyle = 'translateY(-50%)';
+            opacityStyle = 1;
+          } else if (isPassed) {
+            transformStyle = 'translateY(calc(-50% - 80px))';
+            opacityStyle = 0;
+          }
 
           return (
             <div
               key={item.id}
-              className={`absolute top-1/2 p-6 sm:p-12 md:p-16 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg transition-none pointer-events-auto ${
+              className={`absolute top-1/2 p-6 sm:p-12 md:p-16 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg transition-all duration-700 cubic-bezier(0.16, 1, 0.3, 1) ${
+                isCurrent ? 'pointer-events-auto' : 'pointer-events-none'
+              } ${
                 isLeft
                   ? 'left-8 sm:left-14 md:left-20 lg:left-28 text-left'
                   : 'right-12 sm:right-20 md:right-28 lg:right-36 text-right'
               }`}
               style={{
-                opacity,
-                transform: `translateY(calc(-50% + ${translateY}px))`,
+                opacity: opacityStyle,
+                transform: transformStyle,
               }}
             >
               <span className="text-xs uppercase tracking-[0.25em] text-zinc-400 font-semibold mb-2 block">
                 {item.category}
               </span>
-              <h2 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white mb-3 leading-tight drop-shadow-sm">
+              <h2 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white mb-3 leading-tight">
                 {item.title}
               </h2>
               <p className="text-base sm:text-xl lg:text-2xl text-zinc-300 font-normal tracking-tight leading-snug">
@@ -369,57 +338,35 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
         })}
       </div>
 
-      {/* ====== SECTION 7: FINAL CTA (Solid Black Background, Separated from Frames) ====== */}
+      {/* ====== SECTION 7: FINAL CTA (Reverted to exact older style) ====== */}
       <div
-        className={`fixed inset-0 z-40 bg-black flex flex-col items-center justify-between px-6 py-16 transition-transform duration-700 cubic-bezier(0.16, 1, 0.3, 1) ${
+        className={`fixed inset-0 z-40 bg-black flex flex-col items-center justify-center px-6 py-12 transition-transform duration-700 cubic-bezier(0.16, 1, 0.3, 1) ${
           currentSection === 7 ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'
         }`}
       >
-        <div className="w-full max-w-5xl flex justify-between items-center text-xs text-zinc-500 font-mono">
-          <span>SAKIDO ACADEMIC SUITE</span>
-          <span>READY WHEN YOU ARE</span>
-        </div>
-
-        <div className="text-center max-w-3xl my-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-400 text-xs font-medium mb-6">
-            <Sparkles className="w-3.5 h-3.5 text-yellow-500" />
-            <span>Simplify your entire academic life today</span>
-          </div>
-          
-          <h2 className="text-5xl sm:text-7xl md:text-8xl font-extrabold tracking-tight text-white leading-none mb-6">
-            One app instead of five.
+        <div className="max-w-3xl mx-auto text-center space-y-6">
+          <h2 className="text-5xl sm:text-7xl font-extrabold tracking-tighter text-white leading-none">
+            Everything school. One app.
           </h2>
-          
-          <p className="text-lg sm:text-2xl text-zinc-400 font-normal tracking-tight leading-relaxed max-w-xl mx-auto mb-10">
-            Ditch the browser tabs and disconnected tools. Bring your classes, deadlines, links, and study partners into a single workspace.
-          </p>
 
-          <button
-            onClick={() => {
-              if (currentUser && onOpenDashboard) {
-                onOpenDashboard();
-              } else {
-                setIsAuthOpen(true);
-              }
-            }}
-            className="group px-8 py-4 rounded-full bg-white text-black font-semibold text-base hover:bg-zinc-200 transition-all duration-200 shadow-[0_0_30px_rgba(255,255,255,0.15)] flex items-center gap-3 mx-auto cursor-pointer"
-          >
-            <span>{currentUser ? 'Open Your Dashboard' : 'Get Started Now'}</span>
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform duration-200" />
-          </button>
-        </div>
-
-        <div className="w-full max-w-5xl flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-zinc-600 font-mono border-t border-zinc-900/80 pt-6">
-          <p>© {new Date().getFullYear()} Sakido. All rights reserved.</p>
-          <div className="flex items-center gap-6">
-            <button onClick={() => goToSection(0)} className="hover:text-zinc-400 transition-colors cursor-pointer">
-              Back to top ↑
+          <div className="pt-6">
+            <button
+              onClick={() => {
+                if (currentUser && onOpenDashboard) {
+                  onOpenDashboard();
+                } else {
+                  setIsAuthOpen(true);
+                }
+              }}
+              className="inline-block px-8 py-3.5 rounded-full bg-white hover:bg-zinc-200 text-black font-semibold text-sm transition-all hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
+            >
+              {currentUser ? 'Open Dashboard' : 'Get Started'}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Auth Modal */}
+      {/* Auth Modal Flow */}
       <AuthModal
         isOpen={isAuthOpen}
         onClose={() => setIsAuthOpen(false)}
