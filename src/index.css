@@ -246,3 +246,80 @@ input:-webkit-autofill:active {
   background: #83746b80;
 }
 
+/* Focus Zone Custom Component Styles */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+}
+
+.preset-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.preset-card.active {
+  background: var(--color-primary, #6f4627);
+  color: #ffffff;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px -10px rgba(111, 70, 39, 0.4);
+}
+
+.preset-card.active .text-on-surface-variant {
+  color: #ffe3d1;
+}
+
+.dark .preset-card.active {
+  background: var(--color-primary, #f4bb92);
+  color: #301400;
+  box-shadow: 0 10px 30px -10px rgba(244, 187, 146, 0.3);
+}
+
+.dark .preset-card.active .text-on-surface-variant {
+  color: #51361c;
+}
+
+.btn-primary {
+  transition: all 0.2s ease;
+  box-shadow: 0 0 0 0 rgba(111, 70, 39, 0);
+}
+
+.btn-primary:hover {
+  box-shadow: 0 0 40px -5px rgba(111, 70, 39, 0.25);
+  transform: scale(1.01);
+}
+
+.btn-primary:active {
+  transform: scale(0.98);
+}
+
+input[type="range"].focus-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+}
+
+input[type="range"].focus-slider::-webkit-slider-runnable-track {
+  height: 3px;
+  background: var(--color-outline-variant, #d5c3b8);
+  border-radius: 2px;
+}
+
+.dark input[type="range"].focus-slider::-webkit-slider-runnable-track {
+  background: var(--color-outline-variant, #51443c);
+}
+
+input[type="range"].focus-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: var(--color-primary, #6f4627);
+  margin-top: -8px;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+.dark input[type="range"].focus-slider::-webkit-slider-thumb {
+  background: var(--color-primary, #f4bb92);
+}
+
+

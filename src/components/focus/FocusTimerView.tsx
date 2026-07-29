@@ -1,300 +1,203 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Play, 
-  Pause, 
-  RotateCcw, 
-  Volume2, 
-  VolumeX, 
-  CloudRain, 
-  Headphones, 
-  Waves, 
-  Wind, 
-  CheckCircle2, 
-  Flame, 
-  Sparkles,
-  BookOpen
-} from 'lucide-react';
+import React, { useState } from 'react';
 import { Task, UserProfile } from '../../types';
-import { ambientSynth } from '../../utils/audioSynth';
 
 interface FocusTimerViewProps {
-  tasks: Task[];
-  initialTaskTitle?: string;
-  onSessionCompleted: (minutes: number) => void;
-  profile: UserProfile;
+  tasks?: Task[];
+  onStartFocusSession: (minutes: number, sound: 'none' | 'rain' | 'binaural' | 'brownian', volume: number) => void;
+  profile?: UserProfile;
 }
 
+const PRESETS = [
+  { value: 15, title: '15', label: 'Quick Rest' },
+  { value: 25, title: '25', label: 'Pomodoro' },
+  { value: 45, title: '45', label: 'Deep Work' },
+  { value: 60, title: '60', label: 'Intense Study' },
+  { value: 90, title: '90', label: 'Sprint' },
+];
+
 export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
-  tasks,
-  initialTaskTitle,
-  onSessionCompleted,
-  profile,
+  onStartFocusSession,
 }) => {
-  const [timerMode, setTimerMode] = useState<'focus' | 'shortBreak' | 'longBreak'>('focus');
-  
-  // Default minutes: Focus = 25m (1500s), Short Break = 5m (300s), Long Break = 15m (900s)
-  const defaultSeconds = { focus: 1500, shortBreak: 300, longBreak: 900 };
-  
-  const [timeLeft, setTimeLeft] = useState(defaultSeconds.focus);
-  const [isRunning, setIsRunning] = useState(false);
-  const [selectedTaskTitle, setSelectedTaskTitle] = useState<string>(initialTaskTitle || (tasks[0]?.title || 'General Focus Study'));
+  const [durationMinutes, setDurationMinutes] = useState<number>(25);
+  const [activeAudio, setActiveAudio] = useState<'silent' | 'rain' | 'alpha' | 'deep'>('silent');
+  const [volume, setVolume] = useState<number>(50);
 
-  // Ambient sound selector
-  const [activeSound, setActiveSound] = useState<'none' | 'rain' | 'binaural' | 'brownian' | 'whitenoise'>('none');
-  const [volume, setVolume] = useState(0.3);
-
-  const totalSeconds = defaultSeconds[timerMode];
-  const progress = Math.max(0, Math.min(100, ((totalSeconds - timeLeft) / totalSeconds) * 100));
-
-  // Timer loop
-  useEffect(() => {
-    let interval: NodeJS.Timeout | null = null;
-    if (isRunning && timeLeft > 0) {
-      interval = setInterval(() => {
-        setTimeLeft(prev => prev - 1);
-      }, 1000);
-    } else if (timeLeft === 0 && isRunning) {
-      setIsRunning(false);
-      if (timerMode === 'focus') {
-        const mins = Math.round(defaultSeconds.focus / 60);
-        onSessionCompleted(mins);
-      }
-      ambientSynth.stop();
-      setActiveSound('none');
-    }
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [isRunning, timeLeft, timerMode, defaultSeconds.focus, onSessionCompleted]);
-
-  // Handle ambient sound toggle
-  const toggleSound = (sound: 'rain' | 'binaural' | 'brownian' | 'whitenoise') => {
-    if (activeSound === sound) {
-      ambientSynth.stop();
-      setActiveSound('none');
-    } else {
-      setActiveSound(sound);
-      ambientSynth.play(sound);
-      ambientSynth.setVolume(volume);
-    }
+  const handleSelectPreset = (val: number) => {
+    setDurationMinutes(val);
   };
 
-  const handleVolumeChange = (v: number) => {
-    setVolume(v);
-    ambientSynth.setVolume(v);
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setDurationMinutes(Number(e.target.value));
   };
 
-  const handleModeSwitch = (mode: 'focus' | 'shortBreak' | 'longBreak') => {
-    setTimerMode(mode);
-    setIsRunning(false);
-    setTimeLeft(defaultSeconds[mode]);
-  };
+  const handleBegin = () => {
+    let soundParam: 'none' | 'rain' | 'binaural' | 'brownian' = 'none';
+    if (activeAudio === 'rain') soundParam = 'rain';
+    else if (activeAudio === 'alpha') soundParam = 'binaural';
+    else if (activeAudio === 'deep') soundParam = 'brownian';
 
-  const handleReset = () => {
-    setIsRunning(false);
-    setTimeLeft(defaultSeconds[timerMode]);
-  };
-
-  const formatTime = (secs: number) => {
-    const m = Math.floor(secs / 60);
-    const s = secs % 60;
-    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    onStartFocusSession(durationMinutes, soundParam, volume / 100);
   };
 
   return (
-    <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-8">
-      {/* Top Banner */}
-      <div className="flex items-center justify-between bg-white dark:bg-zinc-900 p-4 rounded-2xl border border-zinc-200/80 dark:border-zinc-800 shadow-2xs">
-        <div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            Zen Focus Room
+    <div className="font-body-md bg-background text-on-background flex flex-col min-h-[calc(100vh-5rem)] selection:bg-primary-fixed-dim selection:text-primary rounded-3xl overflow-hidden p-4 md:p-8">
+      {/* Navigation Shell (Top Bar) */}
+      <header className="relative z-10 flex justify-between items-center px-4 md:px-8 py-4 mb-4 border-b border-outline-variant/30">
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-primary text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+            timer
           </span>
-          <p className="text-xs text-zinc-800 dark:text-zinc-200 font-semibold mt-0.5">
-            Goal: {profile.completedMinutesToday} / {profile.dailyGoalMinutes} mins focused today
-          </p>
-        </div>
-
-        {/* Task Selector */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-zinc-600 font-medium hidden sm:inline">Focusing on:</span>
-          <select
-            value={selectedTaskTitle}
-            onChange={(e) => setSelectedTaskTitle(e.target.value)}
-            className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 text-xs text-zinc-900 dark:text-zinc-100 font-medium focus:outline-none max-w-xs truncate"
-          >
-            <option value="General Deep Study">General Deep Study</option>
-            {tasks.map(t => (
-              <option key={t.id} value={t.title}>{t.courseName}: {t.title}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Main Focus Center */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        {/* Left 2 Cols: Timer Ring & Controls */}
-        <div className="lg:col-span-2 p-8 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm flex flex-col items-center justify-center space-y-8">
-          {/* Mode Switcher Pills */}
-          <div className="flex items-center p-1.5 rounded-2xl bg-zinc-100 dark:bg-zinc-800 border border-zinc-200/50 dark:border-zinc-700">
-            <button
-              onClick={() => handleModeSwitch('focus')}
-              className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                timerMode === 'focus'
-                  ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900'
-              }`}
-            >
-              Focus (25m)
-            </button>
-            <button
-              onClick={() => handleModeSwitch('shortBreak')}
-              className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                timerMode === 'shortBreak'
-                  ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900'
-              }`}
-            >
-              Short Break (5m)
-            </button>
-            <button
-              onClick={() => handleModeSwitch('longBreak')}
-              className={`px-4 py-1.5 rounded-xl text-xs font-semibold transition-all ${
-                timerMode === 'longBreak'
-                  ? 'bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 shadow-2xs'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900'
-              }`}
-            >
-              Long Break (15m)
-            </button>
-          </div>
-
-          {/* Minimal Ring Display */}
-          <div className="relative w-64 h-64 flex items-center justify-center">
-            <svg className="w-full h-full transform -rotate-90">
-              <circle
-                cx="128"
-                cy="128"
-                r="110"
-                stroke="currentColor"
-                strokeWidth="6"
-                className="text-zinc-100 dark:text-zinc-800"
-                fill="transparent"
-              />
-              <circle
-                cx="128"
-                cy="128"
-                r="110"
-                stroke="currentColor"
-                strokeWidth="6"
-                strokeDasharray={2 * Math.PI * 110}
-                strokeDashoffset={2 * Math.PI * 110 * (1 - progress / 100)}
-                strokeLinecap="round"
-                className="text-zinc-900 dark:text-zinc-100 transition-all duration-300"
-                fill="transparent"
-              />
-            </svg>
-
-            <div className="absolute text-center space-y-1">
-              <span className="text-5xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-100 font-mono">
-                {formatTime(timeLeft)}
-              </span>
-              <p className="text-xs text-zinc-600 dark:text-zinc-400 font-semibold tracking-wide uppercase">
-                {isRunning ? 'Session Active' : 'Paused'}
-              </p>
-            </div>
-          </div>
-
-          {/* Play / Pause / Reset Controls */}
-          <div className="flex items-center gap-4">
-            <button
-              onClick={handleReset}
-              title="Reset Timer"
-              className="p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
-            >
-              <RotateCcw className="w-5 h-5" />
-            </button>
-
-            <button
-              onClick={() => setIsRunning(!isRunning)}
-              className={`px-8 py-3.5 rounded-2xl text-sm font-bold flex items-center gap-2.5 transition-all shadow-md active:scale-[0.98] ${
-                isRunning
-                  ? 'bg-rose-500 hover:bg-rose-600 text-white'
-                  : 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200'
-              }`}
-            >
-              {isRunning ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current" />}
-              <span>{isRunning ? 'Pause Focus' : 'Start Focus'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Right Column: Ambient Soundscapes Synthesizer */}
-        <div className="p-6 rounded-3xl bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800 shadow-sm space-y-6">
           <div>
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-              <Headphones className="w-4 h-4 text-indigo-500" />
-              Ambient Focus Soundscapes
-            </h3>
-            <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1">
-              Synthesized real-time focus noise via Web Audio API.
+            <h1 className="font-syne text-xl font-bold tracking-tight text-on-surface">Sakido | Focus Zone</h1>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-on-surface-variant font-medium hidden sm:inline">
+            Setup mode — Fullscreen locks upon start
+          </span>
+        </div>
+      </header>
+
+      {/* Main Content Canvas */}
+      <main className="relative z-10 flex-grow flex items-center justify-center py-6 px-4">
+        <div className="max-w-[720px] w-full space-y-10">
+          {/* Context & Header */}
+          <div className="text-center space-y-3">
+            <h2 className="font-syne text-3xl md:text-5xl tracking-tighter text-on-surface font-semibold">
+              Select Focus Duration
+            </h2>
+            <p className="font-body-lg text-on-surface-variant max-w-md mx-auto text-sm md:text-base">
+              Set your target time and immerse yourself in distraction-free deep work.
             </p>
           </div>
 
-          {/* Sound Preset Buttons */}
-          <div className="space-y-2.5">
-            {[
-              { id: 'rain', label: 'Gentle Rain', desc: 'Lowpass filtered rainfall noise', icon: <CloudRain className="w-4 h-4 text-sky-500" /> },
-              { id: 'binaural', label: 'Alpha Beats (10Hz)', desc: 'Brainwave focus tone (use headphones)', icon: <Waves className="w-4 h-4 text-indigo-500" /> },
-              { id: 'brownian', label: 'Deep Space / Brown Noise', desc: 'Warm low-frequency ambient rumble', icon: <Wind className="w-4 h-4 text-amber-500" /> },
-            ].map(s => {
-              const isActive = activeSound === s.id;
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => toggleSound(s.id as 'rain' | 'binaural' | 'brownian' | 'whitenoise')}
-                  className={`w-full p-3 rounded-2xl border text-left flex items-start gap-3 transition-all ${
-                    isActive
-                      ? 'bg-zinc-100 dark:bg-zinc-800 border-zinc-900 dark:border-zinc-100 shadow-2xs ring-1 ring-zinc-900 dark:ring-zinc-100'
-                      : 'border-zinc-200/80 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50'
-                  }`}
-                >
-                  <div className="mt-0.5 p-1.5 rounded-lg bg-white dark:bg-zinc-700 shadow-2xs">
-                    {s.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">{s.label}</span>
-                      {isActive && <span className="text-[10px] font-semibold text-emerald-600 animate-pulse">Playing</span>}
-                    </div>
-                    <p className="text-[10px] text-zinc-600 dark:text-zinc-400 mt-0.5">{s.desc}</p>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          {/* Configuration Shell */}
+          <div className="space-y-10">
+            {/* Duration Selection Grid */}
+            <section className="space-y-6">
+              <div className="grid grid-cols-5 gap-2 md:gap-3">
+                {PRESETS.map((preset) => {
+                  const isActive = durationMinutes === preset.value;
+                  return (
+                    <button
+                      key={preset.value}
+                      type="button"
+                      onClick={() => handleSelectPreset(preset.value)}
+                      className={`preset-card group flex flex-col items-center justify-center py-5 md:py-6 bg-surface-container border border-outline-variant transition-all rounded-full ${
+                        isActive ? 'active' : 'hover:bg-surface-container-high'
+                      }`}
+                    >
+                      <span className={`font-display text-xl md:text-2xl font-bold ${isActive ? '' : 'text-on-surface'}`}>
+                        {preset.title}
+                      </span>
+                      <span
+                        className={`font-label-sm text-[10px] md:text-xs text-on-surface-variant group-hover:text-on-surface ${
+                          isActive ? 'opacity-90 uppercase tracking-wider text-white dark:text-[#51361c]' : ''
+                        }`}
+                      >
+                        {preset.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
 
-          {/* Volume Slider */}
-          <div className="pt-4 border-t border-zinc-100 dark:border-zinc-800 space-y-2">
-            <div className="flex items-center justify-between text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-              <span className="flex items-center gap-1.5">
-                {volume === 0 ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-                Ambient Volume
-              </span>
-              <span>{Math.round(volume * 100)}%</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={volume}
-              onChange={(e) => handleVolumeChange(Number(e.target.value))}
-              className="w-full accent-zinc-900 dark:accent-zinc-100 cursor-pointer"
-            />
+              {/* Custom Duration Slider */}
+              <div className="flex items-center gap-6 md:gap-12 rounded-full py-4 px-4 bg-surface-container/40 border border-outline-variant/40">
+                <div className="flex-shrink-0 w-20 md:w-24 text-center">
+                  <span className="font-display text-2xl md:text-3xl font-bold text-on-surface">
+                    {durationMinutes}
+                  </span>
+                  <span className="font-label-sm text-on-surface-variant ml-1 text-xs">min</span>
+                </div>
+                <div className="flex-grow space-y-2">
+                  <div className="flex justify-between font-label-sm text-xs text-on-surface-variant opacity-70 uppercase tracking-tighter">
+                    <span>Custom Duration</span>
+                    <span>5 - 120 min</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="5"
+                    max="120"
+                    value={durationMinutes}
+                    onChange={handleSliderChange}
+                    className="w-full cursor-pointer focus-slider"
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Atmosphere Selection */}
+            <section className="space-y-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                <div className="grid grid-cols-4 gap-2 md:gap-3 flex-grow">
+                  {[
+                    { id: 'silent', label: 'Silent', icon: 'volume_off' },
+                    { id: 'rain', label: 'Rain', icon: 'water_drop' },
+                    { id: 'alpha', label: 'Alpha', icon: 'graphic_eq' },
+                    { id: 'deep', label: 'Deep', icon: 'filter_vintage' },
+                  ].map((audio) => {
+                    const isActive = activeAudio === audio.id;
+                    return (
+                      <button
+                        key={audio.id}
+                        type="button"
+                        onClick={() => setActiveAudio(audio.id as any)}
+                        className={`audio-btn flex items-center justify-center gap-2 py-3.5 px-3 border font-label-md transition-all rounded-full text-xs md:text-sm ${
+                          isActive
+                            ? 'active border-primary text-primary bg-primary-fixed-dim/20 font-semibold'
+                            : 'border-outline-variant text-on-surface-variant bg-surface-container hover:border-primary hover:text-primary'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">{audio.icon}</span>
+                        <span>{audio.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center gap-3 px-4 py-3 border border-outline-variant bg-surface-container rounded-full shrink-0 sm:w-[150px] hover:border-on-surface-variant transition-colors">
+                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant">volume_up</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={volume}
+                    onChange={(e) => setVolume(Number(e.target.value))}
+                    className="w-full cursor-pointer opacity-70 hover:opacity-100 transition-opacity focus-slider"
+                  />
+                </div>
+              </div>
+            </section>
+
+            {/* Action Anchor CTA */}
+            <section className="pt-4">
+              <button
+                type="button"
+                onClick={handleBegin}
+                className="btn-primary w-full bg-primary text-on-primary h-16 md:h-20 flex items-center justify-center gap-4 group rounded-full shadow-md font-bold cursor-pointer"
+              >
+                <span className="font-display text-xl md:text-2xl">Begin Focus Session</span>
+                <span
+                  className="material-symbols-outlined text-[28px] group-hover:translate-x-1 transition-transform"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  play_arrow
+                </span>
+              </button>
+            </section>
           </div>
         </div>
-      </div>
+      </main>
+
+      {/* Global Footer Branding */}
+      <footer className="relative z-10 px-4 md:px-8 py-4 flex justify-between items-center opacity-50 font-label-sm text-on-surface text-xs">
+        <div className="flex items-center gap-6">
+          <span className="font-syne font-semibold tracking-wider">SAKIDO FOCUS</span>
+        </div>
+        <div>Stanford Academic Portal</div>
+      </footer>
     </div>
   );
 };

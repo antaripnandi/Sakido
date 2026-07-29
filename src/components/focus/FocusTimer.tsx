@@ -20,6 +20,9 @@ import {
 import { ambientSynth } from '../../utils/audioSynth';
 
 interface FocusTimerProps {
+  initialMinutes?: number;
+  initialSound?: 'none' | 'rain' | 'binaural' | 'brownian';
+  initialVolume?: number;
   onClose: () => void;
 }
 
@@ -43,21 +46,39 @@ function formatTime(secs: number): string {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-export const FocusTimer: React.FC<FocusTimerProps> = ({ onClose }) => {
-  const [phase, setPhase] = useState<Phase>('setup');
-  const [inputMinutes, setInputMinutes] = useState<string>('25');
-  const [totalSecs, setTotalSecs] = useState(1500);
-  const [timeLeft, setTimeLeft] = useState(1500);
-  const [isRunning, setIsRunning] = useState(false);
+export const FocusTimer: React.FC<FocusTimerProps> = ({
+  initialMinutes = 25,
+  initialSound = 'none',
+  initialVolume = 0.5,
+  onClose,
+}) => {
+  const initialSecs = initialMinutes * 60;
+  const [phase, setPhase] = useState<Phase>('running');
+  const [inputMinutes, setInputMinutes] = useState<string>(String(initialMinutes));
+  const [totalSecs, setTotalSecs] = useState(initialSecs);
+  const [timeLeft, setTimeLeft] = useState(initialSecs);
+  const [isRunning, setIsRunning] = useState(true);
   const [finished, setFinished] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   // Soundscape state
-  const [activeSound, setActiveSound] = useState<'none' | 'rain' | 'binaural' | 'brownian'>('none');
-  const [volume, setVolume] = useState(0.25);
+  const [activeSound, setActiveSound] = useState<'none' | 'rain' | 'binaural' | 'brownian'>(initialSound);
+  const [volume, setVolume] = useState(initialVolume);
   const [showSoundControls, setShowSoundControls] = useState(false);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Start sound on mount if configured
+  useEffect(() => {
+    if (initialSound && initialSound !== 'none') {
+      ambientSynth.play(initialSound as 'rain' | 'binaural' | 'brownian');
+      ambientSynth.setVolume(initialVolume);
+    }
+    // Attempt fullscreen on start
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    }
+  }, [initialSound, initialVolume]);
 
   // Exit soundscape on unmount
   useEffect(() => {

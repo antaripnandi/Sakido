@@ -49,6 +49,7 @@ import { FlashcardModule } from '../flashcards/FlashcardModule';
 import { Flashcard } from '../../types';
 import { useLocalStorageState } from '../../hooks/useLocalStorageState';
 import { FocusTimer } from '../focus/FocusTimer';
+import { FocusTimerView } from '../focus/FocusTimerView';
 
 const TAB_SLUG_MAP: Record<string, string> = {
   classes: 'Classes',
@@ -61,6 +62,8 @@ const TAB_SLUG_MAP: Record<string, string> = {
   connectors: 'Connectors',
   university: 'University & People',
   ai: 'AI Features',
+  focus: 'Focus Timer',
+  'focus-timer': 'Focus Timer',
 };
 
 const TAB_NAME_TO_SLUG: Record<string, string> = {
@@ -73,6 +76,7 @@ const TAB_NAME_TO_SLUG: Record<string, string> = {
   Connectors: 'connectors',
   'University & People': 'university',
   'AI Features': 'ai',
+  'Focus Timer': 'focus',
 };
 
 interface SakidoDashboardProps {
@@ -109,8 +113,22 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     return document.documentElement.classList.contains('dark');
   });
 
-  // Focus timer overlay state
+  // Focus timer overlay state & initial parameters
   const [isFocusTimerOpen, setIsFocusTimerOpen] = useState<boolean>(false);
+  const [focusParams, setFocusParams] = useState<{
+    minutes: number;
+    sound: 'none' | 'rain' | 'binaural' | 'brownian';
+    volume: number;
+  }>({ minutes: 25, sound: 'none', volume: 0.5 });
+
+  const handleStartFocusSession = (
+    minutes: number,
+    sound: 'none' | 'rain' | 'binaural' | 'brownian',
+    volume: number
+  ) => {
+    setFocusParams({ minutes, sound, volume });
+    setIsFocusTimerOpen(true);
+  };
 
   // Mobile sidebar drawer state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
@@ -2023,6 +2041,17 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       );
     }
 
+    if (activeTab === 'Focus Timer' || activeTab === 'Focus') {
+      return (
+        <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 pl-0 lg:pl-8 border-t lg:border-t-0 lg:border-l border-outline-variant/30 pt-6 lg:pt-0">
+          <FocusTimerView
+            tasks={tasks}
+            onStartFocusSession={handleStartFocusSession}
+          />
+        </div>
+      );
+    }
+
     if (activeTab === 'Flashcards') {
       return (
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 pl-0 lg:pl-8 border-t lg:border-t-0 lg:border-l border-outline-variant/30 pt-6 lg:pt-0">
@@ -2753,8 +2782,12 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           <ul className="space-y-1 mb-6 shrink-0">
             <li>
               <button
-                onClick={() => setIsFocusTimerOpen(true)}
-                className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer text-secondary hover:text-on-surface hover:bg-surface-container/60"
+                onClick={() => handleSelectTab('Focus Timer')}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                  activeTab === 'Focus Timer'
+                    ? 'text-primary font-bold bg-surface-container border border-primary-container/20 shadow-2xs'
+                    : 'text-secondary hover:text-on-surface hover:bg-surface-container/60'
+                }`}
               >
                 <Clock className="w-4 h-4" />
                 <span>Focus Timer</span>
@@ -3537,7 +3570,12 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
       {/* Focus Timer fullscreen overlay */}
       {isFocusTimerOpen && (
-        <FocusTimer onClose={() => setIsFocusTimerOpen(false)} />
+        <FocusTimer
+          initialMinutes={focusParams.minutes}
+          initialSound={focusParams.sound}
+          initialVolume={focusParams.volume}
+          onClose={() => setIsFocusTimerOpen(false)}
+        />
       )}
     </div>
   );
