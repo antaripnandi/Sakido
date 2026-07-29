@@ -1,21 +1,21 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
+import gsap from 'gsap';
 
 interface FrameCanvasProps {
-  currentFrame: number; // 0 to totalFrames - 1
+  frameRef: React.MutableRefObject<number>;
   totalFrames?: number;
   className?: string;
   onPreloadProgress?: (progress: number) => void;
 }
 
 export const FrameCanvas: React.FC<FrameCanvasProps> = ({
-  currentFrame,
+  frameRef,
   totalFrames = 240,
   className = '',
   onPreloadProgress,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const imagesRef = useRef<(HTMLImageElement | null)[]>(new Array(totalFrames).fill(null));
-  const [loadedCount, setLoadedCount] = useState<number>(0);
 
   // Preload frame images from /frames/ folder
   useEffect(() => {
@@ -32,9 +32,7 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
         if (!isMounted) return;
         imagesRef.current[index] = img;
         count++;
-        setLoadedCount(count);
-        const progress = Math.min(100, Math.round((count / totalFrames) * 100));
-        if (onPreloadProgress) onPreloadProgress(progress);
+        if (onPreloadProgress) onPreloadProgress(Math.min(100, Math.round((count / totalFrames) * 100)));
 
         if ('decode' in img) {
           img.decode().catch(() => {});
@@ -43,28 +41,19 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
 
       const handleError = () => {
         if (!isMounted) return;
-        console.error('Failed to load frame:', url);
         count++;
-        setLoadedCount(count);
-        const progress = Math.min(100, Math.round((count / totalFrames) * 100));
-        if (onPreloadProgress) onPreloadProgress(progress);
+        if (onPreloadProgress) onPreloadProgress(Math.min(100, Math.round((count / totalFrames) * 100)));
       };
 
       img.onload = handleLoad;
       img.onerror = handleError;
-
-      // This line was previously missing from the initial load path —
-      // it was misplaced inside onerror, so no request was ever made.
       img.src = url;
 
-      // Handle the case where the image is served from cache and is
-      // already complete by the time we attach handlers.
       if (img.complete && img.naturalWidth > 0) {
         handleLoad();
       }
     };
 
-    // Load all frames
     for (let i = 0; i < totalFrames; i++) {
       loadFrame(i);
     }
@@ -192,32 +181,25 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
     [totalFrames]
   );
 
-  const lastDrawnFrameRef = useRef<number>(-1);
-  const lastLoadedCountRef = useRef<number>(0);
-
-  // Redraw smoothly on animation frame updates
+  // GSAP Ticker Render Loop (Decoupled from React State)
   useEffect(() => {
-    const roundedFrame = Math.round(currentFrame * 10) / 10;
-    const loadedCountChanged = loadedCount !== lastLoadedCountRef.current;
-    lastLoadedCountRef.current = loadedCount;
+    const update = () => drawFrame(frameRef.current);
+    gsap.ticker.add(update);
+    drawFrame(frameRef.current);
 
-    if (roundedFrame === lastDrawnFrameRef.current && !loadedCountChanged) return;
-    lastDrawnFrameRef.current = roundedFrame;
-
-    let animId = requestAnimationFrame(() => {
-      drawFrame(currentFrame);
-    });
-    return () => cancelAnimationFrame(animId);
-  }, [currentFrame, drawFrame, loadedCount]);
+    return () => {
+      gsap.ticker.remove(update);
+    };
+  }, [drawFrame, frameRef]);
 
   // Handle window resize
   useEffect(() => {
     const handleResize = () => {
-      drawFrame(currentFrame);
+      drawFrame(frameRef.current);
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [currentFrame, drawFrame]);
+  }, [drawFrame, frameRef]);
 
   return (
     <div className={`relative w-full h-full flex items-center justify-center ${className}`}>
