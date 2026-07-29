@@ -21,18 +21,18 @@ interface FocusTimerViewProps {
 }
 
 const NORMAL_PRESETS = [
-  { value: 15, title: '15', label: 'Quick Rest' },
-  { value: 25, title: '25', label: 'Pomodoro' },
-  { value: 45, title: '45', label: 'Deep Work' },
-  { value: 60, title: '60', label: 'Intense Study' },
-  { value: 90, title: '90', label: 'Sprint' },
+  { value: 15, title: '15m', label: 'Quick rest' },
+  { value: 25, title: '25m', label: 'Pomodoro' },
+  { value: 45, title: '45m', label: 'Deep work' },
+  { value: 60, title: '60m', label: 'Study' },
+  { value: 90, title: '90m', label: 'Sprint' },
 ];
 
 const POMODORO_RATIOS: { key: PomodoroRatioKey; title: string; defaultFocus: number; label: string }[] = [
-  { key: '5:1', title: '5 : 1 Ratio', defaultFocus: 25, label: '5 parts focus to 1 part rest' },
-  { key: '45:15', title: '3 : 1 Ratio', defaultFocus: 45, label: '3 parts focus to 1 part rest' },
-  { key: '52:17', title: '52 : 17 Ratio', defaultFocus: 52, label: 'Desktime focus ratio' },
-  { key: '2:1', title: '2 : 1 Ratio', defaultFocus: 30, label: '2 parts focus to 1 part rest' },
+  { key: '5:1', title: '5 : 1', defaultFocus: 25, label: '5:1 ratio' },
+  { key: '45:15', title: '3 : 1', defaultFocus: 45, label: '3:1 ratio' },
+  { key: '52:17', title: '52 : 17', defaultFocus: 52, label: '52:17 ratio' },
+  { key: '2:1', title: '2 : 1', defaultFocus: 30, label: '2:1 ratio' },
 ];
 
 const CYCLE_PRESETS = [1, 2, 3, 4, 6, 8];
@@ -102,13 +102,13 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
             timer
           </span>
           <div>
-            <h1 className="font-syne text-xl font-bold tracking-tight text-on-surface">Focus Workspace</h1>
+            <h1 className="font-syne text-xl font-bold tracking-tight text-on-surface">Focus</h1>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <span className="text-xs text-on-surface-variant font-medium hidden sm:inline">
-            Setup mode — Fullscreen triggers upon start
+            Setup mode — Fullscreen on start
           </span>
         </div>
       </header>
@@ -119,10 +119,10 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
           {/* Header */}
           <div className="text-center space-y-3">
             <h2 className="font-syne text-3xl md:text-5xl tracking-tighter text-on-surface font-semibold">
-              Select Focus Mode
+              Focus Timer
             </h2>
             <p className="font-body-lg text-on-surface-variant max-w-md mx-auto text-sm md:text-base">
-              Choose a single session or customized Pomodoro cycles.
+              Choose duration or set custom ratios.
             </p>
 
             {/* Mode Switcher */}
@@ -136,7 +136,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
-                One-Time Timer
+                Timer
               </button>
               <button
                 type="button"
@@ -147,7 +147,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
-                Pomodoro Cycles
+                Pomodoro
               </button>
             </div>
           </div>
@@ -194,7 +194,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                   </div>
                   <div className="flex-grow space-y-2">
                     <div className="flex justify-between font-label-sm text-xs text-on-surface-variant opacity-70 uppercase tracking-tighter">
-                      <span>Duration</span>
+                      <span>Custom length</span>
                       <span>5 - 120 min</span>
                     </div>
                     <input
@@ -214,7 +214,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                 {/* Ratio Selection */}
                 <div className="space-y-2">
                   <span className="text-[11px] font-mono uppercase tracking-wider text-on-surface-variant block px-1">
-                    Select Pomodoro Ratio (Focus : Break)
+                    Ratio
                   </span>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
                     {POMODORO_RATIOS.map((r) => {
@@ -247,12 +247,12 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                       {pomoFocusMinutes} <span className="text-xs font-normal text-on-surface-variant">min focus</span>
                     </div>
                     <div className="text-xs font-mono text-primary font-medium">
-                      + {currentBreakMinutes} min break
+                      + {currentBreakMinutes} min rest
                     </div>
                   </div>
                   <div className="flex-grow space-y-2">
                     <div className="flex justify-between font-mono text-[11px] text-on-surface-variant opacity-70 uppercase">
-                      <span>Adjust Focus Length</span>
+                      <span>Focus duration</span>
                       <span>10 - 90 min</span>
                     </div>
                     <input
@@ -267,10 +267,10 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                   </div>
                 </div>
 
-                {/* Repeat Cycles Selector (No duplicate "4 Cycles" text in header) */}
+                {/* Repeat Cycles Selector (No duplicate count) */}
                 <div className="space-y-2">
                   <span className="text-[11px] font-mono uppercase tracking-wider text-on-surface-variant block px-1">
-                    Repeat Cycles
+                    Repeat cycles
                   </span>
                   <div className="grid grid-cols-6 gap-2">
                     {CYCLE_PRESETS.map((c) => {
@@ -297,7 +297,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                 <div className="p-4 rounded-2xl bg-surface-container/60 border border-outline-variant/50 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
                   <div>
                     <span className="font-semibold text-on-surface block">
-                      {pomodoroCycles} Cycles × {pomoFocusMinutes}m Focus + {currentBreakMinutes}m Rest
+                      {pomodoroCycles} cycles · {pomoFocusMinutes}m focus + {currentBreakMinutes}m rest
                     </span>
                     <span className="text-on-surface-variant text-[11px] font-mono">
                       Focus: {totalFocusMins}m  ·  Rest: {totalBreakMins}m
@@ -360,9 +360,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                 onClick={handleBegin}
                 className="btn-primary w-full bg-primary text-on-primary h-16 md:h-20 flex items-center justify-center gap-4 group rounded-full shadow-xs font-bold cursor-pointer"
               >
-                <span className="font-display text-xl md:text-2xl">
-                  {timerMode === 'pomodoro' ? `Begin ${pomodoroCycles} Pomodoro Cycles` : 'Begin Focus Session'}
-                </span>
+                <span className="font-display text-xl md:text-2xl">Start Session</span>
                 <span
                   className="material-symbols-outlined text-[28px] group-hover:translate-x-1 transition-transform"
                   style={{ fontVariationSettings: "'FILL' 1" }}

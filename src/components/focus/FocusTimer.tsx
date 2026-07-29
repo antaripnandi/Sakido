@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { AlertCircle } from 'lucide-react';
 import { ambientSynth } from '../../utils/audioSynth';
 import { FocusSessionConfig } from './FocusTimerView';
 
@@ -37,6 +38,9 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
   // Pomodoro stage tracking
   const [currentCycle, setCurrentCycle] = useState(1);
   const [stage, setStage] = useState<'focus' | 'break'>('focus');
+
+  // Exit confirmation modal state
+  const [isExitConfirmOpen, setIsExitConfirmOpen] = useState(false);
 
   // Time calculations
   const getStageTotalSecs = (st: 'focus' | 'break') => {
@@ -120,8 +124,8 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
     setIsFullscreen(false);
   }, []);
 
-  // --- Exit focus & close window ---
-  const handleQuit = useCallback(() => {
+  // --- Direct quit after confirmation ---
+  const handleQuitConfirm = useCallback(() => {
     setIsRunning(false);
     if (intervalRef.current) clearInterval(intervalRef.current);
     ambientSynth.stop();
@@ -130,23 +134,33 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
     onClose();
   }, [exitFullscreen, onClose]);
 
-  // --- Keyboard Shortcuts (Esc to Exit, Space for Pause, R for Reset) ---
+  // --- Trigger Quit with Confirmation Warning ---
+  const handleRequestQuit = useCallback(() => {
+    if (finished) {
+      handleQuitConfirm();
+    } else {
+      setIsRunning(false);
+      setIsExitConfirmOpen(true);
+    }
+  }, [finished, handleQuitConfirm]);
+
+  // --- Keyboard Shortcuts (Esc triggers exit warning, Space for Pause, R for Reset) ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         if (e.key === 'Escape') {
-          handleQuit();
+          handleRequestQuit();
         }
         return;
       }
 
       if (e.key === 'Escape') {
         e.preventDefault();
-        handleQuit();
-      } else if (e.key === ' ' && !finished) {
+        handleRequestQuit();
+      } else if (e.key === ' ' && !finished && !isExitConfirmOpen) {
         e.preventDefault();
         setIsRunning(prev => !prev);
-      } else if ((e.key === 'r' || e.key === 'R') && !finished) {
+      } else if ((e.key === 'r' || e.key === 'R') && !finished && !isExitConfirmOpen) {
         e.preventDefault();
         setIsRunning(false);
         if (intervalRef.current) clearInterval(intervalRef.current);
@@ -156,7 +170,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [finished, totalSecs, handleQuit]);
+  }, [finished, totalSecs, isExitConfirmOpen, handleRequestQuit]);
 
   // Track fullscreen state change
   useEffect(() => {
@@ -169,7 +183,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
 
   // --- Timer tick loop ---
   useEffect(() => {
-    if (isRunning && timeLeft > 0) {
+    if (isRunning && timeLeft > 0 && !isExitConfirmOpen) {
       intervalRef.current = setInterval(() => {
         setTimeLeft(prev => {
           if (prev <= 1) {
@@ -213,7 +227,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isRunning, timeLeft, stage, isPomodoro, currentCycle, config.pomodoroCycles, pomoFocusMins, pomoBreakMins]);
+  }, [isRunning, timeLeft, stage, isPomodoro, currentCycle, config.pomodoroCycles, pomoFocusMins, pomoBreakMins, isExitConfirmOpen]);
 
   // Document title updates
   useEffect(() => {
@@ -253,15 +267,13 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
       {/* Top Bar */}
       <header className="w-full flex justify-between items-center px-4 md:px-10 py-4 z-10">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-12 h-12 rounded-full border border-outline-variant text-primary">
+          <div className="flex items-center justify-center w-10 h-10 rounded-full border border-outline-variant text-primary">
             <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
               timer
             </span>
           </div>
           <div className="flex flex-col">
-            <div className="flex items-center gap-2">
-              <span className="font-syne text-lg font-semibold text-primary tracking-tight">FOCUS ZONE</span>
-            </div>
+            <span className="font-syne text-lg font-semibold text-primary tracking-tight">Focus</span>
           </div>
         </div>
 
@@ -279,7 +291,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
 
           <button
             type="button"
-            onClick={handleQuit}
+            onClick={handleRequestQuit}
             className="flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant hover:bg-surface-container-highest transition-colors font-body-sm text-sm justify-center cursor-pointer"
           >
             <span className="material-symbols-outlined text-sm">close</span>
@@ -302,15 +314,15 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
 
             <div className="space-y-2">
               <span className="font-label-caps text-xs tracking-[0.2em] uppercase text-emerald-600 dark:text-emerald-400 font-bold">
-                {isPomodoro ? 'All Pomodoro Cycles Accomplished' : 'Session Accomplished'}
+                {isPomodoro ? 'Cycles complete' : 'Session complete'}
               </span>
               <h1 className="font-display text-5xl md:text-6xl font-bold text-primary tracking-tight">
-                {isPomodoro ? `${config.pomodoroCycles} Cycles Complete` : formatTime(totalSecs)}
+                {isPomodoro ? `${config.pomodoroCycles} Cycles` : formatTime(totalSecs)}
               </h1>
               <p className="font-body-md text-on-surface-variant text-sm md:text-base">
                 {isPomodoro
-                  ? `Completed ${config.pomodoroCycles} cycles of ${pomoFocusMins}m focus / ${pomoBreakMins}m rest.`
-                  : `Great work! You stayed focused for ${Math.round(totalSecs / 60)} minutes.`}
+                  ? `${config.pomodoroCycles} cycles completed (${pomoFocusMins}m focus / ${pomoBreakMins}m rest).`
+                  : `Focused for ${Math.round(totalSecs / 60)} minutes.`}
               </p>
             </div>
 
@@ -321,27 +333,27 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
                 className="flex items-center gap-2 px-6 py-3 rounded-full border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-all font-body-sm text-sm font-semibold cursor-pointer"
               >
                 <span className="material-symbols-outlined text-sm">replay</span>
-                Restart Session
+                Restart
               </button>
               <button
                 type="button"
-                onClick={handleQuit}
+                onClick={handleQuitConfirm}
                 className="flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-on-primary font-headline-md text-sm font-bold shadow-md hover:opacity-90 transition-all cursor-pointer"
               >
-                Return to Workspace
+                Done
               </button>
             </div>
           </div>
         ) : (
           /* Active Countdown Mode */
           <div className="flex flex-col items-center justify-center">
-            {/* Stage Badge */}
-            <div className="mb-6 px-4 py-1 rounded-full bg-surface-container border border-outline-variant/40 text-on-surface-variant font-mono text-[10px] tracking-[0.15em] uppercase opacity-90 font-bold flex items-center gap-2">
+            {/* Minimalist Stage Badge (No emojis, no heavy uppercase slop) */}
+            <div className="mb-6 px-4 py-1 rounded-full bg-surface-container border border-outline-variant/40 text-on-surface-variant font-mono text-xs tracking-tight opacity-90 font-medium flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${stage === 'break' ? 'bg-emerald-500 animate-pulse' : 'bg-primary'}`} />
               <span>
                 {isPomodoro
-                  ? `CYCLE ${currentCycle} OF ${config.pomodoroCycles} · ${stage === 'focus' ? 'FOCUS' : 'REST BREAK'}`
-                  : (isRunning ? 'DEEP FOCUS SESSION' : 'SESSION PAUSED')}
+                  ? `Cycle ${currentCycle} of ${config.pomodoroCycles} · ${stage === 'focus' ? 'Focus' : 'Rest'}`
+                  : (isRunning ? 'Focus' : 'Paused')}
               </span>
             </div>
 
@@ -386,7 +398,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
                   {formatTime(timeLeft)}
                 </h1>
                 <span className="font-label-sm text-xs text-on-surface-variant opacity-70">
-                  {stage === 'break' ? 'Resting...' : `Target: ${formatTime(totalSecs)}`}
+                  {stage === 'break' ? 'Resting...' : `Target ${formatTime(totalSecs)}`}
                 </span>
               </div>
             </div>
@@ -397,7 +409,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
               <button
                 type="button"
                 onClick={handleReset}
-                title="Replay / Reset Stage (R)"
+                title="Reset timer (R)"
                 className="flex items-center justify-center w-14 h-14 rounded-full border border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary transition-all bg-surface-container-lowest cursor-pointer shadow-xs"
               >
                 <span className="material-symbols-outlined text-xl">replay</span>
@@ -414,14 +426,14 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
                 <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
                   {isRunning ? 'pause' : 'play_arrow'}
                 </span>
-                <span>{isRunning ? 'Pause Session' : 'Resume Session'}</span>
+                <span>{isRunning ? 'Pause' : 'Resume'}</span>
               </button>
 
               {/* Ambient Sound Selector Button */}
               <button
                 type="button"
                 onClick={handleCycleSound}
-                title={`Ambient Audio: ${activeSound} (Click to cycle)`}
+                title={`Audio: ${activeSound}`}
                 className={`flex items-center justify-center w-14 h-14 rounded-full border transition-all cursor-pointer shadow-xs ${
                   activeSound !== 'none'
                     ? 'border-primary text-primary bg-primary-fixed-dim/20'
@@ -494,11 +506,56 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
       <footer className="relative z-10 px-6 py-4 flex justify-between items-center opacity-60 font-label-sm text-xs text-on-surface">
         <div className="flex items-center gap-4">
           <span><kbd className="px-1 py-0.5 rounded border border-outline-variant font-mono text-[10px] bg-surface-container">ESC</kbd> Exit</span>
-          <span><kbd className="px-1 py-0.5 rounded border border-outline-variant font-mono text-[10px] bg-surface-container">SPACE</kbd> Pause/Resume</span>
+          <span><kbd className="px-1 py-0.5 rounded border border-outline-variant font-mono text-[10px] bg-surface-container">SPACE</kbd> Pause</span>
           <span><kbd className="px-1 py-0.5 rounded border border-outline-variant font-mono text-[10px] bg-surface-container">R</kbd> Reset</span>
         </div>
-        <div>Sakido Focus</div>
+        <div>Sakido</div>
       </footer>
+
+      {/* Exit Confirmation Modal (Same design as Logout modal) */}
+      {isExitConfirmOpen && (
+        <div className="fixed inset-0 z-[10000] bg-black/70 backdrop-blur-md flex items-center justify-center p-4">
+          <div className="w-full max-w-[500px] bg-surface-container-lowest border border-outline-variant rounded-[32px] p-8 sm:p-10 shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200 text-on-surface">
+            {/* Header Section */}
+            <div className="flex items-start gap-5 mb-4">
+              <AlertCircle className="w-8 h-8 text-on-surface mt-1 shrink-0" />
+              <div>
+                <h2 className="text-on-surface tracking-tight font-display font-bold text-2xl sm:text-3xl">Exit Focus Mode?</h2>
+                <p className="font-manrope text-sm sm:text-base text-on-surface-variant font-medium">Active Timer Running</p>
+              </div>
+            </div>
+
+            {/* Body Content */}
+            <div className="sm:pl-[52px] mb-8">
+              <p className="font-manrope text-base sm:text-lg text-on-surface leading-relaxed">
+                Are you sure you want to end your focus session early?
+              </p>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-2">
+              <button
+                onClick={() => {
+                  setIsExitConfirmOpen(false);
+                  setIsRunning(true);
+                }}
+                className="w-full sm:w-auto px-8 py-3 border border-outline-variant text-on-surface font-manrope font-semibold text-base hover:bg-surface-container-highest transition-colors rounded-full cursor-pointer"
+              >
+                Keep Focusing
+              </button>
+              <button
+                onClick={() => {
+                  setIsExitConfirmOpen(false);
+                  handleQuitConfirm();
+                }}
+                className="w-full sm:w-auto px-8 py-3 bg-primary-container text-on-primary font-display font-bold text-base hover:opacity-90 transition-opacity rounded-full cursor-pointer shadow-md"
+              >
+                Exit Session
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
