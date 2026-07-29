@@ -1,19 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
-import { Observer } from 'gsap/Observer';
 import { FrameCanvas } from './FrameCanvas';
 import { AuthModal } from './auth/AuthModal';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import { User } from 'lucide-react';
 
-gsap.registerPlugin(ScrollTrigger, ScrollToPlugin, Observer);
+gsap.registerPlugin(ScrollTrigger);
 
 /**
  * =========================================================================
- * FEATURE CALLOUTS
- * 6 Main Product Sections
+ * FEATURE CALLOUT FRAME RANGES (0 to 239)
+ * 7 Snap Points: Hero + 6 Feature Sections across 240 frames.
+ *
+ * Each section occupies ~34 frames. Callouts fade in/out with smoothstep.
  * =========================================================================
  */
 const FEATURE_CALLOUTS = [
@@ -24,6 +24,10 @@ const FEATURE_CALLOUTS = [
     title: 'Notes',
     text: 'Write notes by course and semester.',
     align: 'left',
+    startFrame: 20,
+    peakStart: 28,
+    peakEnd: 50,
+    endFrame: 56,
   },
   {
     id: 'calendar',
@@ -32,6 +36,10 @@ const FEATURE_CALLOUTS = [
     title: 'Calendar',
     text: 'See your classes and deadlines. Connect Google Calendar if you want.',
     align: 'right',
+    startFrame: 56,
+    peakStart: 64,
+    peakEnd: 86,
+    endFrame: 92,
   },
   {
     id: 'tasks-grades',
@@ -40,6 +48,10 @@ const FEATURE_CALLOUTS = [
     title: 'Tasks & grades',
     text: 'Track assignments and calculate your grade.',
     align: 'left',
+    startFrame: 92,
+    peakStart: 100,
+    peakEnd: 122,
+    endFrame: 128,
   },
   {
     id: 'knowledge-inbox',
@@ -48,6 +60,10 @@ const FEATURE_CALLOUTS = [
     title: 'Knowledge Inbox',
     text: "Save a link — a video, article, or PDF — so you don't lose it. Share a YouTube link and it plays right on the page.",
     align: 'right',
+    startFrame: 128,
+    peakStart: 136,
+    peakEnd: 158,
+    endFrame: 164,
   },
   {
     id: 'chat',
@@ -56,6 +72,10 @@ const FEATURE_CALLOUTS = [
     title: 'Chat',
     text: 'Message people at your university, or join the global chat.',
     align: 'left',
+    startFrame: 164,
+    peakStart: 172,
+    peakEnd: 194,
+    endFrame: 200,
   },
   {
     id: 'dashboard',
@@ -64,8 +84,40 @@ const FEATURE_CALLOUTS = [
     title: 'Dashboard',
     text: "Opens to today's classes and what's due next.",
     align: 'right',
+    startFrame: 200,
+    peakStart: 208,
+    peakEnd: 232,
+    endFrame: 239,
   },
 ];
+
+/** Smoothstep interpolation helper */
+function smoothstep(t: number): number {
+  const clamped = Math.max(0, Math.min(1, t));
+  return clamped * clamped * (3 - 2 * clamped);
+}
+
+/** Calculate opacity for callout at a given frame index */
+function getCalloutOpacity(frame: number, start: number, peakStart: number, peakEnd: number, end: number): number {
+  if (frame < start || frame > end) return 0;
+  if (frame >= peakStart && frame <= peakEnd) return 1;
+  if (frame < peakStart) {
+    return smoothstep((frame - start) / (peakStart - start));
+  }
+  return smoothstep((end - frame) / (end - peakEnd));
+}
+
+/** Calculate vertical offset during fade in/out */
+function getCalloutY(frame: number, start: number, peakStart: number, peakEnd: number, end: number): number {
+  if (frame < start || frame > end) return 20;
+  if (frame >= peakStart && frame <= peakEnd) return 0;
+  if (frame < peakStart) {
+    const p = smoothstep((frame - start) / (peakStart - start));
+    return (1 - p) * 20;
+  }
+  const p = smoothstep((end - frame) / (end - peakEnd));
+  return (1 - p) * -20;
+}
 
 interface SakidoLandingPageProps {
   onOpenDashboard?: () => void;
@@ -73,6 +125,7 @@ interface SakidoLandingPageProps {
 
 export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDashboard }) => {
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const pinnedRef = useRef<HTMLDivElement | null>(null);
 
   const [targetFrame, setTargetFrame] = useState<number>(0);
   const [displayFrame, setDisplayFrame] = useState<number>(0);
@@ -128,85 +181,48 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     return () => gsap.ticker.remove(updateFrame);
   }, [targetFrame]);
 
-  // Overall scroll progress -> 3D Canvas Frame synchronization
+  // Single GSAP ScrollTrigger: pin + scrub + snap for the 240-frame canvas area
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
 
-    const st = ScrollTrigger.create({
-      trigger: container,
-      start: 'top top',
-      end: 'bottom bottom',
-      onUpdate: (self) => {
-        const frame = Math.min(239, Math.max(0, self.progress * 239));
-        setTargetFrame(frame);
-      },
-    });
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = window.innerWidth < 768;
 
-    return () => {
-      st.kill();
-    };
-  }, []);
-
-  // Pure GSAP ScrollTrigger + ScrollToPlugin section snapping with isSnapping lock
-  useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    let triggers: ScrollTrigger[] = [];
-
-    const setupSnapping = () => {
-      triggers.forEach((st) => st.kill());
-      triggers = [];
-
-      // Requirement 1: Disable snapping if reduced motion is preferred
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        return;
-      }
-
-      const sections = gsap.utils.toArray<HTMLElement>('.snap-section');
-      if (!sections.length) return;
-
-      let isSnapping = false; // THE CRITICAL FIX: prevents overlapping snaps
-
-      const goToSection = (i: number) => {
-        if (isSnapping) return;
-        isSnapping = true;
-
-        gsap.to(window, {
-          scrollTo: { y: sections[i], autoKill: false },
-          duration: 0.8,
-          ease: 'power3.inOut',
-          onComplete: () => {
-            isSnapping = false;
-          },
-        });
-      };
-
-      sections.forEach((section, i) => {
-        const st = ScrollTrigger.create({
-          trigger: section,
-          start: 'top center',
-          onEnter: () => goToSection(i),
-          onEnterBack: () => goToSection(i),
-        });
-        triggers.push(st);
+    const ctx = gsap.context(() => {
+      ScrollTrigger.create({
+        trigger: container,
+        start: 'top top',
+        end: isMobile ? '+=4200' : '+=5400',
+        pin: pinnedRef.current,
+        anticipatePin: 1,
+        scrub: 0.3,
+        preventOverlaps: true,
+        fastScrollEnd: true,
+        ...(prefersReducedMotion
+          ? {}
+          : {
+              snap: {
+                // 7 snap points: hero(0) + 6 features, evenly spaced
+                snapTo: 1 / 6,
+                duration: { min: 0.25, max: 0.5 },
+                delay: 0.08,
+                ease: 'power2.inOut',
+              },
+            }),
+        onUpdate: (self) => {
+          const frame = Math.min(239, Math.max(0, self.progress * 239));
+          setTargetFrame(frame);
+        },
       });
-    };
+    }, container);
 
-    setupSnapping();
-
-    const handleMotionChange = () => {
-      setupSnapping();
-    };
-
-    mediaQuery.addEventListener('change', handleMotionChange);
-
-    return () => {
-      triggers.forEach((st) => st.kill());
-      mediaQuery.removeEventListener('change', handleMotionChange);
-    };
+    return () => ctx.revert();
   }, []);
 
-
+  // Compute hero title opacity (Frame 0 to 20)
+  const heroOpacity = Math.max(0, 1 - displayFrame / 18);
+  const heroY = (1 - heroOpacity) * -24;
 
   return (
     <div className="bg-black text-white min-h-screen font-sans selection:bg-white selection:text-black">
@@ -244,21 +260,30 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
         )}
       </div>
 
-      {/* Fixed Background 3D Canvas */}
-      <div className="fixed inset-0 z-10 w-full h-full pointer-events-none">
-        <FrameCanvas
-          currentFrame={displayFrame}
-          totalFrames={240}
-          onPreloadProgress={setPreloadProgress}
-          className="w-full h-full"
-        />
-      </div>
+      {/* ========== PINNED FRAME CANVAS AREA (Hero + 6 Features) ========== */}
+      <div ref={scrollContainerRef} className="relative w-full bg-black">
+        <div
+          ref={pinnedRef}
+          className="h-[100dvh] w-full relative overflow-hidden flex flex-col justify-between items-center py-12 px-6 sm:px-12"
+        >
+          {/* Canvas sequence background */}
+          <div className="absolute inset-0 z-10 w-full h-full">
+            <FrameCanvas
+              currentFrame={displayFrame}
+              totalFrames={240}
+              onPreloadProgress={setPreloadProgress}
+              className="w-full h-full"
+            />
+          </div>
 
-      {/* Main Snap Section Scroll Track */}
-      <div ref={scrollContainerRef} className="relative z-20 w-full bg-transparent">
-        {/* Section 0: Hero */}
-        <section className="snap-section h-[100dvh] w-full relative flex flex-col justify-between items-center pt-16 sm:pt-24 pb-12 px-6 sm:px-12 pointer-events-none">
-          <div className="mt-8 sm:mt-12 md:mt-16 text-center max-w-3xl pointer-events-auto transition-all duration-300 relative px-4">
+          {/* Hero Header Title (Frame 0 - 20) */}
+          <div
+            className="z-20 text-center max-w-3xl pointer-events-none transition-all duration-300 relative mt-12 sm:mt-16 px-4"
+            style={{
+              opacity: heroOpacity,
+              transform: `translateY(${heroY}px)`,
+            }}
+          >
             <h1 className="text-6xl sm:text-8xl md:text-9xl font-extrabold tracking-tighter text-white">
               Sakido
             </h1>
@@ -267,59 +292,82 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
             </p>
           </div>
 
-          <div className="text-center text-xs text-zinc-500 font-medium tracking-[0.2em] uppercase pointer-events-none transition-opacity duration-300 mb-6">
+          {/* Feature callouts positioned Left and Right, driven by frame progress */}
+          <div className="absolute inset-0 z-20 pointer-events-none p-6 sm:p-12 md:p-16">
+            {FEATURE_CALLOUTS.map((item) => {
+              const opacity = getCalloutOpacity(
+                displayFrame,
+                item.startFrame,
+                item.peakStart,
+                item.peakEnd,
+                item.endFrame
+              );
+              const translateY = getCalloutY(
+                displayFrame,
+                item.startFrame,
+                item.peakStart,
+                item.peakEnd,
+                item.endFrame
+              );
+
+              if (opacity <= 0.001) return null;
+
+              const isLeft = item.align === 'left';
+
+              return (
+                <div
+                  key={item.id}
+                  className={`absolute top-1/2 -translate-y-1/2 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg transition-all duration-300 ${
+                    isLeft
+                      ? 'left-8 sm:left-14 md:left-20 lg:left-28 text-left'
+                      : 'right-12 sm:right-20 md:right-28 lg:right-36 text-right'
+                  }`}
+                  style={{
+                    opacity,
+                    transform: `translateY(calc(-50% + ${translateY}px))`,
+                  }}
+                >
+                  <span className="text-xs uppercase tracking-[0.25em] text-zinc-400 font-semibold mb-2 block">
+                    {item.category}
+                  </span>
+                  <h2 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white mb-3 leading-tight">
+                    {item.title}
+                  </h2>
+                  <p className="text-base sm:text-xl lg:text-2xl text-zinc-300 font-normal tracking-tight leading-snug">
+                    {item.text}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Hero Bottom Scroll Hint */}
+          <div
+            className="z-20 text-center text-xs text-zinc-500 font-medium tracking-[0.2em] uppercase pointer-events-none transition-opacity duration-300 mb-6"
+            style={{ opacity: heroOpacity }}
+          >
             Scroll to unpack
           </div>
-        </section>
-
-        {/* Feature Callout Sections (1 through 6) */}
-        {FEATURE_CALLOUTS.map((item) => {
-          const isLeft = item.align === 'left';
-          return (
-            <section
-              key={item.id}
-              id={item.id}
-              className="snap-section h-[100dvh] w-full relative flex items-center p-6 sm:p-12 md:p-16 pointer-events-none"
-            >
-              <div
-                className={`w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg pointer-events-auto transition-all duration-300 ${
-                  isLeft
-                    ? 'mr-auto text-left pl-4 sm:pl-10 md:pl-16 lg:pl-24'
-                    : 'ml-auto text-right pr-4 sm:pr-10 md:pr-16 lg:pr-24'
-                }`}
-              >
-                <span className="text-xs uppercase tracking-[0.25em] text-zinc-400 font-semibold mb-2 block">
-                  {item.category}
-                </span>
-                <h2 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white mb-3 leading-tight">
-                  {item.title}
-                </h2>
-                <p className="text-base sm:text-xl lg:text-2xl text-zinc-300 font-normal tracking-tight leading-snug">
-                  {item.text}
-                </p>
-              </div>
-            </section>
-          );
-        })}
-
-        {/* Section 7: Closing CTA Section */}
-        <section className="snap-section h-[100dvh] w-full relative flex items-center justify-center bg-black/80 backdrop-blur-sm py-28 sm:py-40 px-6 text-center border-t border-zinc-900 pointer-events-auto">
-          <div className="max-w-3xl mx-auto space-y-6">
-            <h2 className="text-5xl sm:text-7xl font-extrabold tracking-tighter text-white leading-none">
-              Everything school. One app.
-            </h2>
-
-            <div className="pt-6">
-              <button
-                onClick={() => setIsAuthOpen(true)}
-                className="inline-block px-8 py-3.5 rounded-full bg-white hover:bg-zinc-200 text-black font-semibold text-sm transition-all hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
-              >
-                Get Started
-              </button>
-            </div>
-          </div>
-        </section>
+        </div>
       </div>
+
+      {/* ========== CTA SECTION (solid black, separate from frames) ========== */}
+      <section className="relative z-30 bg-black py-28 sm:py-40 px-6 text-center border-t border-zinc-900">
+        <div className="max-w-3xl mx-auto space-y-6">
+          <h2 className="text-5xl sm:text-7xl font-extrabold tracking-tighter text-white leading-none">
+            Everything school. One app.
+          </h2>
+
+          <div className="pt-6">
+            <button
+              onClick={() => setIsAuthOpen(true)}
+              className="inline-block px-8 py-3.5 rounded-full bg-white hover:bg-zinc-200 text-black font-semibold text-sm transition-all hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
+            >
+              Get Started
+            </button>
+          </div>
+        </div>
+      </section>
 
       {/* Auth Modal Flow */}
       <AuthModal
@@ -330,7 +378,3 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     </div>
   );
 };
-
-
-
-
