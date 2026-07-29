@@ -11,20 +11,21 @@ export const Footer: React.FC<FooterProps> = ({
   onOpenGetStarted,
 }) => {
   return (
-    <footer className="bg-black text-zinc-400 border-t border-zinc-900/60 py-12 md:py-16 px-6 relative z-30 font-sans">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
-        {/* Brand & Minimalist Subtext */}
-        <div className="space-y-1">
-          <span className="font-syne text-xl md:text-2xl font-bold tracking-tight text-white block">
+    <footer className="bg-black text-zinc-400 py-6 px-6 relative z-30 font-sans">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+        {/* Left: Brand & Copyright */}
+        <div className="flex items-center gap-3">
+          <span className="font-syne text-lg font-bold tracking-tight text-white">
             Sakido
           </span>
-          <p className="text-xs text-zinc-500 font-normal max-w-xs leading-relaxed">
-            Minimalist academic focus workspace.
-          </p>
+          <span className="text-zinc-700 text-xs">·</span>
+          <span className="text-xs text-zinc-500 font-normal">
+            © {new Date().getFullYear()} Sakido
+          </span>
         </div>
 
-        {/* Minimalist Legal Links */}
-        <div className="flex flex-wrap items-center gap-6 text-xs font-medium text-zinc-400">
+        {/* Center: Legal Links */}
+        <div className="flex items-center gap-6 text-xs font-medium text-zinc-400">
           <Link to="/privacy" className="hover:text-white transition-colors">
             Privacy
           </Link>
@@ -39,24 +40,16 @@ export const Footer: React.FC<FooterProps> = ({
           </Link>
         </div>
 
-        {/* Action Button */}
+        {/* Right: CTA Button */}
         {onOpenGetStarted && (
-          <div>
-            <button
-              onClick={onOpenGetStarted}
-              className="bg-white hover:bg-zinc-200 text-black text-xs font-semibold px-5 py-2.5 rounded-full transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
-            >
-              <span>Get Started</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
+          <button
+            onClick={onOpenGetStarted}
+            className="bg-white hover:bg-zinc-200 text-black text-xs font-semibold px-4 py-2 rounded-full transition-all flex items-center gap-1 cursor-pointer"
+          >
+            <span>Get Started</span>
+            <ArrowUpRight className="w-3 h-3" />
+          </button>
         )}
-      </div>
-
-      {/* Bottom Bar */}
-      <div className="max-w-7xl mx-auto mt-10 pt-6 border-t border-zinc-900/60 flex flex-col sm:flex-row items-center justify-between text-[11px] text-zinc-600 gap-2">
-        <p>© {new Date().getFullYear()} Sakido. All rights reserved.</p>
-        <p className="font-mono text-zinc-600">Quiet study environment.</p>
       </div>
     </footer>
   );

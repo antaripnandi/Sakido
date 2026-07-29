@@ -4,6 +4,7 @@ import { SakidoLandingPage } from './components/SakidoLandingPage';
 import { LegalPage } from './components/legal/LegalPage';
 import { getSupabaseClient } from './lib/supabaseClient';
 import { Analytics } from '@vercel/analytics/react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 const SakidoDashboard = lazy(() =>
   import('./components/dashboard/SakidoDashboard').then((module) => ({
@@ -153,6 +154,7 @@ export default function App() {
     <BrowserRouter>
       <AppContent />
       <Analytics />
+      <SpeedInsights />
     </BrowserRouter>
   );
 }
