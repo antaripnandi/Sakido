@@ -169,13 +169,19 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     };
   }, []);
 
-  // Initialize Lenis smooth scroll engine
+  // Initialize Lenis smooth scroll engine (tuned for responsiveness & touch safety)
   useEffect(() => {
+    const isTouchDevice =
+      typeof window !== 'undefined' &&
+      ('ontouchstart' in window || navigator.maxTouchPoints > 0 || window.innerWidth < 768);
+
     const lenis = new Lenis({
-      duration: 1.1,
+      duration: isTouchDevice ? 0.4 : 0.7,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
-      touchMultiplier: 1.5,
+      syncTouch: false,
+      touchMultiplier: isTouchDevice ? 0.7 : 1.0,
+      wheelMultiplier: 0.95,
     });
 
     lenis.on('scroll', ScrollTrigger.update);
@@ -199,7 +205,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
       setDisplayFrame((prev) => {
         const diff = targetFrame - prev;
         if (Math.abs(diff) < 0.005) return targetFrame;
-        return prev + diff * 0.32;
+        return prev + diff * 0.45;
       });
     };
 
@@ -207,24 +213,29 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     return () => gsap.ticker.remove(updateFrame);
   }, [targetFrame]);
 
-  // Refined GSAP ScrollTrigger pinning & scroll mapping with section snap
+  // Optimized GSAP ScrollTrigger pinning & crisp section snapping
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
+
+    const isMobile = window.innerWidth < 768;
 
     const ctx = gsap.context(() => {
       ScrollTrigger.create({
         trigger: container,
         start: 'top top',
-        end: '+=6500', // Pinned scroll track length for generous breathing room
+        end: isMobile ? '+=4200' : '+=5400',
         pin: pinnedRef.current,
         anticipatePin: 1,
-        scrub: 0.3, // Ultra-responsive scroll tracking
+        scrub: 0.15, // Fast, light scroll tracking without lag
+        preventOverlaps: true,
+        fastScrollEnd: true,
         snap: {
           snapTo: [0, 0.163, 0.314, 0.464, 0.615, 0.766, 0.920, 1.0],
-          duration: { min: 0.15, max: 0.4 },
-          delay: 0.12,
-          ease: 'power2.out',
+          duration: { min: 0.15, max: 0.35 },
+          delay: 0.03, // Immediate snap response without overshooting
+          ease: 'power1.inOut',
+          directional: true,
         },
         onUpdate: (self) => {
           const frame = Math.min(239, Math.max(0, self.progress * 239));

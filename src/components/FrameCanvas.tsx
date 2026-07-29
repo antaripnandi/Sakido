@@ -83,7 +83,7 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
       const ctx = canvas.getContext('2d', { alpha: false });
       if (!ctx) return;
 
-      const dpr = window.devicePixelRatio || 1;
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
       const width = canvas.clientWidth;
       const height = canvas.clientHeight;
 
@@ -102,7 +102,7 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
       ctx.fillRect(0, 0, width, height);
 
       ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
+      ctx.imageSmoothingQuality = 'medium';
 
       const maxIndex = totalFrames - 1;
       const safeIndex = Math.max(0, Math.min(maxIndex, Math.round(frameIdx)));
@@ -161,20 +161,18 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
           const sampleX = img.naturalWidth * 0.80 - sampleW / 2;
           const sampleY = img.naturalHeight * 0.825 - sampleH / 2;
 
-          // Draw the clean floor background texture directly into the square filter box
-          ctx.filter = 'blur(2px)';
+          // Draw clean floor texture directly into square filter box (bilinear sampling provides smooth texture)
           ctx.drawImage(
             img,
             sampleX, sampleY, sampleW, sampleH,
             boxX, boxY, boxSize, boxSize
           );
 
-          // 2. Apply a light, subtle tone blend to match ambient studio shade while keeping floor texture clearly visible
-          ctx.filter = 'none';
+          // 2. Apply a light tone blend matching ambient studio shade
           ctx.fillStyle = 'rgba(12, 12, 14, 0.18)';
           ctx.fillRect(boxX, boxY, boxSize, boxSize);
 
-          // 3. Add a delicate edge-feathering gradient around the square filter box so it dissolves seamlessly into surrounding floor
+          // 3. Add delicate edge-feathering gradient so filter box dissolves into floor
           const edgeGrad = ctx.createRadialGradient(
             starX, starY, boxSize * 0.35,
             starX, starY, boxSize * 0.65
@@ -194,8 +192,14 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
     [totalFrames]
   );
 
+  const lastDrawnFrameRef = useRef<number>(-1);
+
   // Redraw smoothly on animation frame updates
   useEffect(() => {
+    const roundedFrame = Math.round(currentFrame * 10) / 10;
+    if (roundedFrame === lastDrawnFrameRef.current) return;
+    lastDrawnFrameRef.current = roundedFrame;
+
     let animId = requestAnimationFrame(() => {
       drawFrame(currentFrame);
     });
