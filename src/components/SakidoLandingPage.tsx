@@ -169,6 +169,65 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     };
   }, []);
 
+  const lenisRef = useRef<Lenis | null>(null);
+  const scrollTriggerRef = useRef<ScrollTrigger | null>(null);
+  const currentSectionRef = useRef<number>(0);
+  const isAnimatingRef = useRef<boolean>(false);
+  const [activeSectionIdx, setActiveSectionIdx] = useState<number>(0);
+
+  const SECTION_PROGRESS = [0, 0.146, 0.314, 0.464, 0.615, 0.766, 0.920, 1.0];
+  const SECTION_FRAMES = [0, 35, 75, 111, 147, 183, 220, 239];
+  const SECTION_NAMES = [
+    'Hero',
+    'Notes',
+    'Calendar',
+    'Tasks & Grades',
+    'Knowledge Inbox',
+    'Chat',
+    'Dashboard',
+    'Get Started',
+  ];
+
+  const animateToSection = (newIndex: number) => {
+    const clampedIndex = Math.max(0, Math.min(SECTION_PROGRESS.length - 1, newIndex));
+    if (clampedIndex === currentSectionRef.current && isAnimatingRef.current) return;
+
+    isAnimatingRef.current = true;
+    currentSectionRef.current = clampedIndex;
+    setActiveSectionIdx(clampedIndex);
+
+    const targetProgress = SECTION_PROGRESS[clampedIndex];
+    const targetFr = SECTION_FRAMES[clampedIndex];
+
+    const st = scrollTriggerRef.current;
+    if (st) {
+      const targetY = st.start + targetProgress * (st.end - st.start);
+      if (lenisRef.current) {
+        lenisRef.current.scrollTo(targetY, {
+          duration: 0.8,
+          easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+          onComplete: () => {
+            setTargetFrame(targetFr);
+            setTimeout(() => {
+              isAnimatingRef.current = false;
+            }, 100);
+          },
+        });
+      } else {
+        window.scrollTo({ top: targetY, behavior: 'smooth' });
+        setTargetFrame(targetFr);
+        setTimeout(() => {
+          isAnimatingRef.current = false;
+        }, 800);
+      }
+    } else {
+      setTargetFrame(targetFr);
+      setTimeout(() => {
+        isAnimatingRef.current = false;
+      }, 200);
+    }
+  };
+
   // Initialize Lenis smooth scroll engine (tuned for responsiveness & touch safety)
   useEffect(() => {
     const isTouchDevice =
@@ -184,6 +243,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
       wheelMultiplier: 0.95,
     });
 
+    lenisRef.current = lenis;
     lenis.on('scroll', ScrollTrigger.update);
 
     const updateLenis = (time: number) => {
@@ -196,6 +256,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     return () => {
       gsap.ticker.remove(updateLenis);
       lenis.destroy();
+      lenisRef.current = null;
     };
   }, []);
 
@@ -213,7 +274,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     return () => gsap.ticker.remove(updateFrame);
   }, [targetFrame]);
 
-  // Optimized GSAP ScrollTrigger pinning & crisp section snapping
+  // GSAP ScrollTrigger pinning setup
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -221,30 +282,121 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     const isMobile = window.innerWidth < 768;
 
     const ctx = gsap.context(() => {
-      ScrollTrigger.create({
+      const st = ScrollTrigger.create({
         trigger: container,
         start: 'top top',
         end: isMobile ? '+=4200' : '+=5400',
         pin: pinnedRef.current,
         anticipatePin: 1,
-        scrub: 0.15, // Fast, light scroll tracking without lag
+        scrub: 0.15,
         preventOverlaps: true,
         fastScrollEnd: true,
-        snap: {
-          snapTo: [0, 0.163, 0.314, 0.464, 0.615, 0.766, 0.920, 1.0],
-          duration: { min: 0.15, max: 0.35 },
-          delay: 0.03, // Immediate snap response without overshooting
-          ease: 'power1.inOut',
-          directional: true,
-        },
         onUpdate: (self) => {
           const frame = Math.min(239, Math.max(0, self.progress * 239));
           setTargetFrame(frame);
+
+          if (!isAnimatingRef.current) {
+            let closestIdx = 0;
+            let minDiff = 999;
+            SECTION_PROGRESS.forEach((p, idx) => {
+              const diff = Math.abs(self.progress - p);
+              if (diff < minDiff) {
+                minDiff = diff;
+                closestIdx = idx;
+              }
+            });
+            currentSectionRef.current = closestIdx;
+            setActiveSectionIdx(closestIdx);
+          }
         },
       });
+      scrollTriggerRef.current = st;
     }, container);
 
     return () => ctx.revert();
+  }, []);
+
+  // Intercept scroll/touch/keys for 1-scroll-intent-per-section step locking
+  useEffect(() => {
+    let touchStartY = 0;
+    let touchStartTime = 0;
+
+    const isInsidePinnedSection = () => {
+      const container = scrollContainerRef.current;
+      if (!container) return false;
+      const rect = container.getBoundingClientRect();
+      return rect.top <= 20 && rect.bottom >= window.innerHeight - 20;
+    };
+
+    const handleWheel = (e: WheelEvent) => {
+      if (!isInsidePinnedSection()) return;
+
+      e.preventDefault();
+      if (isAnimatingRef.current) return;
+
+      if (Math.abs(e.deltaY) > 8) {
+        if (e.deltaY > 0 && currentSectionRef.current < SECTION_PROGRESS.length - 1) {
+          animateToSection(currentSectionRef.current + 1);
+        } else if (e.deltaY < 0 && currentSectionRef.current > 0) {
+          animateToSection(currentSectionRef.current - 1);
+        }
+      }
+    };
+
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0].clientY;
+      touchStartTime = Date.now();
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      if (!isInsidePinnedSection()) return;
+
+      const touchEndY = e.changedTouches[0].clientY;
+      const deltaY = touchStartY - touchEndY;
+      const deltaTime = Date.now() - touchStartTime;
+
+      if (Math.abs(deltaY) > 25 && deltaTime < 600) {
+        if (isAnimatingRef.current) return;
+
+        if (deltaY > 0 && currentSectionRef.current < SECTION_PROGRESS.length - 1) {
+          animateToSection(currentSectionRef.current + 1);
+        } else if (deltaY < 0 && currentSectionRef.current > 0) {
+          animateToSection(currentSectionRef.current - 1);
+        }
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isInsidePinnedSection()) return;
+
+      if (['ArrowDown', 'PageDown', 'Space'].includes(e.key)) {
+        if (currentSectionRef.current < SECTION_PROGRESS.length - 1) {
+          e.preventDefault();
+          if (!isAnimatingRef.current) {
+            animateToSection(currentSectionRef.current + 1);
+          }
+        }
+      } else if (['ArrowUp', 'PageUp'].includes(e.key)) {
+        if (currentSectionRef.current > 0) {
+          e.preventDefault();
+          if (!isAnimatingRef.current) {
+            animateToSection(currentSectionRef.current - 1);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('wheel', handleWheel, { passive: false });
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('wheel', handleWheel);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   // Compute hero title opacity (Frame 0 to 20)
@@ -290,6 +442,32 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
             Get Started
           </button>
         )}
+      </div>
+
+      {/* Floating Dot Navigation Bar */}
+      <div className="fixed right-6 top-1/2 -translate-y-1/2 z-40 hidden sm:flex flex-col items-center gap-3">
+        {SECTION_NAMES.map((name, idx) => {
+          const isActive = activeSectionIdx === idx;
+          return (
+            <button
+              key={`dot-${idx}`}
+              onClick={() => animateToSection(idx)}
+              className="group relative flex items-center justify-center p-1.5 cursor-pointer focus:outline-none"
+              title={name}
+            >
+              <span
+                className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                  isActive
+                    ? 'bg-white scale-125 ring-4 ring-white/20'
+                    : 'bg-zinc-600 hover:bg-zinc-400'
+                }`}
+              />
+              <span className="absolute right-8 px-2.5 py-1 rounded bg-zinc-900 border border-zinc-800 text-[10px] font-mono text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-md">
+                {name}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* Main GSAP Pinned Scroll Track */}
