@@ -49,7 +49,7 @@ import { FlashcardModule } from '../flashcards/FlashcardModule';
 import { Flashcard } from '../../types';
 import { useLocalStorageState } from '../../hooks/useLocalStorageState';
 import { FocusTimer } from '../focus/FocusTimer';
-import { FocusTimerView } from '../focus/FocusTimerView';
+import { FocusTimerView, FocusSessionConfig } from '../focus/FocusTimerView';
 
 const TAB_SLUG_MAP: Record<string, string> = {
   classes: 'Classes',
@@ -115,18 +115,17 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   // Focus timer overlay state & initial parameters
   const [isFocusTimerOpen, setIsFocusTimerOpen] = useState<boolean>(false);
-  const [focusParams, setFocusParams] = useState<{
-    minutes: number;
-    sound: 'none' | 'rain' | 'binaural' | 'brownian';
-    volume: number;
-  }>({ minutes: 25, sound: 'none', volume: 0.5 });
+  const [focusConfig, setFocusConfig] = useState<FocusSessionConfig>({
+    mode: 'normal',
+    durationMinutes: 25,
+    pomodoroRatio: '5:1',
+    pomodoroCycles: 4,
+    sound: 'none',
+    volume: 0.5,
+  });
 
-  const handleStartFocusSession = (
-    minutes: number,
-    sound: 'none' | 'rain' | 'binaural' | 'brownian',
-    volume: number
-  ) => {
-    setFocusParams({ minutes, sound, volume });
+  const handleStartFocusSession = (config: FocusSessionConfig) => {
+    setFocusConfig(config);
     setIsFocusTimerOpen(true);
   };
 
@@ -3562,9 +3561,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       {/* Focus Timer fullscreen overlay */}
       {isFocusTimerOpen && (
         <FocusTimer
-          initialMinutes={focusParams.minutes}
-          initialSound={focusParams.sound}
-          initialVolume={focusParams.volume}
+          config={focusConfig}
           onClose={() => setIsFocusTimerOpen(false)}
         />
       )}
