@@ -26,8 +26,8 @@ gsap.registerPlugin(ScrollToPlugin, Observer);
 
 const SECTION_FRAMES = [0, 40, 80, 120, 160, 200, 239];
 const TOTAL_SECTIONS = 8; // 7 frame sections + 1 solid black CTA section
-const COOLDOWN_MS = 600; // Anti-spam cooldown timer between section changes
-const FRAME_ANIM_DURATION = 0.65;
+const SCROLL_COOLDOWN_MS = 1100; // Strict 1.1s cooldown window to completely prevent double-scrolling
+const FRAME_ANIM_DURATION = 0.75; // Smooth frame transition
 
 const FEATURE_CALLOUTS = [
   {
@@ -93,6 +93,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
 
   const currentSectionRef = useRef(0);
   const isCoolingDown = useRef(false);
+  const lastScrollTime = useRef<number>(0);
   const frameAnimRef = useRef<gsap.core.Tween | null>(null);
   const frameObjRef = useRef({ value: 0 });
 
@@ -131,12 +132,20 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
   }, []);
 
   /**
-   * Transition to target section index.
+   * Transition strictly to target section index with timestamp & animation state locks.
    */
   const goToSection = useCallback(
     (targetIndex: number) => {
+      const now = Date.now();
+      if (now - lastScrollTime.current < SCROLL_COOLDOWN_MS || isCoolingDown.current) {
+        return;
+      }
+
       const clamped = Math.max(0, Math.min(TOTAL_SECTIONS - 1, targetIndex));
       if (clamped === currentSectionRef.current) return;
+
+      lastScrollTime.current = now;
+      isCoolingDown.current = true;
 
       if (frameAnimRef.current) {
         frameAnimRef.current.kill();
@@ -154,17 +163,17 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
         onUpdate: () => {
           setDisplayFrame(frameObjRef.current.value);
         },
+        onComplete: () => {
+          setTimeout(() => {
+            isCoolingDown.current = false;
+          }, 300);
+        },
       });
-
-      isCoolingDown.current = true;
-      setTimeout(() => {
-        isCoolingDown.current = false;
-      }, COOLDOWN_MS);
     },
     []
   );
 
-  // GSAP Observer for discrete snapping
+  // GSAP Observer for strict section snapping
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       return;
@@ -175,24 +184,27 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
       preventDefault: true,
       wheelSpeed: -1,
       onUp: () => {
-        if (isCoolingDown.current) return;
+        const now = Date.now();
+        if (now - lastScrollTime.current < SCROLL_COOLDOWN_MS || isCoolingDown.current) return;
         const next = currentSectionRef.current + 1;
         if (next < TOTAL_SECTIONS) {
           goToSection(next);
         }
       },
       onDown: () => {
-        if (isCoolingDown.current) return;
+        const now = Date.now();
+        if (now - lastScrollTime.current < SCROLL_COOLDOWN_MS || isCoolingDown.current) return;
         const prev = currentSectionRef.current - 1;
         if (prev >= 0) {
           goToSection(prev);
         }
       },
-      tolerance: 12,
+      tolerance: 20, // Threshold to ignore stray micro-touches or tiny wheel jitters
     });
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isCoolingDown.current) return;
+      const now = Date.now();
+      if (now - lastScrollTime.current < SCROLL_COOLDOWN_MS || isCoolingDown.current) return;
 
       if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
         e.preventDefault();
@@ -276,15 +288,15 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           }`}
         >
           <div className="text-center max-w-3xl">
-            <h1 className="text-6xl sm:text-8xl md:text-9xl font-extrabold tracking-tighter text-white">
+            <h1 className="text-6xl sm:text-8xl md:text-9xl font-sans font-extrabold tracking-tight text-white drop-shadow-md">
               Sakido
             </h1>
-            <p className="mt-6 text-lg sm:text-2xl text-zinc-300 font-normal tracking-tight leading-relaxed max-w-2xl mx-auto">
+            <p className="mt-6 text-lg sm:text-2xl text-zinc-300 font-sans font-normal tracking-tight leading-relaxed max-w-2xl mx-auto">
               Notes, calendar, tasks, saved links, and chat — one app instead of five.
             </p>
           </div>
 
-          <div className="text-center text-xs text-zinc-500 font-medium tracking-[0.2em] uppercase mb-6">
+          <div className="text-center text-xs text-zinc-500 font-mono tracking-[0.2em] uppercase mb-6">
             Scroll to unpack
           </div>
         </div>
@@ -293,11 +305,9 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
         {FEATURE_CALLOUTS.map((item) => {
           const isCurrent = currentSection === item.sectionIndex;
           const isPassed = currentSection > item.sectionIndex;
-          const isFuture = currentSection < item.sectionIndex;
 
           const isLeft = item.align === 'left';
 
-          // Smooth transition: if passed -> disappears upwards (-80px), if future -> waits downwards (+80px)
           let transformStyle = 'translateY(calc(-50% + 80px))';
           let opacityStyle = 0;
 
@@ -312,25 +322,25 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           return (
             <div
               key={item.id}
-              className={`absolute top-1/2 p-6 sm:p-12 md:p-16 max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg transition-all duration-700 cubic-bezier(0.16, 1, 0.3, 1) ${
+              className={`absolute top-1/2 p-4 sm:p-8 md:p-12 max-w-sm sm:max-w-md lg:max-w-lg transition-all duration-700 cubic-bezier(0.16, 1, 0.3, 1) ${
                 isCurrent ? 'pointer-events-auto' : 'pointer-events-none'
               } ${
                 isLeft
-                  ? 'left-8 sm:left-14 md:left-20 lg:left-28 text-left'
-                  : 'right-12 sm:right-20 md:right-28 lg:right-36 text-right'
+                  ? 'left-6 sm:left-12 md:left-16 lg:left-24 text-left'
+                  : 'right-6 sm:right-12 md:right-16 lg:right-24 text-right'
               }`}
               style={{
                 opacity: opacityStyle,
                 transform: transformStyle,
               }}
             >
-              <span className="text-xs uppercase tracking-[0.25em] text-zinc-400 font-semibold mb-2 block">
+              <span className="text-xs uppercase tracking-[0.2em] text-zinc-400 font-mono font-semibold mb-2 block">
                 {item.category}
               </span>
-              <h2 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white mb-3 leading-tight">
+              <h2 className="text-3xl sm:text-5xl lg:text-6xl font-sans font-bold tracking-tight text-white mb-3 leading-[1.1] drop-shadow-md">
                 {item.title}
               </h2>
-              <p className="text-base sm:text-xl lg:text-2xl text-zinc-300 font-normal tracking-tight leading-snug">
+              <p className="text-sm sm:text-lg md:text-xl font-sans text-zinc-300 font-normal tracking-tight leading-relaxed">
                 {item.text}
               </p>
             </div>
@@ -338,14 +348,14 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
         })}
       </div>
 
-      {/* ====== SECTION 7: FINAL CTA (Reverted to exact older style) ====== */}
+      {/* ====== SECTION 7: FINAL CTA (Older style) ====== */}
       <div
         className={`fixed inset-0 z-40 bg-black flex flex-col items-center justify-center px-6 py-12 transition-transform duration-700 cubic-bezier(0.16, 1, 0.3, 1) ${
           currentSection === 7 ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'
         }`}
       >
         <div className="max-w-3xl mx-auto text-center space-y-6">
-          <h2 className="text-5xl sm:text-7xl font-extrabold tracking-tighter text-white leading-none">
+          <h2 className="text-5xl sm:text-7xl font-sans font-extrabold tracking-tight text-white leading-none">
             Everything school. One app.
           </h2>
 
