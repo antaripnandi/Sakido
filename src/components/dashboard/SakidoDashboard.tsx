@@ -47,6 +47,7 @@ import { normalizeToISODate, safeCreateDateTime } from '../../lib/dateUtils';
 import { SakidoLogo } from '../common/SakidoLogo';
 import { FlashcardModule } from '../flashcards/FlashcardModule';
 import { Flashcard } from '../../types';
+import { useLocalStorageState } from '../../hooks/useLocalStorageState';
 
 const TAB_SLUG_MAP: Record<string, string> = {
   classes: 'Classes',
@@ -103,121 +104,57 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   };
 
   // Theme state with localStorage persistence
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    try {
-      const saved = localStorage.getItem('sakido_theme');
-      if (saved) return saved === 'dark';
-    } catch {}
+  const [isDarkMode, setIsDarkMode] = useLocalStorageState<boolean>('sakido_theme_mode', () => {
     return document.documentElement.classList.contains('dark');
   });
 
   // Mobile sidebar drawer state
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
 
-
   // Banner image state with safe localStorage persistence
-  const [bannerImageUrl, setBannerImageUrl] = useState<string>(() => {
-    try {
-      const saved = localStorage.getItem('sakido_banner_url');
-      return saved || 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=1200';
-    } catch {
-      return 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=1200';
-    }
-  });
+  const [bannerImageUrl, setBannerImageUrl] = useLocalStorageState<string>(
+    'sakido_banner_url',
+    'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&q=80&w=1200'
+  );
   const [isEditingBanner, setIsEditingBanner] = useState<boolean>(false);
   const [newBannerInput, setNewBannerInput] = useState<string>('');
-
-  useEffect(() => {
-    try {
-      if (bannerImageUrl) {
-        localStorage.setItem('sakido_banner_url', bannerImageUrl);
-      }
-    } catch (e) {
-      console.warn('Storage error for banner URL:', e);
-    }
-  }, [bannerImageUrl]);
 
   // Live time & date state
   const [now, setNow] = useState<Date>(new Date());
 
-  // App data state (persisted per user session in localStorage, starting empty without hardcoded classes)
-  const [classes, setClasses] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem('sakido_classes');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
+  // App data state (persisted per user session with debouncing for high-frequency edits)
+  const [classes, setClasses] = useLocalStorageState<any[]>('sakido_classes', []);
+  const [tasks, setTasks] = useLocalStorageState<any[]>('sakido_tasks', [], 300);
+  const [watchLater, setWatchLater] = useLocalStorageState<any[]>('sakido_watch', []);
+  const [notes, setNotes] = useLocalStorageState<any[]>('sakido_notes', [], 300);
+  const [flashcards, setFlashcards] = useLocalStorageState<Flashcard[]>('sakido_flashcards', [
+    {
+      id: 'fc-1',
+      classId: 'c-1',
+      className: 'CS 301',
+      classColor: '#8b5e3c',
+      front: 'What is the average time complexity of QuickSort?',
+      back: 'O(N log N)',
+      interval: 0,
+      repetitions: 0,
+      easeFactor: 2.5,
+      nextReviewDate: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString(),
+    },
+    {
+      id: 'fc-2',
+      classId: 'c-1',
+      className: 'CS 301',
+      classColor: '#8b5e3c',
+      front: 'What is the primary property of a Red-Black Tree?',
+      back: 'Self-balancing binary search tree where every node is colored red or black, guaranteeing logarithmic height.',
+      interval: 0,
+      repetitions: 0,
+      easeFactor: 2.5,
+      nextReviewDate: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString(),
     }
-  });
-
-  const [tasks, setTasks] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem('sakido_tasks');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [watchLater, setWatchLater] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem('sakido_watch');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [notes, setNotes] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem('sakido_notes');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const [flashcards, setFlashcards] = useState<Flashcard[]>(() => {
-    try {
-      const saved = localStorage.getItem('sakido_flashcards');
-      return saved ? JSON.parse(saved) : [
-        {
-          id: 'fc-1',
-          classId: 'c-1',
-          className: 'CS 301',
-          classColor: '#8b5e3c',
-          front: 'What is the average time complexity of QuickSort?',
-          back: 'O(N log N)',
-          interval: 0,
-          repetitions: 0,
-          easeFactor: 2.5,
-          nextReviewDate: new Date().toISOString().split('T')[0],
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: 'fc-2',
-          classId: 'c-1',
-          className: 'CS 301',
-          classColor: '#8b5e3c',
-          front: 'What is the primary property of a Red-Black Tree?',
-          back: 'Self-balancing binary search tree where every node is colored red or black, guaranteeing logarithmic height.',
-          interval: 0,
-          repetitions: 0,
-          easeFactor: 2.5,
-          nextReviewDate: new Date().toISOString().split('T')[0],
-          createdAt: new Date().toISOString(),
-        }
-      ];
-    } catch {
-      return [];
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('sakido_flashcards', JSON.stringify(flashcards));
-    } catch {}
-  }, [flashcards]);
+  ], 300);
 
   const handleUpdateFlashcard = (updatedCard: Flashcard) => {
     setFlashcards(prev => prev.map(c => c.id === updatedCard.id ? updatedCard : c));
@@ -241,27 +178,11 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   };
 
   // Connectors OAuth status state with localStorage persistence
-  const [connectors, setConnectors] = useState<{
+  const [connectors, setConnectors] = useLocalStorageState<{
     googleCalendar: boolean;
     googleDrive: boolean;
     gmail: boolean;
-  }>(() => {
-    try {
-      const saved = localStorage.getItem('sakido_connectors');
-      return saved
-        ? JSON.parse(saved)
-        : { googleCalendar: false, googleDrive: false, gmail: false };
-    } catch {
-      return { googleCalendar: false, googleDrive: false, gmail: false };
-    }
-  });
-
-  // Persistence effect for connectors
-  useEffect(() => {
-    try {
-      localStorage.setItem('sakido_connectors', JSON.stringify(connectors));
-    } catch {}
-  }, [connectors]);
+  }>('sakido_connectors', { googleCalendar: false, googleDrive: false, gmail: false });
 
   // Bulk sync helper: push all existing Sakido events to Google Calendar
   const bulkSyncEventsToGCal = async (accessToken: string) => {
@@ -524,40 +445,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     verifyOAuthCallback();
   }, []);
 
-  // Persistence effects for user data
-  useEffect(() => {
-    try {
-      localStorage.setItem('sakido_classes', JSON.stringify(classes));
-    } catch {}
-  }, [classes]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('sakido_tasks', JSON.stringify(tasks));
-    } catch {}
-  }, [tasks]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('sakido_watch', JSON.stringify(watchLater));
-    } catch {}
-  }, [watchLater]);
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('sakido_notes', JSON.stringify(notes));
-    } catch {}
-  }, [notes]);
-
-  // Custom events state for Academic Calendar
-  const [events, setEvents] = useState<any[]>(() => {
-    try {
-      const saved = localStorage.getItem('sakido_events');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
+  // Custom events state for Academic Calendar with debounced persistence
+  const [events, setEvents] = useLocalStorageState<any[]>('sakido_events', [], 300);
 
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventDate, setNewEventDate] = useState('');
@@ -565,12 +454,6 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const [newEventEndTime, setNewEventEndTime] = useState('10:00');
   const [newEventType, setNewEventType] = useState('Exam');
   const [newEventRecurrence, setNewEventRecurrence] = useState<string>('none');
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('sakido_events', JSON.stringify(events));
-    } catch {}
-  }, [events]);
 
   // Calendar Month State
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
@@ -2588,7 +2471,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             <div className="p-5 rounded-2xl border border-outline-variant/40 bg-surface-container-low flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-xl bg-surface-container-high p-2 flex items-center justify-center shrink-0">
-                  <img src="/logos/google-calendar.webp" alt="Google Calendar" className="w-8 h-8 object-contain" />
+                  <img src="/logos/google-calendar.webp" alt="Google Calendar" className="w-8 h-8 object-contain" loading="lazy" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -2635,7 +2518,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             <div className="p-5 rounded-2xl border border-outline-variant/40 bg-surface-container-low flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-xl bg-surface-container-high p-2 flex items-center justify-center shrink-0">
-                  <img src="/logos/google-drive.webp" alt="Google Drive" className="w-8 h-8 object-contain" />
+                  <img src="/logos/google-drive.webp" alt="Google Drive" className="w-8 h-8 object-contain" loading="lazy" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -2682,7 +2565,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             <div className="p-5 rounded-2xl border border-outline-variant/40 bg-surface-container-low flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-xl bg-surface-container-high p-2 flex items-center justify-center shrink-0">
-                  <img src="/logos/gmail.webp" alt="Gmail Notifications" className="w-8 h-8 object-contain" />
+                  <img src="/logos/gmail.webp" alt="Gmail Notifications" className="w-8 h-8 object-contain" loading="lazy" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
