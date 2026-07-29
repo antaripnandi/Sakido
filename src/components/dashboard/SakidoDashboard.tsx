@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Sun,
@@ -583,64 +583,145 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     course?: string;
   } | null>(null);
 
-  // Live Google Calendar event fetching
+  // Generic helper for authenticated Google API requests with automatic 401 token refresh
+  const executeGoogleApi = useCallback(async (
+    apiCall: (accessToken: string) => Promise<Response>
+  ): Promise<Response | null> => {
+    let token = localStorage.getItem('sakido_provider_token');
+
+    // If initial token missing, attempt auto-refresh using saved refresh_token
+    if (!token) {
+      const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
+      if (refreshToken) {
+        try {
+          const refreshRes = await fetch('/api/refresh-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: refreshToken }),
+          });
+          if (refreshRes.ok) {
+            const refreshData = await refreshRes.json();
+            if (refreshData.access_token) {
+              token = refreshData.access_token;
+              localStorage.setItem('sakido_provider_token', token);
+            }
+          }
+        } catch (e) {
+          console.warn('Initial Google token refresh error:', e);
+        }
+      }
+    }
+
+    if (!token) return null;
+
+    try {
+      let res = await apiCall(token);
+
+      // If 401 Unauthorized (token expired after 1 hour), refresh token and retry call
+      if (res.status === 401) {
+        const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
+        if (refreshToken) {
+          const refreshRes = await fetch('/api/refresh-token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: refreshToken }),
+          });
+          if (refreshRes.ok) {
+            const refreshData = await refreshRes.json();
+            if (refreshData.access_token) {
+              token = refreshData.access_token;
+              localStorage.setItem('sakido_provider_token', token);
+              res = await apiCall(token);
+            }
+          }
+        }
+      }
+      return res;
+    } catch (err) {
+      console.warn('Google API execution error:', err);
+      return null;
+    }
+  }, []);
+
+  // Live Google Calendar event fetching with auto-refresh & 20s polling
   const [googleCalendarEvents, setGoogleCalendarEvents] = useState<any[]>([]);
 
-  useEffect(() => {
+  const fetchGoogleEvents = useCallback(async () => {
     if (!connectors.googleCalendar) {
       setGoogleCalendarEvents([]);
       return;
     }
 
-    const fetchGoogleEvents = async () => {
-      const token = localStorage.getItem('sakido_provider_token');
-      const year = calendarMonth.getFullYear();
-      const month = calendarMonth.getMonth();
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
 
-      const timeMin = new Date(year, month, 1).toISOString();
-      const timeMax = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
+    // Query 7 days before and after month boundaries to cover grid padding
+    const timeMin = new Date(year, month, -7, 0, 0, 0).toISOString();
+    const timeMax = new Date(year, month + 1, 7, 23, 59, 59).toISOString();
 
-      if (token) {
-        try {
-          const res = await fetch(
-            `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          );
-          if (res.ok) {
-            const data = await res.json();
-            const fetched = (data.items || []).map((item: any) => {
-              const startIso = item.start?.dateTime || item.start?.date || '';
-              const endIso = item.end?.dateTime || item.end?.date || '';
-              const date = startIso.split('T')[0];
-              const startTime = startIso.includes('T') ? startIso.split('T')[1].substring(0, 5) : '09:00';
-              const endTime = endIso.includes('T') ? endIso.split('T')[1].substring(0, 5) : '10:00';
-              return {
-                id: item.id,
-                title: item.summary || 'Google Calendar Event',
-                date,
-                startTime,
-                endTime,
-                time: `${startTime} - ${endTime}`,
-                type: 'Google Cal',
-                location: item.location || 'Google Sync',
-              };
-            });
-            setGoogleCalendarEvents(fetched);
-            return;
+    try {
+      const res = await executeGoogleApi((accessToken) =>
+        fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(
+            timeMin
+          )}&timeMax=${encodeURIComponent(
+            timeMax
+          )}&singleEvents=true&orderBy=startTime`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
           }
-        } catch (e) {
-          console.warn('Google Calendar fetch notice:', e);
-        }
+        )
+      );
+
+      if (res && res.ok) {
+        const data = await res.json();
+        const fetched = (data.items || [])
+          .filter((item: any) => item.status !== 'cancelled')
+          .map((item: any) => {
+            const startIso = item.start?.dateTime || item.start?.date || '';
+            const endIso = item.end?.dateTime || item.end?.date || '';
+            const date = startIso.split('T')[0];
+            const isAllDay = !item.start?.dateTime;
+            const startTime = item.start?.dateTime
+              ? startIso.split('T')[1].substring(0, 5)
+              : '09:00';
+            const endTime = item.end?.dateTime
+              ? endIso.split('T')[1].substring(0, 5)
+              : '10:00';
+
+            return {
+              id: `gcal-${item.id}`,
+              gcalId: item.id,
+              title: item.summary || 'Google Calendar Event',
+              date,
+              startTime,
+              endTime,
+              time: isAllDay ? 'All Day' : `${startTime} - ${endTime}`,
+              type: 'Google Cal',
+              location: item.location || 'Google Sync',
+              description: item.description || '',
+            };
+          });
+
+        setGoogleCalendarEvents(fetched);
       }
+    } catch (e) {
+      console.warn('Google Calendar fetch notice:', e);
+    }
+  }, [connectors.googleCalendar, calendarMonth, executeGoogleApi]);
 
-      // Zero hardcoded mock events: Return empty list if no live Google Calendar events returned
-      setGoogleCalendarEvents([]);
-    };
-
+  useEffect(() => {
     fetchGoogleEvents();
-  }, [connectors.googleCalendar, calendarMonth]);
+
+    if (!connectors.googleCalendar) return;
+
+    // Automatic polling every 20 seconds for seamless live 2-way sync
+    const interval = setInterval(() => {
+      fetchGoogleEvents();
+    }, 20000);
+
+    return () => clearInterval(interval);
+  }, [connectors.googleCalendar, calendarMonth, fetchGoogleEvents]);
 
   // Live Google Drive "Sakido Notes" folder auto-fetch & sync
   useEffect(() => {
@@ -781,113 +862,49 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
     // Real 2-Way Live Google Calendar API POST Sync with Recurrence Rule
     if (connectors.googleCalendar) {
-      let token = localStorage.getItem('sakido_provider_token');
-      if (!token) {
-        setConnectorNotice('⚠️ Event saved in Sakido, but Google Calendar provider token is missing. Please click Disconnect / Reauth to renew permissions.');
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const startDt = safeCreateDateTime(date, startTime);
+      const endDt = safeCreateDateTime(date, endTime);
+
+      if (!startDt || !endDt) {
+        setConnectorNotice(`⚠️ Event saved locally, but invalid date/time format (${date} ${startTime}-${endTime}) prevented Google Calendar sync.`);
       } else {
+        const gcalPayload: any = {
+          summary: `[Sakido] ${title}`,
+          description: `Created from Sakido Academic Portal (${type})`,
+          start: { dateTime: startDt.toISOString(), timeZone: tz },
+          end: { dateTime: endDt.toISOString(), timeZone: tz },
+        };
+
+        if (recurrence === 'daily') gcalPayload.recurrence = ['RRULE:FREQ=DAILY;COUNT=14'];
+        if (recurrence === 'weekly') gcalPayload.recurrence = ['RRULE:FREQ=WEEKLY;COUNT=8'];
+        if (recurrence === 'monthly') gcalPayload.recurrence = ['RRULE:FREQ=MONTHLY;COUNT=4'];
+        if (recurrence === 'weekday') gcalPayload.recurrence = ['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=15'];
+
         try {
-          const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-          const startDt = safeCreateDateTime(date, startTime);
-          const endDt = safeCreateDateTime(date, endTime);
+          const res = await executeGoogleApi((accessToken) =>
+            fetch(`https://www.googleapis.com/calendar/v3/calendars/primary/events`, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(gcalPayload),
+            })
+          );
 
-          if (!startDt || !endDt) {
-            setConnectorNotice(`⚠️ Event saved locally, but invalid date/time format (${date} ${startTime}-${endTime}) prevented Google Calendar sync.`);
-          } else {
-            const gcalPayload: any = {
-              summary: `[Sakido] ${title}`,
-              description: `Created from Sakido Academic Portal (${type})`,
-              start: { dateTime: startDt.toISOString(), timeZone: tz },
-              end: { dateTime: endDt.toISOString(), timeZone: tz },
-            };
-
-            if (recurrence === 'daily') gcalPayload.recurrence = ['RRULE:FREQ=DAILY;COUNT=14'];
-            if (recurrence === 'weekly') gcalPayload.recurrence = ['RRULE:FREQ=WEEKLY;COUNT=8'];
-            if (recurrence === 'monthly') gcalPayload.recurrence = ['RRULE:FREQ=MONTHLY;COUNT=4'];
-            if (recurrence === 'weekday') gcalPayload.recurrence = ['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=15'];
-
-            // Helper: POST event to Google Calendar with a given token
-            const postToGCal = async (accessToken: string) => {
-              return fetch(
-                `https://www.googleapis.com/calendar/v3/calendars/primary/events`,
-                {
-                  method: 'POST',
-                  headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
-                  },
-                  body: JSON.stringify(gcalPayload),
-                }
-              );
-            };
-
-            let res = await postToGCal(token);
-
-            // If 401 (token expired), try to auto-refresh using the serverless endpoint
-            if (res.status === 401) {
-              const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
-              if (refreshToken) {
-                try {
-                  const refreshRes = await fetch('/api/refresh-token', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ refresh_token: refreshToken }),
-                  });
-
-                  if (refreshRes.ok) {
-                    const refreshData = await refreshRes.json();
-                    token = refreshData.access_token;
-                    localStorage.setItem('sakido_provider_token', token!);
-                    // Retry the POST with the fresh token
-                    res = await postToGCal(token!);
-                  } else {
-                    const refreshErr = await refreshRes.json().catch(() => null);
-                    console.warn('Token refresh failed:', refreshErr);
-                    setConnectorNotice(`⚠️ Google token refresh failed. Please Disconnect / Reauth to renew permissions.`);
-                  }
-                } catch (refreshErr) {
-                  console.warn('Token refresh error:', refreshErr);
-                }
-              } else {
-                setConnectorNotice(`⚠️ Access token expired and no refresh token available. Please Disconnect / Reauth Google Calendar.`);
-              }
-            }
-
-            if (res.ok) {
-              setConnectorNotice(`🟢 Event "${title}" (${startTime}-${endTime}) posted live to your Google Calendar!`);
-              // Trigger background refresh of live Google Calendar events
-              try {
-                const startOfMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1).toISOString();
-                const endOfMonth = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0, 23, 59, 59).toISOString();
-                const fetchRes = await fetch(
-                  `https://www.googleapis.com/calendar/v3/calendars/primary/events?timeMin=${encodeURIComponent(startOfMonth)}&timeMax=${encodeURIComponent(endOfMonth)}&singleEvents=true`,
-                  { headers: { Authorization: `Bearer ${token}` } }
-                );
-                if (fetchRes.ok) {
-                  const data = await fetchRes.json();
-                  if (data.items) {
-                    const fetchedGcal = data.items.map((item: any) => ({
-                      id: `gcal-${item.id}`,
-                      title: item.summary || 'Google Event',
-                      date: normalizeToISODate(item.start?.dateTime || item.start?.date),
-                      time: item.start?.dateTime ? new Date(item.start.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'All Day',
-                      type: 'Google Cal',
-                    }));
-                    setGoogleCalendarEvents(fetchedGcal);
-                  }
-                }
-              } catch (refErr) {
-                console.warn('Refinement notice:', refErr);
-              }
-            } else if (res.status !== 401) {
-              const rawErrText = await res.text().catch(() => '');
-              let errDetail = rawErrText;
-              try {
-                const parsed = JSON.parse(rawErrText);
-                errDetail = parsed?.error?.message || rawErrText;
-              } catch {}
-              console.warn('Google Calendar API POST status:', res.status, rawErrText);
-              setConnectorNotice(`⚠️ Event saved locally, but Google Calendar API returned ${res.status}: ${errDetail || 'Unknown API error'}`);
-            }
+          if (res && res.ok) {
+            setConnectorNotice(`🟢 Event "${title}" (${startTime}-${endTime}) posted live to your Google Calendar!`);
+            await fetchGoogleEvents();
+          } else if (res) {
+            const rawErrText = await res.text().catch(() => '');
+            let errDetail = rawErrText;
+            try {
+              const parsed = JSON.parse(rawErrText);
+              errDetail = parsed?.error?.message || rawErrText;
+            } catch {}
+            console.warn('Google Calendar API POST status:', res.status, rawErrText);
+            setConnectorNotice(`⚠️ Event saved locally, but Google Calendar API returned ${res.status}: ${errDetail || 'Unknown API error'}`);
           }
         } catch (err: any) {
           console.warn('Google Calendar POST notice:', err);
@@ -907,45 +924,25 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       setGoogleCalendarEvents((prev) => prev.filter((ev) => ev.id !== id));
 
       if (connectors.googleCalendar) {
-        let token = localStorage.getItem('sakido_provider_token');
-        if (token) {
-          try {
-            const deleteGCal = async (accessToken: string) => {
-              return fetch(
-                `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(gcalEventId)}`,
-                {
-                  method: 'DELETE',
-                  headers: { Authorization: `Bearer ${accessToken}` },
-                }
-              );
-            };
-
-            let res = await deleteGCal(token);
-            if (res.status === 401) {
-              const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
-              if (refreshToken) {
-                const refreshRes = await fetch('/api/refresh-token', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ refresh_token: refreshToken }),
-                });
-                if (refreshRes.ok) {
-                  const refreshData = await refreshRes.json();
-                  token = refreshData.access_token;
-                  localStorage.setItem('sakido_provider_token', token!);
-                  res = await deleteGCal(token!);
-                }
+        try {
+          const res = await executeGoogleApi((accessToken) =>
+            fetch(
+              `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(gcalEventId)}`,
+              {
+                method: 'DELETE',
+                headers: { Authorization: `Bearer ${accessToken}` },
               }
-            }
+            )
+          );
 
-            if (res.ok || res.status === 204) {
-              setConnectorNotice('🟢 Deleted live from Google Calendar!');
-            } else {
-              setConnectorNotice(`⚠️ Removed locally, but Google Calendar API returned ${res.status}`);
-            }
-          } catch (err: any) {
-            console.warn('GCal delete error:', err);
+          if (res && (res.ok || res.status === 204)) {
+            setConnectorNotice('🟢 Deleted live from Google Calendar!');
+            await fetchGoogleEvents();
+          } else if (res) {
+            setConnectorNotice(`⚠️ Removed locally, but Google Calendar API returned ${res.status}`);
           }
+        } catch (err: any) {
+          console.warn('GCal delete error:', err);
         }
       }
       return;
@@ -956,65 +953,42 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     setEvents((prev) => prev.filter((ev) => ev.id !== id));
 
     if (targetEv && connectors.googleCalendar) {
-      let token = localStorage.getItem('sakido_provider_token');
-      if (token) {
-        try {
-          const deleteGCal = async (gcalId: string, accessToken: string) => {
-            return fetch(
-              `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(gcalId)}`,
-              {
-                method: 'DELETE',
-                headers: { Authorization: `Bearer ${accessToken}` },
-              }
-            );
-          };
-
-          // Search Google Calendar API for matching event titled "[Sakido] {title}" or "{title}"
-          const searchTitle = targetEv.title.startsWith('[Sakido]') ? targetEv.title : `[Sakido] ${targetEv.title}`;
-          const searchRes = await fetch(
+      try {
+        const searchTitle = targetEv.title.startsWith('[Sakido]') ? targetEv.title : `[Sakido] ${targetEv.title}`;
+        const searchRes = await executeGoogleApi((accessToken) =>
+          fetch(
             `https://www.googleapis.com/calendar/v3/calendars/primary/events?q=${encodeURIComponent(targetEv.title)}`,
-            { headers: { Authorization: `Bearer ${token}` } }
+            { headers: { Authorization: `Bearer ${accessToken}` } }
+          )
+        );
+
+        if (searchRes && searchRes.ok) {
+          const searchData = await searchRes.json();
+          const matched = (searchData.items || []).find(
+            (item: any) => item.summary === searchTitle || item.summary === targetEv.title
           );
 
-          if (searchRes.ok) {
-            const searchData = await searchRes.json();
-            const matched = (searchData.items || []).find(
-              (item: any) => item.summary === searchTitle || item.summary === targetEv.title
+          if (matched?.id) {
+            const delRes = await executeGoogleApi((accessToken) =>
+              fetch(
+                `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(matched.id)}`,
+                {
+                  method: 'DELETE',
+                  headers: { Authorization: `Bearer ${accessToken}` },
+                }
+              )
             );
 
-            if (matched?.id) {
-              let res = await deleteGCal(matched.id, token);
-              if (res.status === 401) {
-                const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
-                if (refreshToken) {
-                  const refreshRes = await fetch('/api/refresh-token', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ refresh_token: refreshToken }),
-                  });
-                  if (refreshRes.ok) {
-                    const refreshData = await refreshRes.json();
-                    token = refreshData.access_token;
-                    localStorage.setItem('sakido_provider_token', token!);
-                    res = await deleteGCal(matched.id, token!);
-                  }
-                }
-              }
-
-              if (res.ok || res.status === 204) {
-                setConnectorNotice(`🟢 Event "${targetEv.title}" deleted from Sakido & Google Calendar!`);
-                // Also remove from googleCalendarEvents list
-                setGoogleCalendarEvents((prev) => prev.filter((ge) => ge.id !== `gcal-${matched.id}`));
-              }
-            } else {
-              setConnectorNotice(`🟢 Event "${targetEv.title}" removed from Sakido schedule.`);
+            if (delRes && (delRes.ok || delRes.status === 204)) {
+              setConnectorNotice(`🟢 Event "${targetEv.title}" deleted from Sakido & Google Calendar!`);
+              await fetchGoogleEvents();
             }
+          } else {
+            setConnectorNotice(`🟢 Event "${targetEv.title}" removed from Sakido schedule.`);
           }
-        } catch (err) {
-          console.warn('Sync delete notice:', err);
         }
-      } else {
-        setConnectorNotice(`🟢 Event "${targetEv?.title || 'Event'}" removed from Sakido schedule.`);
+      } catch (err) {
+        console.warn('Sync delete notice:', err);
       }
     } else {
       setConnectorNotice(`🟢 Event "${targetEv?.title || 'Event'}" removed from Sakido schedule.`);
@@ -1577,7 +1551,18 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         now.getFullYear() === year && now.getMonth() === month;
       const todayDate = now.getDate();
 
-      const allEvents = [...events, ...(connectors.googleCalendar ? googleCalendarEvents : [])];
+      const gcalTitlesAndDates = new Set(
+        googleCalendarEvents.map((ge) => `${ge.title.replace(/^\[Sakido\]\s*/, '')}_${ge.date}`)
+      );
+
+      const filteredLocalEvents = events.filter((ev) => {
+        const key = `${ev.title.replace(/^\[Sakido\]\s*/, '')}_${ev.date}`;
+        return !gcalTitlesAndDates.has(key);
+      });
+
+      const allEvents = connectors.googleCalendar
+        ? [...googleCalendarEvents, ...filteredLocalEvents]
+        : events;
 
       return (
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 pl-0 lg:pl-8 border-t lg:border-t-0 lg:border-l border-outline-variant/30 pt-6 lg:pt-0">
@@ -1647,12 +1632,10 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             {connectors.googleCalendar && (
               <button
                 type="button"
-                onClick={() => {
-                  const token = localStorage.getItem('sakido_provider_token');
-                  if (token) {
-                    setConnectorNotice('Refreshing Google Calendar sync...');
-                    setTimeout(() => setConnectorNotice('Live Google Calendar synchronized!'), 800);
-                  }
+                onClick={async () => {
+                  setConnectorNotice('Refreshing Google Calendar sync...');
+                  await fetchGoogleEvents();
+                  setConnectorNotice('🟢 Live Google Calendar synchronized!');
                 }}
                 className="px-3 py-1.5 rounded-lg border border-outline-variant/40 bg-surface-container-low text-xs font-mono font-medium text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors flex items-center gap-1.5 cursor-pointer"
               >
@@ -3319,8 +3302,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   [
                     { key: 'googleCalendar', label: 'Calendar' },
                     { key: 'googleDrive', label: 'Drive' },
-                    { key: 'gmail', label: 'gmail' },
-                    { key: 'googleNotes', label: 'Notes' },
+                    { key: 'gmail', label: 'Gmail' },
                   ] as const
                 ).filter((item) => connectors[item.key]);
 
