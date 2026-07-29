@@ -26,7 +26,7 @@ gsap.registerPlugin(ScrollToPlugin, Observer);
 
 const SECTION_FRAMES = [0, 40, 80, 120, 160, 200, 239];
 const TOTAL_SECTIONS = 8; // 7 frame sections + 1 solid black CTA section
-const FRAME_ANIM_DURATION = 0.75; // Smooth frame transition
+const FRAME_ANIM_DURATION = 0.75; // Smooth frame transition duration
 
 const FEATURE_CALLOUTS = [
   {
@@ -91,8 +91,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
   const [currentUser, setCurrentUser] = useState<{ email?: string; name?: string; avatarUrl?: string } | null>(null);
 
   const currentSectionRef = useRef(0);
-  const isGestureLocked = useRef(false);
-  const silenceTimer = useRef<NodeJS.Timeout | null>(null);
+  const isAnimating = useRef(false);
 
   const frameAnimRef = useRef<gsap.core.Tween | null>(null);
   const frameObjRef = useRef({ value: 0 });
@@ -132,24 +131,14 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
   }, []);
 
   /**
-   * Extends the gesture silence timer. Input remains locked until 350ms of complete silence.
-   */
-  const resetSilenceTimer = useCallback(() => {
-    if (silenceTimer.current) {
-      clearTimeout(silenceTimer.current);
-    }
-    silenceTimer.current = setTimeout(() => {
-      isGestureLocked.current = false;
-    }, 350);
-  }, []);
-
-  /**
-   * Transition strictly to target section index.
+   * Transition strictly to target section index using standard GSAP state-locking.
    */
   const goToSection = useCallback(
     (targetIndex: number) => {
       const clamped = Math.max(0, Math.min(TOTAL_SECTIONS - 1, targetIndex));
-      if (clamped === currentSectionRef.current) return;
+      if (clamped === currentSectionRef.current || isAnimating.current) return;
+
+      isAnimating.current = true;
 
       if (frameAnimRef.current) {
         frameAnimRef.current.kill();
@@ -167,12 +156,18 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
         onUpdate: () => {
           setDisplayFrame(frameObjRef.current.value);
         },
+        onComplete: () => {
+          // 200ms buffer after animation to absorb residual trackpad momentum
+          setTimeout(() => {
+            isAnimating.current = false;
+          }, 200);
+        },
       });
     },
     []
   );
 
-  // GSAP Observer for gesture-locked section snapping
+  // GSAP Observer for section snapping
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       return;
@@ -182,69 +177,39 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
       type: 'wheel,touch,pointer',
       preventDefault: true,
       wheelSpeed: -1,
-      onChange: () => {
-        // Any incoming scroll ticks while locked keep extending the silence timer
-        if (isGestureLocked.current) {
-          resetSilenceTimer();
-        }
-      },
       onUp: () => {
-        if (isGestureLocked.current) {
-          resetSilenceTimer();
-          return;
-        }
-
-        // Lock for the entire duration of this scroll gesture
-        isGestureLocked.current = true;
-        resetSilenceTimer();
-
+        if (isAnimating.current) return;
         const next = currentSectionRef.current + 1;
         if (next < TOTAL_SECTIONS) {
           goToSection(next);
         }
       },
       onDown: () => {
-        if (isGestureLocked.current) {
-          resetSilenceTimer();
-          return;
-        }
-
-        // Lock for the entire duration of this scroll gesture
-        isGestureLocked.current = true;
-        resetSilenceTimer();
-
+        if (isAnimating.current) return;
         const prev = currentSectionRef.current - 1;
         if (prev >= 0) {
           goToSection(prev);
         }
       },
-      tolerance: 15,
+      tolerance: 10,
     });
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isGestureLocked.current) return;
+      if (isAnimating.current) return;
 
       if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === ' ') {
         e.preventDefault();
-        isGestureLocked.current = true;
-        resetSilenceTimer();
         const next = currentSectionRef.current + 1;
         if (next < TOTAL_SECTIONS) goToSection(next);
       } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
         e.preventDefault();
-        isGestureLocked.current = true;
-        resetSilenceTimer();
         const prev = currentSectionRef.current - 1;
         if (prev >= 0) goToSection(prev);
       } else if (e.key === 'Home') {
         e.preventDefault();
-        isGestureLocked.current = true;
-        resetSilenceTimer();
         goToSection(0);
       } else if (e.key === 'End') {
         e.preventDefault();
-        isGestureLocked.current = true;
-        resetSilenceTimer();
         goToSection(TOTAL_SECTIONS - 1);
       }
     };
@@ -254,9 +219,8 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     return () => {
       observer.kill();
       window.removeEventListener('keydown', handleKeyDown);
-      if (silenceTimer.current) clearTimeout(silenceTimer.current);
     };
-  }, [goToSection, resetSilenceTimer]);
+  }, [goToSection]);
 
   return (
     <div className="bg-black text-white min-h-screen font-sans selection:bg-white selection:text-black overflow-hidden relative">
