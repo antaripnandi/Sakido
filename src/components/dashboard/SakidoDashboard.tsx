@@ -787,7 +787,11 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               errDetail = parsed?.error?.message || rawErrText;
             } catch {}
             console.warn('Google Calendar API POST status:', res.status, rawErrText);
-            setConnectorNotice(`⚠️ Event saved locally, but Google Calendar API returned ${res.status}: ${errDetail || 'Unknown API error'}`);
+            if (res.status === 403) {
+              setConnectorNotice(`⚠️ Insufficient permissions (403). Please go to Connectors tab and click "Disconnect / Reauth" to grant full Google Calendar permissions.`);
+            } else {
+              setConnectorNotice(`⚠️ Event saved locally, but Google Calendar API returned ${res.status}: ${errDetail || 'Unknown API error'}`);
+            }
           }
         } catch (err: any) {
           console.warn('Google Calendar POST notice:', err);
@@ -1230,7 +1234,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     }
 
     const scopeMap = {
-      googleCalendar: 'https://www.googleapis.com/auth/calendar.events',
+      googleCalendar: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events',
       googleDrive: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile',
       gmail: 'https://www.googleapis.com/auth/gmail.readonly',
     };
