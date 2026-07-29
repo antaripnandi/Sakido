@@ -70,8 +70,6 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
   useEffect(() => {
     if (!containerRef.current || !pinnedRef.current) return;
 
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
     const ctx = gsap.context(() => {
       gsap.to(frameObjRef.current, {
         value: 239,
@@ -81,17 +79,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           pin: pinnedRef.current,
           start: 'top top',
           end: 'bottom bottom',
-          scrub: prefersReducedMotion ? true : 0.3, // Uniform smooth linear scrub
-          ...(prefersReducedMotion
-            ? {}
-            : {
-                snap: {
-                  snapTo: 1 / (TOTAL_SECTIONS - 1),
-                  duration: 0.3,
-                  delay: 0.02,
-                  ease: 'none', // 100% linear scroll snapping (no variable S-curve speed)
-                },
-              }),
+          scrub: true, // 1:1 instant linear scroll binding (zero lag, native smooth physics)
           onUpdate: (self) => {
             frameRef.current = frameObjRef.current.value;
             const newSection = Math.min(
