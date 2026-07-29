@@ -30,7 +30,8 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
 
   const containerRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef<HTMLDivElement>(null);
-  const frameRef = useRef(0); // Driven by ScrollTrigger, read by FrameCanvas
+  const frameObjRef = useRef({ value: 0 }); // Target object for GSAP tweening
+  const frameRef = useRef<number>(0); // Driven by ScrollTrigger onUpdate, read by FrameCanvas
   const currentSectionRef = useRef(0);
 
   // Sync Supabase Auth Session
@@ -49,7 +50,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
       }
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         const u = session.user;
         setCurrentUser({
@@ -62,7 +63,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
       }
     });
 
-    return () => authListener.subscription.unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
 
   // GSAP ScrollTrigger Architecture Setup
@@ -72,22 +73,28 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     const ctx = gsap.context(() => {
-      gsap.to(frameRef, {
-        current: 239,
+      gsap.to(frameObjRef.current, {
+        value: 239,
         ease: 'none',
         scrollTrigger: {
           trigger: containerRef.current,
           pin: pinnedRef.current,
+          pinSpacing: false, // Prevents GSAP from altering container 800dvh height
           start: 'top top',
           end: 'bottom bottom',
-          scrub: prefersReducedMotion ? false : 0.8, // Smooth 0.8s catchup scrub
-          snap: prefersReducedMotion ? undefined : {
-            snapTo: 1 / (TOTAL_SECTIONS - 1),
-            duration: { min: 0.25, max: 0.6 },
-            delay: 0.05,
-            ease: 'power2.inOut',
-          },
+          scrub: prefersReducedMotion ? true : 0.8, // 0.8s smooth catchup scrub
+          ...(prefersReducedMotion
+            ? {}
+            : {
+                snap: {
+                  snapTo: 1 / (TOTAL_SECTIONS - 1),
+                  duration: { min: 0.25, max: 0.6 },
+                  delay: 0.05,
+                  ease: 'power2.inOut',
+                },
+              }),
           onUpdate: (self) => {
+            frameRef.current = frameObjRef.current.value;
             const newSection = Math.min(
               TOTAL_SECTIONS - 1,
               Math.max(0, Math.round(self.progress * (TOTAL_SECTIONS - 1)))
@@ -127,7 +134,14 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
               >
                 <div className="w-6 h-6 rounded-full bg-black border border-[#444748] flex items-center justify-center text-white overflow-hidden shrink-0 shadow-inner">
                   {currentUser.avatarUrl ? (
-                    <img src={currentUser.avatarUrl} alt="User Profile" className="w-full h-full object-cover" />
+                    <img
+                      src={currentUser.avatarUrl}
+                      alt="User Profile"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
                   ) : (
                     <User className="w-3.5 h-3.5 text-zinc-300" />
                   )}
@@ -152,10 +166,11 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           </div>
 
           {/* UI Content Overlays */}
-          <div className="absolute inset-0 z-20 pointer-events-none">
+          <div className="absolute inset-0 z-20 pointer-events-none" aria-live="polite">
             {/* Hero Section */}
             <div
-              className={`absolute inset-0 flex flex-col justify-between items-center pt-24 sm:pt-32 pb-12 px-6 sm:px-12 transition-all duration-700 cubic-bezier(0.16, 1, 0.3, 1) ${
+              aria-hidden={currentSection !== 0}
+              className={`absolute inset-0 flex flex-col justify-between items-center pt-24 sm:pt-32 pb-12 px-6 sm:px-12 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                 currentSection === 0
                   ? 'opacity-100 translate-y-0 pointer-events-auto'
                   : 'opacity-0 -translate-y-24 pointer-events-none'
@@ -194,7 +209,8 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
               return (
                 <div
                   key={item.id}
-                  className={`absolute top-1/2 p-4 sm:p-8 md:p-12 max-w-sm sm:max-w-md lg:max-w-lg transition-all duration-700 cubic-bezier(0.16, 1, 0.3, 1) ${
+                  aria-hidden={!isCurrent}
+                  className={`absolute top-1/2 p-4 sm:p-8 md:p-12 max-w-sm sm:max-w-md lg:max-w-lg transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                     isCurrent ? 'pointer-events-auto' : 'pointer-events-none'
                   } ${
                     isLeft
@@ -219,7 +235,8 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
 
           {/* Section 7: Final CTA Section */}
           <div
-            className={`absolute inset-0 z-40 bg-black flex flex-col items-center justify-center px-6 py-12 transition-transform duration-700 cubic-bezier(0.16, 1, 0.3, 1) ${
+            aria-hidden={currentSection !== 7}
+            className={`absolute inset-0 z-40 bg-black flex flex-col items-center justify-center px-6 py-12 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
               currentSection === 7 ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'
             }`}
           >
@@ -245,3 +262,4 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     </div>
   );
 };
+
