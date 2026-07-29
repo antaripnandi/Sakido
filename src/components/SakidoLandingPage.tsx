@@ -11,16 +11,67 @@ gsap.registerPlugin(ScrollToPlugin, Observer);
 
 /**
  * =========================================================================
- * FRAME MAP — 240 frames across 7 main sections + 1 solid black CTA section
+ * LETHARGY INERTIA DETECTION ENGINE
  *
- *  Section 0 — Hero "Sakido"           → Frame 0   (bag closed, front view)
- *  Section 1 — Notes                   → Frame 40  (straps unbuckled, flap opening)
- *  Section 2 — Calendar                → Frame 80  (bag opening wider, laptop visible)
- *  Section 3 — Tasks & Grades          → Frame 120 (items emerging from backpack)
- *  Section 4 — Knowledge Inbox         → Frame 160 (items fully spread out)
- *  Section 5 — Chat                    → Frame 200 (items settled into layout)
- *  Section 6 — Dashboard               → Frame 239 (final frame state)
- *  Section 7 — Final CTA               → Frame 239 + Solid black background cover (older style)
+ * Differentiates between intentional user-initiated scroll flicks and residual
+ * trackpad momentum inertia decay to prevent double-scrolling without getting stuck.
+ * =========================================================================
+ */
+class LethargyEngine {
+  private deltas: number[] = [];
+  private lastTime: number = Date.now();
+  private isDecelerating: boolean = false;
+
+  public check(deltaY: number): boolean {
+    const now = Date.now();
+    const absDelta = Math.abs(deltaY);
+
+    // If user paused for 200ms+, reset inertia tracking state
+    if (now - this.lastTime > 200) {
+      this.deltas = [];
+      this.isDecelerating = false;
+    }
+    this.lastTime = now;
+
+    // Ignore tiny noise / jitter deltas
+    if (absDelta < 6) {
+      return false;
+    }
+
+    // Maintain rolling history of last 6 deltas
+    this.deltas.push(absDelta);
+    if (this.deltas.length > 6) {
+      this.deltas.shift();
+    }
+
+    const sum = this.deltas.reduce((a, b) => a + b, 0);
+    const avg = sum / this.deltas.length;
+
+    // Trackpad momentum decay check: if current delta is lower than rolling average, it's inertia decay!
+    if (absDelta < avg * 0.85) {
+      this.isDecelerating = true;
+      return false;
+    }
+
+    // If we were previously decelerating and current delta is still not a new spike, ignore
+    if (this.isDecelerating && absDelta <= avg * 1.1) {
+      return false;
+    }
+
+    // Fresh user scroll flick detected!
+    this.isDecelerating = false;
+    return true;
+  }
+
+  public reset() {
+    this.deltas = [];
+    this.isDecelerating = false;
+  }
+}
+
+/**
+ * =========================================================================
+ * FRAME MAP — 240 frames across 7 main sections + 1 solid black CTA section
  * =========================================================================
  */
 
@@ -92,6 +143,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
 
   const currentSectionRef = useRef(0);
   const isAnimating = useRef(false);
+  const lethargyRef = useRef(new LethargyEngine());
 
   const frameAnimRef = useRef<gsap.core.Tween | null>(null);
   const frameObjRef = useRef({ value: 0 });
@@ -131,7 +183,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
   }, []);
 
   /**
-   * Transition strictly to target section index using standard GSAP state-locking.
+   * Transition strictly to target section index.
    */
   const goToSection = useCallback(
     (targetIndex: number) => {
@@ -157,17 +209,15 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           setDisplayFrame(frameObjRef.current.value);
         },
         onComplete: () => {
-          // 200ms buffer after animation to absorb residual trackpad momentum
-          setTimeout(() => {
-            isAnimating.current = false;
-          }, 200);
+          isAnimating.current = false;
+          lethargyRef.current.reset();
         },
       });
     },
     []
   );
 
-  // GSAP Observer for section snapping
+  // GSAP Observer + Lethargy Inertia Filter
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       return;
@@ -177,7 +227,27 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
       type: 'wheel,touch,pointer',
       preventDefault: true,
       wheelSpeed: -1,
+      onWheel: (e) => {
+        if (isAnimating.current) return;
+
+        // Check if current wheel event represents a fresh user flick vs trackpad momentum
+        const isIntentional = lethargyRef.current.check(e.deltaY);
+        if (!isIntentional) return;
+
+        if (e.deltaY > 0) {
+          const next = currentSectionRef.current + 1;
+          if (next < TOTAL_SECTIONS) {
+            goToSection(next);
+          }
+        } else if (e.deltaY < 0) {
+          const prev = currentSectionRef.current - 1;
+          if (prev >= 0) {
+            goToSection(prev);
+          }
+        }
+      },
       onUp: () => {
+        // Touch gesture swipe up -> next section
         if (isAnimating.current) return;
         const next = currentSectionRef.current + 1;
         if (next < TOTAL_SECTIONS) {
@@ -185,6 +255,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
         }
       },
       onDown: () => {
+        // Touch gesture swipe down -> prev section
         if (isAnimating.current) return;
         const prev = currentSectionRef.current - 1;
         if (prev >= 0) {
