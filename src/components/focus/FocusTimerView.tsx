@@ -86,13 +86,6 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
 
   return (
     <div className="font-body-md bg-background text-on-background flex flex-col min-h-[calc(100vh-5rem)] selection:bg-primary-fixed-dim selection:text-primary rounded-3xl overflow-hidden p-4 md:p-8">
-      {/* Top Header */}
-      <header className="relative z-10 flex justify-between items-center px-4 md:px-8 py-4 mb-4 border-b border-outline-variant/30">
-        <div>
-          <h1 className="font-syne text-xl font-bold tracking-tight text-on-surface">Focus</h1>
-        </div>
-      </header>
-
       {/* Main Container */}
       <main className="relative z-10 flex-grow flex items-center justify-center py-6 px-4">
         <div className="max-w-[720px] w-full space-y-8">
@@ -306,13 +299,6 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
           </div>
         </div>
       </main>
-
-      {/* Footer Branding */}
-      <footer className="relative z-10 px-4 md:px-8 py-4 flex justify-between items-center opacity-40 font-label-sm text-on-surface text-xs">
-        <div className="flex items-center gap-6">
-          <span className="font-syne font-semibold tracking-wider">SAKIDO FOCUS</span>
-        </div>
-      </footer>
     </div>
   );
 };
