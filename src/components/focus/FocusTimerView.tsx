@@ -58,10 +58,6 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
   const [pomoFocusMinutes, setPomoFocusMinutes] = useState<number>(25);
   const [pomodoroCycles, setPomodoroCycles] = useState<number>(4);
 
-  // Audio state
-  const [activeAudio, setActiveAudio] = useState<'silent' | 'rain' | 'alpha' | 'deep'>('silent');
-  const [volume, setVolume] = useState<number>(50);
-
   const handleRatioSelect = (key: PomodoroRatioKey) => {
     setPomodoroRatio(key);
     const target = POMODORO_RATIOS.find(r => r.key === key);
@@ -76,11 +72,6 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
   const totalSessionMins = totalFocusMins + totalBreakMins;
 
   const handleBegin = () => {
-    let soundParam: 'none' | 'rain' | 'binaural' | 'brownian' = 'none';
-    if (activeAudio === 'rain') soundParam = 'rain';
-    else if (activeAudio === 'alpha') soundParam = 'binaural';
-    else if (activeAudio === 'deep') soundParam = 'brownian';
-
     onStartFocusSession({
       mode: timerMode,
       durationMinutes,
@@ -88,8 +79,8 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
       pomoFocusMinutes,
       pomoBreakMinutes: currentBreakMinutes,
       pomodoroCycles,
-      sound: soundParam,
-      volume: volume / 100,
+      sound: 'none',
+      volume: 0,
     });
   };
 
@@ -267,7 +258,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                   </div>
                 </div>
 
-                {/* Repeat Cycles Selector (No duplicate count) */}
+                {/* Repeat Cycles Selector */}
                 <div className="space-y-2">
                   <span className="text-[11px] font-mono uppercase tracking-wider text-on-surface-variant block px-1">
                     Repeat cycles
@@ -309,49 +300,6 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                 </div>
               </section>
             )}
-
-            {/* Atmosphere Selection */}
-            <section className="space-y-4">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-                <div className="grid grid-cols-4 gap-2 md:gap-3 flex-grow">
-                  {[
-                    { id: 'silent', label: 'Silent', icon: 'volume_off' },
-                    { id: 'rain', label: 'Rain', icon: 'water_drop' },
-                    { id: 'alpha', label: 'Alpha', icon: 'graphic_eq' },
-                    { id: 'deep', label: 'Deep', icon: 'filter_vintage' },
-                  ].map((audio) => {
-                    const isActive = activeAudio === audio.id;
-                    return (
-                      <button
-                        key={audio.id}
-                        type="button"
-                        onClick={() => setActiveAudio(audio.id as any)}
-                        className={`audio-btn flex items-center justify-center gap-2 py-3.5 px-3 border font-label-md transition-all rounded-full text-xs md:text-sm ${
-                          isActive
-                            ? 'active border-primary text-primary bg-primary-fixed-dim/20 font-semibold'
-                            : 'border-outline-variant text-on-surface-variant bg-surface-container hover:border-primary hover:text-primary'
-                        }`}
-                      >
-                        <span className="material-symbols-outlined text-[18px]">{audio.icon}</span>
-                        <span>{audio.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                <div className="flex items-center gap-3 px-4 py-3 border border-outline-variant bg-surface-container rounded-full shrink-0 sm:w-[150px] hover:border-on-surface-variant transition-colors">
-                  <span className="material-symbols-outlined text-[18px] text-on-surface-variant">volume_up</span>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={volume}
-                    onChange={(e) => setVolume(Number(e.target.value))}
-                    className="w-full cursor-pointer opacity-70 hover:opacity-100 transition-opacity focus-slider"
-                  />
-                </div>
-              </div>
-            </section>
 
             {/* CTA */}
             <section className="pt-2">

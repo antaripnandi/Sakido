@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AlertCircle } from 'lucide-react';
-import { ambientSynth } from '../../utils/audioSynth';
 import { FocusSessionConfig } from './FocusTimerView';
 
 interface FocusTimerProps {
@@ -27,7 +26,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
     pomoBreakMinutes: 5,
     pomodoroCycles: 4,
     sound: 'none',
-    volume: 0.5,
+    volume: 0,
   },
   onClose,
 }) => {
@@ -54,59 +53,14 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
   const [finished, setFinished] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Soundscape & Volume Popover State
-  const [activeSound, setActiveSound] = useState<'none' | 'rain' | 'binaural' | 'brownian'>(config.sound);
-  const [volume, setVolume] = useState(config.volume);
-  const [isVolumeOpen, setIsVolumeOpen] = useState(false);
-
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Start sound on mount if configured
+  // Attempt fullscreen on start
   useEffect(() => {
-    if (config.sound && config.sound !== 'none') {
-      ambientSynth.play(config.sound as 'rain' | 'binaural' | 'brownian');
-      ambientSynth.setVolume(config.volume);
-    }
-    // Attempt fullscreen on start
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
     }
-  }, [config.sound, config.volume]);
-
-  // Stop audio on unmount
-  useEffect(() => {
-    return () => {
-      ambientSynth.stop();
-    };
   }, []);
-
-  // --- Ambient sound toggle / cycle ---
-  const handleCycleSound = () => {
-    const sequence: ('none' | 'rain' | 'binaural' | 'brownian')[] = ['none', 'rain', 'binaural', 'brownian'];
-    const nextIdx = (sequence.indexOf(activeSound) + 1) % sequence.length;
-    const nextSound = sequence[nextIdx];
-    
-    if (nextSound === 'none') {
-      ambientSynth.stop();
-      setActiveSound('none');
-    } else {
-      setActiveSound(nextSound);
-      ambientSynth.play(nextSound);
-      ambientSynth.setVolume(volume);
-    }
-  };
-
-  const handleVolumeChange = (v: number) => {
-    setVolume(v);
-    ambientSynth.setVolume(v);
-  };
-
-  const handleVolumeBarClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clickY = e.clientY - rect.top;
-    const newVol = Math.max(0, Math.min(1, 1 - clickY / rect.height));
-    handleVolumeChange(Math.round(newVol * 100) / 100);
-  };
 
   // --- Fullscreen helpers ---
   const toggleFullscreen = useCallback(() => {
@@ -128,8 +82,6 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
   const handleQuitConfirm = useCallback(() => {
     setIsRunning(false);
     if (intervalRef.current) clearInterval(intervalRef.current);
-    ambientSynth.stop();
-    setActiveSound('none');
     exitFullscreen();
     onClose();
   }, [exitFullscreen, onClose]);
@@ -144,7 +96,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
     }
   }, [finished, handleQuitConfirm]);
 
-  // --- Keyboard Shortcuts (Esc triggers exit warning, Space for Pause, R for Reset) ---
+  // --- Keyboard Shortcuts ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
@@ -188,7 +140,6 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
         setTimeLeft(prev => {
           if (prev <= 1) {
             clearInterval(intervalRef.current!);
-            ambientSynth.playCompletionChime();
 
             // Handle Pomodoro Stage Transition
             if (isPomodoro) {
@@ -347,7 +298,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
         ) : (
           /* Active Countdown Mode */
           <div className="flex flex-col items-center justify-center">
-            {/* Minimalist Stage Badge (No emojis, no heavy uppercase slop) */}
+            {/* Minimalist Stage Badge */}
             <div className="mb-6 px-4 py-1 rounded-full bg-surface-container border border-outline-variant/40 text-on-surface-variant font-mono text-xs tracking-tight opacity-90 font-medium flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${stage === 'break' ? 'bg-emerald-500 animate-pulse' : 'bg-primary'}`} />
               <span>
@@ -428,75 +379,6 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
                 </span>
                 <span>{isRunning ? 'Pause' : 'Resume'}</span>
               </button>
-
-              {/* Ambient Sound Selector Button */}
-              <button
-                type="button"
-                onClick={handleCycleSound}
-                title={`Audio: ${activeSound}`}
-                className={`flex items-center justify-center w-14 h-14 rounded-full border transition-all cursor-pointer shadow-xs ${
-                  activeSound !== 'none'
-                    ? 'border-primary text-primary bg-primary-fixed-dim/20'
-                    : 'border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary bg-surface-container-lowest'
-                }`}
-              >
-                <span className="material-symbols-outlined text-xl">
-                  {activeSound === 'rain' ? 'water_drop' : activeSound === 'binaural' ? 'graphic_eq' : activeSound === 'brownian' ? 'filter_vintage' : 'water'}
-                </span>
-              </button>
-
-              {/* Speaker / Volume Control Container */}
-              <div className="relative z-30 flex flex-col items-center">
-                {/* Volume Slider Popover */}
-                <div
-                  id="volume-slider-container"
-                  className={`absolute bottom-full mb-3 transition-all duration-200 h-44 w-12 bg-surface-container-highest rounded-2xl flex flex-col items-center justify-between py-3 shadow-xl border border-outline-variant z-40 ${
-                    isVolumeOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-2 pointer-events-none'
-                  }`}
-                >
-                  <span className="text-[10px] font-mono text-on-surface-variant font-bold">
-                    {Math.round(volume * 100)}%
-                  </span>
-                  
-                  {/* Custom Vertical Volume Fill Bar */}
-                  <div
-                    onClick={handleVolumeBarClick}
-                    className="h-24 w-2 bg-surface-container-lowest rounded-full relative cursor-pointer flex items-end overflow-hidden"
-                  >
-                    <div
-                      className="w-full bg-primary rounded-full transition-all"
-                      style={{ height: `${volume * 100}%` }}
-                    />
-                  </div>
-
-                  {/* Native Range Slider */}
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={volume}
-                    onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                    className="focus-slider cursor-pointer w-20 opacity-0 absolute inset-0 h-full"
-                  />
-                </div>
-
-                {/* Speaker Icon Button */}
-                <button
-                  type="button"
-                  onClick={() => setIsVolumeOpen(v => !v)}
-                  title="Toggle Volume Control"
-                  className={`flex items-center justify-center w-14 h-14 rounded-full border transition-all bg-surface-container-lowest shadow-xs cursor-pointer ${
-                    isVolumeOpen
-                      ? 'text-primary border-primary ring-2 ring-primary/20'
-                      : 'border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary'
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-xl">
-                    {volume === 0 ? 'volume_off' : 'volume_up'}
-                  </span>
-                </button>
-              </div>
             </div>
           </div>
         )}
