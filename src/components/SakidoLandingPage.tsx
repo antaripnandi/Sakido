@@ -79,10 +79,9 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
         scrollTrigger: {
           trigger: containerRef.current,
           pin: pinnedRef.current,
-          pinSpacing: false, // Prevents GSAP from altering container 800dvh height
           start: 'top top',
           end: 'bottom bottom',
-          scrub: prefersReducedMotion ? true : 0.8, // 0.8s smooth catchup scrub
+          scrub: prefersReducedMotion ? true : 0.15, // Responsive 0.15s catchup scrub (no lag/jitter against snap)
           ...(prefersReducedMotion
             ? {}
             : {

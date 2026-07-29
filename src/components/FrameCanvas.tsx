@@ -183,7 +183,14 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
 
   // GSAP Ticker Render Loop (Decoupled from React State)
   useEffect(() => {
-    const update = () => drawFrame(frameRef.current);
+    let lastDrawnIndex = -1;
+    const update = () => {
+      const currentIdx = Math.round(frameRef.current);
+      if (currentIdx !== lastDrawnIndex) {
+        lastDrawnIndex = currentIdx;
+        drawFrame(frameRef.current);
+      }
+    };
     gsap.ticker.add(update);
     drawFrame(frameRef.current);
 
