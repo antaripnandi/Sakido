@@ -8,7 +8,7 @@ import { User } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
 
-const TOTAL_SECTIONS = 8;
+const TOTAL_SECTIONS = 7;
 
 const FEATURE_CALLOUTS = [
   { id: 'notes', sectionIndex: 1, category: '01 / ORGANIZER', title: 'Notes', text: 'Write notes by course and semester.', align: 'left' as const },
@@ -108,16 +108,16 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
 
   return (
     <div className="bg-black text-white font-sans selection:bg-white selection:text-black overflow-x-hidden relative">
-      {/* Native Scroll Container (800dvh for 7 scroll intervals) */}
-      <div ref={containerRef} className="h-[800dvh] relative w-full">
+      {/* Native Scroll Container (700dvh for 6 scroll intervals) */}
+      <div ref={containerRef} className="h-[700dvh] relative w-full">
         {/* Pinned Viewport Container (Pinned by GSAP ScrollTrigger) */}
         <div ref={pinnedRef} className="h-[100dvh] w-full overflow-hidden relative">
           {/* Header Action Bar */}
           <div className="fixed top-5 right-6 z-50 flex items-center gap-3">
             {currentUser ? (
               <button
-                onClick={() => setIsAuthOpen(true)}
-                className="group px-3 py-1.5 rounded-full bg-zinc-900/90 border border-zinc-800 hover:border-zinc-600 text-xs text-zinc-200 flex items-center gap-2.5 transition-all shadow-md backdrop-blur-md cursor-pointer hover:bg-zinc-800"
+                onClick={() => (onOpenDashboard ? onOpenDashboard() : setIsAuthOpen(true))}
+                className="group px-3.5 py-1.5 rounded-full bg-zinc-900/90 border border-zinc-800 hover:border-zinc-600 text-xs text-zinc-200 flex items-center gap-2.5 transition-all shadow-md backdrop-blur-md cursor-pointer hover:bg-zinc-800"
               >
                 <div className="w-6 h-6 rounded-full bg-black border border-[#444748] flex items-center justify-center text-white overflow-hidden shrink-0 shadow-inner">
                   {currentUser.avatarUrl ? (
@@ -219,34 +219,31 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
               );
             })}
           </div>
-
-          {/* Section 7: Final CTA Section */}
-          <div
-            aria-hidden={currentSection !== 7}
-            className={`absolute inset-0 z-40 bg-black flex flex-col items-center justify-center px-6 py-12 transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-              currentSection === 7 ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'
-            }`}
-          >
-            <div className="max-w-3xl mx-auto text-center space-y-6">
-              <h2 className="font-display text-5xl sm:text-7xl font-extrabold tracking-tight text-white leading-none">
-                Everything school. One app.
-              </h2>
-              <div className="pt-6">
-                <button
-                  onClick={() => (currentUser && onOpenDashboard ? onOpenDashboard() : setIsAuthOpen(true))}
-                  className="inline-block px-8 py-3.5 rounded-full bg-white hover:bg-zinc-200 text-black font-semibold text-sm transition-all hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
-                >
-                  {currentUser ? 'Open Dashboard' : 'Get Started'}
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
+
+      {/* Separated Final CTA Section (Below 3D Frame Sequence) */}
+      <section className="relative z-30 min-h-screen bg-black flex flex-col items-center justify-center px-6 py-24 border-t border-zinc-900 text-center">
+        <div className="max-w-3xl mx-auto space-y-8">
+          <h2 className="font-display text-5xl sm:text-7xl md:text-8xl font-extrabold tracking-tight text-white leading-none">
+            Everything school.<br className="hidden sm:inline" /> One app.
+          </h2>
+          <p className="text-zinc-400 text-base sm:text-xl font-sans max-w-xl mx-auto font-normal leading-relaxed">
+            Notes, calendar, tasks, saved links, and university chat — all unified in one essentialist academic platform.
+          </p>
+          <div className="pt-4">
+            <button
+              onClick={() => (currentUser && onOpenDashboard ? onOpenDashboard() : setIsAuthOpen(true))}
+              className="inline-block px-8 py-3.5 rounded-full bg-white hover:bg-zinc-200 text-black font-semibold text-sm transition-all hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
+            >
+              {currentUser ? 'Open Dashboard' : 'Get Started'}
+            </button>
+          </div>
+        </div>
+      </section>
 
       {/* Auth Modal */}
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} onGoToDashboard={onOpenDashboard} />
     </div>
   );
 };
-
