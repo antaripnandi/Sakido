@@ -115,6 +115,32 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
 
         // Single ultra-fast 2D canvas draw call
         ctx.drawImage(img, dx, dy, drawWidth, drawHeight);
+
+        // Tight square filter patch directly over the AI star watermark in bottom-right corner
+        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+          const starX = dx + drawWidth * 0.905;
+          const starY = dy + drawHeight * 0.825;
+          const boxSize = Math.max(38, Math.min(drawWidth, drawHeight) * 0.055);
+          const boxX = starX - boxSize / 2;
+          const boxY = starY - boxSize / 2;
+
+          // Sample clean studio floor background texture nearby (x=80%) where there is NO star watermark
+          const sampleW = img.naturalWidth * 0.055;
+          const sampleH = img.naturalHeight * 0.055;
+          const sampleX = img.naturalWidth * 0.80 - sampleW / 2;
+          const sampleY = img.naturalHeight * 0.825 - sampleH / 2;
+
+          // Draw clean floor texture directly into tight square filter box
+          ctx.drawImage(
+            img,
+            sampleX, sampleY, sampleW, sampleH,
+            boxX, boxY, boxSize, boxSize
+          );
+
+          // Apply a subtle ambient tone blend so the patch dissolves seamlessly into the floor
+          ctx.fillStyle = 'rgba(12, 12, 14, 0.15)';
+          ctx.fillRect(boxX, boxY, boxSize, boxSize);
+        }
       } else {
         ctx.fillStyle = '#000000';
         ctx.fillRect(0, 0, width, height);
