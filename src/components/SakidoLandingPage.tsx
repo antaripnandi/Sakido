@@ -199,7 +199,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           goToSection(prev);
         }
       },
-      tolerance: 20, // Threshold to ignore stray micro-touches or tiny wheel jitters
+      tolerance: 20,
     });
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -288,7 +288,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           }`}
         >
           <div className="text-center max-w-3xl">
-            <h1 className="text-6xl sm:text-8xl md:text-9xl font-sans font-extrabold tracking-tight text-white drop-shadow-md">
+            <h1 className="font-display text-6xl sm:text-8xl md:text-9xl font-extrabold tracking-tight text-white drop-shadow-md">
               Sakido
             </h1>
             <p className="mt-6 text-lg sm:text-2xl text-zinc-300 font-sans font-normal tracking-tight leading-relaxed max-w-2xl mx-auto">
@@ -337,7 +337,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
               <span className="text-xs uppercase tracking-[0.2em] text-zinc-400 font-mono font-semibold mb-2 block">
                 {item.category}
               </span>
-              <h2 className="text-3xl sm:text-5xl lg:text-6xl font-sans font-bold tracking-tight text-white mb-3 leading-[1.1] drop-shadow-md">
+              <h2 className="font-display text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white mb-3 leading-[1.1] drop-shadow-md">
                 {item.title}
               </h2>
               <p className="text-sm sm:text-lg md:text-xl font-sans text-zinc-300 font-normal tracking-tight leading-relaxed">
@@ -348,14 +348,14 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
         })}
       </div>
 
-      {/* ====== SECTION 7: FINAL CTA (Older style) ====== */}
+      {/* ====== SECTION 7: FINAL CTA (Older style with Syne Title) ====== */}
       <div
         className={`fixed inset-0 z-40 bg-black flex flex-col items-center justify-center px-6 py-12 transition-transform duration-700 cubic-bezier(0.16, 1, 0.3, 1) ${
           currentSection === 7 ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'
         }`}
       >
         <div className="max-w-3xl mx-auto text-center space-y-6">
-          <h2 className="text-5xl sm:text-7xl font-sans font-extrabold tracking-tight text-white leading-none">
+          <h2 className="font-display text-5xl sm:text-7xl font-extrabold tracking-tight text-white leading-none">
             Everything school. One app.
           </h2>
 
