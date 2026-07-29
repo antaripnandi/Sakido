@@ -41,7 +41,7 @@ Required variables:
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Supabase Dashboard → Project Settings → API |
 | `GOOGLE_CLIENT_ID` | Google Cloud Console → APIs & Services → Credentials |
 | `GOOGLE_CLIENT_SECRET` | Google Cloud Console → APIs & Services → Credentials |
-| `ALLOWED_ORIGIN` | Your deployed URL (e.g. `https://sakido.vercel.app`) |
+| `ALLOWED_ORIGIN` | Your deployed URL (e.g. `https://sakidoapp.vercel.app`) |
 
 ### 3. Run locally
 
