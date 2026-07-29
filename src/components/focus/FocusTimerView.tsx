@@ -85,9 +85,9 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
   };
 
   return (
-    <div className="font-body-md bg-background text-on-background flex flex-col min-h-[calc(100vh-5rem)] selection:bg-primary-fixed-dim selection:text-primary rounded-3xl overflow-hidden p-4 md:p-8">
+    <div className="font-body-md bg-background text-on-background flex flex-col selection:bg-primary-fixed-dim selection:text-primary rounded-3xl overflow-hidden p-2 md:p-4">
       {/* Main Container */}
-      <main className="relative z-10 flex-grow flex items-center justify-center py-6 px-4">
+      <main className="relative z-10 flex-grow flex items-start justify-center pt-2 md:pt-4 pb-6 px-4">
         <div className="max-w-[720px] w-full space-y-8">
           {/* Header */}
           <div className="text-center space-y-3">
