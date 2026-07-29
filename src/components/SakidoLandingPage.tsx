@@ -77,17 +77,17 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
         ease: 'none',
         scrollTrigger: {
           trigger: containerRef.current,
+          pin: pinnedRef.current,
           start: 'top top',
           end: 'bottom bottom',
-          scrub: prefersReducedMotion ? false : 1.2, // 1.2s smooth scrub catch-up
-          snap: prefersReducedMotion ? undefined : {
-            snapTo: 1 / (TOTAL_SECTIONS - 1),
-            duration: { min: 0.25, max: 0.6 },
-            delay: 0.05,
-            ease: 'power2.inOut',
-          },
+          scrub: prefersReducedMotion ? false : 0.5,
           onUpdate: (self) => {
-            const newSection = Math.round(self.progress * (TOTAL_SECTIONS - 1));
+            const progress = self.progress;
+            // Map progress 0..1 evenly across 8 section indices (0 to 7)
+            const newSection = Math.min(
+              TOTAL_SECTIONS - 1,
+              Math.floor(progress * TOTAL_SECTIONS)
+            );
             if (newSection !== currentSectionRef.current) {
               currentSectionRef.current = newSection;
               setCurrentSection(newSection);
@@ -95,17 +95,25 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           },
         },
       });
-    }, pinnedRef);
+    }, containerRef);
 
-    return () => ctx.revert();
+    // Refresh ScrollTrigger after layout stabilizes
+    const timer = setTimeout(() => {
+      ScrollTrigger.refresh();
+    }, 100);
+
+    return () => {
+      clearTimeout(timer);
+      ctx.revert();
+    };
   }, []);
 
   return (
     <div className="bg-black text-white font-sans selection:bg-white selection:text-black overflow-x-hidden relative">
       {/* Native Scroll Container (800dvh for 7 scroll intervals) */}
       <div ref={containerRef} className="h-[800dvh] relative w-full">
-        {/* Pinned Viewport */}
-        <div ref={pinnedRef} className="sticky top-0 h-[100dvh] w-full overflow-hidden">
+        {/* Pinned Viewport Container (Pinned by GSAP ScrollTrigger) */}
+        <div ref={pinnedRef} className="h-[100dvh] w-full overflow-hidden relative">
           {/* Header Action Bar */}
           <div className="fixed top-5 right-6 z-50 flex items-center gap-3">
             {currentUser ? (
@@ -207,7 +215,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
 
           {/* Section 7: Final CTA Section */}
           <div
-            className={`fixed inset-0 z-40 bg-black flex flex-col items-center justify-center px-6 py-12 transition-transform duration-700 cubic-bezier(0.16, 1, 0.3, 1) ${
+            className={`absolute inset-0 z-40 bg-black flex flex-col items-center justify-center px-6 py-12 transition-transform duration-700 cubic-bezier(0.16, 1, 0.3, 1) ${
               currentSection === 7 ? 'translate-y-0 pointer-events-auto' : 'translate-y-full pointer-events-none'
             }`}
           >
