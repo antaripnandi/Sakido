@@ -148,7 +148,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     };
   }, []);
 
-  // Apple-style GSAP Observer + ScrollToPlugin section snapping with isSnapping lock
+  // Apple-style GSAP Observer + ScrollToPlugin section snapping with isSnapping lock & momentum cooldown
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     let observerInstance: Observer | null = null;
@@ -174,6 +174,8 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
 
       let currentIndex = 0;
       let isSnapping = false; // THE CRITICAL FIX: prevents overlapping snaps
+      let lastSnapEndTime = 0;
+      const INERTIA_COOLDOWN_MS = 450; // Buffer after snap completes to ignore trackpad inertia
 
       // Keep currentIndex in sync with initial or restored scroll position
       const currentScrollY = window.scrollY;
@@ -197,24 +199,31 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           ease: 'power2.inOut',
           onComplete: () => {
             isSnapping = false;
+            lastSnapEndTime = Date.now();
           },
         });
       };
 
-      // 1. Observer for Wheel, Touch, and Pointer gestures (ANY scroll input triggers snap)
+      // 1. Observer for Wheel, Touch, and Pointer gestures with trackpad inertia protection
       observerInstance = Observer.create({
         target: window,
         type: 'wheel,touch,pointer',
         wheelSpeed: -1,
-        tolerance: 10,
+        tolerance: 20,
         preventDefault: true,
         onUp: () => {
-          if (!isSnapping && currentIndex < sections.length - 1) {
+          const now = Date.now();
+          if (
+            !isSnapping &&
+            now - lastSnapEndTime > INERTIA_COOLDOWN_MS &&
+            currentIndex < sections.length - 1
+          ) {
             goToSection(currentIndex + 1);
           }
         },
         onDown: () => {
-          if (!isSnapping && currentIndex > 0) {
+          const now = Date.now();
+          if (!isSnapping && now - lastSnapEndTime > INERTIA_COOLDOWN_MS && currentIndex > 0) {
             goToSection(currentIndex - 1);
           }
         },
@@ -274,7 +283,6 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     };
   }, []);
 
-
   return (
     <div className="bg-black text-white min-h-screen font-sans selection:bg-white selection:text-black">
       {/* Top Floating Buttons */}
@@ -324,8 +332,8 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
       {/* Main Snap Section Scroll Track */}
       <div ref={scrollContainerRef} className="relative z-20 w-full bg-transparent">
         {/* Section 0: Hero */}
-        <section className="snap-section h-[100dvh] w-full relative flex flex-col justify-between items-center py-12 px-6 sm:px-12 pointer-events-none">
-          <div className="my-auto text-center max-w-3xl pointer-events-auto transition-all duration-300 relative px-4">
+        <section className="snap-section h-[100dvh] w-full relative flex flex-col justify-between items-center pt-16 sm:pt-24 pb-12 px-6 sm:px-12 pointer-events-none">
+          <div className="mt-8 sm:mt-12 md:mt-16 text-center max-w-3xl pointer-events-auto transition-all duration-300 relative px-4">
             <h1 className="text-6xl sm:text-8xl md:text-9xl font-extrabold tracking-tighter text-white">
               Sakido
             </h1>
