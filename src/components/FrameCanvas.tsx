@@ -36,7 +36,7 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
     };
     firstImg.onload = onFirstLoad;
     firstImg.onerror = onFirstLoad;
-    firstImg.src = '/frames/ezgif-frame-001.jpg';
+    firstImg.src = '/frames/ezgif-frame-001.webp';
 
     if (firstImg.complete && firstImg.naturalWidth > 0) {
       onFirstLoad();
@@ -45,7 +45,7 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
     // 2. Preload remaining frame images
     for (let i = 1; i < totalFrames; i++) {
       const frameNum = String(i + 1).padStart(3, '0');
-      const url = `/frames/ezgif-frame-${frameNum}.jpg`;
+      const url = `/frames/ezgif-frame-${frameNum}.webp`;
       const img = new Image();
 
       const onLoad = () => {
