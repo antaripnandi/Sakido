@@ -128,24 +128,15 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     return () => gsap.ticker.remove(updateFrame);
   }, [targetFrame]);
 
-  // Overall scroll progress -> 3D Canvas Frame synchronization & snap fallback
+  // Overall scroll progress -> 3D Canvas Frame synchronization
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
-
-    const sections = gsap.utils.toArray<HTMLElement>('.snap-section');
-    const totalSnapPoints = sections.length > 1 ? sections.length - 1 : 1;
 
     const st = ScrollTrigger.create({
       trigger: container,
       start: 'top top',
       end: 'bottom bottom',
-      snap: {
-        snapTo: 1 / totalSnapPoints,
-        duration: { min: 0.3, max: 0.6 },
-        delay: 0.05,
-        ease: 'power2.inOut',
-      },
       onUpdate: (self) => {
         const frame = Math.min(239, Math.max(0, self.progress * 239));
         setTargetFrame(frame);
@@ -157,7 +148,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     };
   }, []);
 
-  // GSAP ScrollTrigger + ScrollToPlugin section snapping with isSnapping lock
+  // Pure GSAP ScrollTrigger + ScrollToPlugin section snapping with isSnapping lock
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
     let triggers: ScrollTrigger[] = [];
@@ -183,7 +174,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
         gsap.to(window, {
           scrollTo: { y: sections[i], autoKill: false },
           duration: 0.8,
-          ease: 'power2.inOut',
+          ease: 'power3.inOut',
           onComplete: () => {
             isSnapping = false;
           },
@@ -193,8 +184,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
       sections.forEach((section, i) => {
         const st = ScrollTrigger.create({
           trigger: section,
-          start: 'top 50%',
-          end: 'bottom 50%',
+          start: 'top center',
           onEnter: () => goToSection(i),
           onEnterBack: () => goToSection(i),
         });
@@ -215,6 +205,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
       mediaQuery.removeEventListener('change', handleMotionChange);
     };
   }, []);
+
 
 
   return (
