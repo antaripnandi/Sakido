@@ -119,6 +119,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     mode: 'normal',
     durationMinutes: 25,
     pomodoroRatio: '5:1',
+    pomoFocusMinutes: 25,
+    pomoBreakMinutes: 5,
     pomodoroCycles: 4,
     sound: 'none',
     volume: 0.5,

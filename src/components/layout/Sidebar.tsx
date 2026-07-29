@@ -64,7 +64,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   v1.0
                 </span>
               </span>
-              <p className="text-[11px] text-zinc-600 dark:text-zinc-400 font-medium">Stanford • Fall '26</p>
+              <p className="text-[11px] text-zinc-600 dark:text-zinc-400 font-medium">Academic Workspace</p>
             </div>
           </div>
         </div>

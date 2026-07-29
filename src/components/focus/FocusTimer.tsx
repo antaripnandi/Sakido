@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { ambientSynth } from '../../utils/audioSynth';
-import { FocusSessionConfig, PomodoroRatioKey } from './FocusTimerView';
+import { FocusSessionConfig } from './FocusTimerView';
 
 interface FocusTimerProps {
   config?: FocusSessionConfig;
@@ -17,18 +17,13 @@ function formatTime(secs: number): string {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-const RATIO_TIMES: Record<PomodoroRatioKey, { focus: number; break: number }> = {
-  '5:1': { focus: 25, break: 5 },
-  '45:15': { focus: 45, break: 15 },
-  '52:17': { focus: 52, break: 17 },
-  '2:1': { focus: 30, break: 15 },
-};
-
 export const FocusTimer: React.FC<FocusTimerProps> = ({
   config = {
     mode: 'normal',
     durationMinutes: 25,
     pomodoroRatio: '5:1',
+    pomoFocusMinutes: 25,
+    pomoBreakMinutes: 5,
     pomodoroCycles: 4,
     sound: 'none',
     volume: 0.5,
@@ -36,7 +31,8 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
   onClose,
 }) => {
   const isPomodoro = config.mode === 'pomodoro';
-  const ratioDetails = RATIO_TIMES[config.pomodoroRatio] || RATIO_TIMES['5:1'];
+  const pomoFocusMins = config.pomoFocusMinutes || 25;
+  const pomoBreakMins = config.pomoBreakMinutes || 5;
 
   // Pomodoro stage tracking
   const [currentCycle, setCurrentCycle] = useState(1);
@@ -45,7 +41,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
   // Time calculations
   const getStageTotalSecs = (st: 'focus' | 'break') => {
     if (!isPomodoro) return config.durationMinutes * 60;
-    return (st === 'focus' ? ratioDetails.focus : ratioDetails.break) * 60;
+    return (st === 'focus' ? pomoFocusMins : pomoBreakMins) * 60;
   };
 
   const [totalSecs, setTotalSecs] = useState(getStageTotalSecs('focus'));
@@ -185,7 +181,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
               if (stage === 'focus') {
                 // Switch to Break
                 setStage('break');
-                const bSecs = ratioDetails.break * 60;
+                const bSecs = pomoBreakMins * 60;
                 setTotalSecs(bSecs);
                 return bSecs;
               } else {
@@ -193,7 +189,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
                 if (currentCycle < config.pomodoroCycles) {
                   setCurrentCycle(c => c + 1);
                   setStage('focus');
-                  const fSecs = ratioDetails.focus * 60;
+                  const fSecs = pomoFocusMins * 60;
                   setTotalSecs(fSecs);
                   return fSecs;
                 } else {
@@ -217,7 +213,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isRunning, timeLeft, stage, isPomodoro, currentCycle, config.pomodoroCycles, ratioDetails]);
+  }, [isRunning, timeLeft, stage, isPomodoro, currentCycle, config.pomodoroCycles, pomoFocusMins, pomoBreakMins]);
 
   // Document title updates
   useEffect(() => {
@@ -295,7 +291,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
         </div>
       </header>
 
-      {/* Main Content (Timer) */}
+      {/* Main Content */}
       <main className="flex-grow flex flex-col items-center justify-center relative z-10 w-full px-4 pt-4">
         {finished ? (
           /* Finished State */
@@ -306,14 +302,14 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
 
             <div className="space-y-2">
               <span className="font-label-caps text-xs tracking-[0.2em] uppercase text-emerald-600 dark:text-emerald-400 font-bold">
-                {isPomodoro ? 'All Pomodoro Cycles Accomplished 🎉' : 'Session Accomplished'}
+                {isPomodoro ? 'All Pomodoro Cycles Accomplished' : 'Session Accomplished'}
               </span>
               <h1 className="font-display text-5xl md:text-6xl font-bold text-primary tracking-tight">
                 {isPomodoro ? `${config.pomodoroCycles} Cycles Complete` : formatTime(totalSecs)}
               </h1>
               <p className="font-body-md text-on-surface-variant text-sm md:text-base">
                 {isPomodoro
-                  ? `Completed ${config.pomodoroCycles} cycles of ${config.pomodoroRatio} ratio Pomodoro!`
+                  ? `Completed ${config.pomodoroCycles} cycles of ${pomoFocusMins}m focus / ${pomoBreakMins}m rest.`
                   : `Great work! You stayed focused for ${Math.round(totalSecs / 60)} minutes.`}
               </p>
             </div>
@@ -339,12 +335,12 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
         ) : (
           /* Active Countdown Mode */
           <div className="flex flex-col items-center justify-center">
-            {/* Session / Pomodoro Stage Badge */}
-            <div className="mb-6 px-4 py-1 rounded-full bg-surface-container border border-outline-variant/40 text-on-surface-variant font-label-caps text-[10px] tracking-[0.2em] uppercase opacity-90 font-bold flex items-center gap-2">
+            {/* Stage Badge */}
+            <div className="mb-6 px-4 py-1 rounded-full bg-surface-container border border-outline-variant/40 text-on-surface-variant font-mono text-[10px] tracking-[0.15em] uppercase opacity-90 font-bold flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${stage === 'break' ? 'bg-emerald-500 animate-pulse' : 'bg-primary'}`} />
               <span>
                 {isPomodoro
-                  ? `CYCLE ${currentCycle} OF ${config.pomodoroCycles} · ${stage === 'focus' ? 'FOCUS SESSION' : 'REST BREAK ☕'}`
+                  ? `CYCLE ${currentCycle} OF ${config.pomodoroCycles} · ${stage === 'focus' ? 'FOCUS' : 'REST BREAK'}`
                   : (isRunning ? 'DEEP FOCUS SESSION' : 'SESSION PAUSED')}
               </span>
             </div>
@@ -439,7 +435,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
 
               {/* Speaker / Volume Control Container */}
               <div className="relative z-30 flex flex-col items-center">
-                {/* Volume Slider Popover (Hidden by default, shown ONLY when volume button is clicked) */}
+                {/* Volume Slider Popover */}
                 <div
                   id="volume-slider-container"
                   className={`absolute bottom-full mb-3 transition-all duration-200 h-44 w-12 bg-surface-container-highest rounded-2xl flex flex-col items-center justify-between py-3 shadow-xl border border-outline-variant z-40 ${
@@ -461,7 +457,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
                     />
                   </div>
 
-                  {/* Native Range Slider styled vertically for Accessibility */}
+                  {/* Native Range Slider */}
                   <input
                     type="range"
                     min="0"
@@ -501,7 +497,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
           <span><kbd className="px-1 py-0.5 rounded border border-outline-variant font-mono text-[10px] bg-surface-container">SPACE</kbd> Pause/Resume</span>
           <span><kbd className="px-1 py-0.5 rounded border border-outline-variant font-mono text-[10px] bg-surface-container">R</kbd> Reset</span>
         </div>
-        <div>Sakido Zenith Protocol</div>
+        <div>Sakido Focus</div>
       </footer>
     </div>
   );
