@@ -1,6 +1,7 @@
 import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { SakidoLandingPage } from './components/SakidoLandingPage';
+import { LegalPage } from './components/legal/LegalPage';
 import { getSupabaseClient } from './lib/supabaseClient';
 import { Analytics } from '@vercel/analytics/react';
 
@@ -133,6 +134,15 @@ function AppContent() {
           )
         }
       />
+      {/* Legal & Compliance Routes (For Google Console & OAuth) */}
+      <Route path="/privacy" element={<LegalPage initialTab="privacy" />} />
+      <Route path="/terms" element={<LegalPage initialTab="terms" />} />
+      <Route path="/terms-of-service" element={<LegalPage initialTab="terms" />} />
+      <Route path="/cookie-policy" element={<LegalPage initialTab="cookies" />} />
+      <Route path="/cookies" element={<LegalPage initialTab="cookies" />} />
+      <Route path="/contact" element={<LegalPage initialTab="contact" />} />
+      <Route path="/legal" element={<LegalPage initialTab="privacy" />} />
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

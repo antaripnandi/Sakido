@@ -1,0 +1,11 @@
+# Sakido Search Engine Indexing Rules (Google Search Console Compliant)
+User-agent: *
+Allow: /
+Allow: /privacy
+Allow: /terms
+Allow: /terms-of-service
+Allow: /cookie-policy
+Allow: /contact
+Allow: /legal
+
+Sitemap: https://sakidoapp.vercel.app/sitemap.xml

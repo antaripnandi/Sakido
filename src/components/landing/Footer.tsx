@@ -77,8 +77,20 @@ export const Footer: React.FC<FooterProps> = ({
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-zinc-100 flex flex-col sm:flex-row items-center justify-between text-[11px] text-zinc-400">
+      <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-zinc-100 flex flex-col sm:flex-row items-center justify-between text-[11px] text-zinc-400 gap-4">
         <p>© {new Date().getFullYear()} Sakido Technologies Inc. All rights reserved.</p>
+        
+        {/* Legal Links for Google Console & OAuth */}
+        <div className="flex items-center gap-4 text-zinc-500 font-medium">
+          <a href="/privacy" className="hover:text-zinc-900 transition-colors">Privacy Policy</a>
+          <span>·</span>
+          <a href="/terms" className="hover:text-zinc-900 transition-colors">Terms of Service</a>
+          <span>·</span>
+          <a href="/cookie-policy" className="hover:text-zinc-900 transition-colors">Cookie Policy</a>
+          <span>·</span>
+          <a href="/contact" className="hover:text-zinc-900 transition-colors">Support & Contact</a>
+        </div>
+
         <p className="mt-2 sm:mt-0 font-mono">Designed for quiet, distraction-free study.</p>
       </div>
     </footer>
