@@ -1,97 +1,78 @@
 import React from 'react';
-import { Github, ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 interface FooterProps {
-  onOpenGetStarted: () => void;
-  onNavigateSection: (sectionId: string) => void;
+  onOpenGetStarted?: () => void;
+  onNavigateSection?: (sectionId: string) => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({
   onOpenGetStarted,
-  onNavigateSection,
 }) => {
   return (
-    <footer className="bg-white border-t border-zinc-100 py-16 px-6">
+    <footer className="bg-black text-zinc-400 border-t border-zinc-900/80 py-12 md:py-16 px-6 relative z-30 font-sans">
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-8">
         <div>
-          <div className="flex items-center gap-2 text-base font-bold text-zinc-900">
-            <span className="w-2.5 h-2.5 bg-zinc-900 rounded-full" />
+          <div className="flex items-center gap-2 text-base font-bold text-white tracking-tight">
+            <span className="w-2.5 h-2.5 bg-emerald-400 rounded-full" />
             Sakido
           </div>
           <p className="text-xs text-zinc-500 mt-2 max-w-sm leading-relaxed">
-            Your second brain for school. A single workspace for notes, tasks, calendars, and knowledge.
+            Essentialist academic operating system. Single workspace for focus, notes, tasks, calendar, and knowledge.
           </p>
         </div>
 
-        {/* Links */}
-        <div className="flex flex-wrap items-center gap-8 text-xs font-medium text-zinc-600">
-          <button
-            onClick={() => onNavigateSection('sequence-hero')}
-            className="hover:text-zinc-900 transition-colors cursor-pointer"
-          >
-            240-Frame Reveal
-          </button>
-          <button
-            onClick={() => onNavigateSection('features')}
-            className="hover:text-zinc-900 transition-colors cursor-pointer"
-          >
-            Features
-          </button>
-          <button
-            onClick={() => onNavigateSection('about')}
-            className="hover:text-zinc-900 transition-colors cursor-pointer"
-          >
-            About
-          </button>
-          <button
-            onClick={() => onNavigateSection('roadmap')}
-            className="hover:text-zinc-900 transition-colors cursor-pointer"
-          >
-            Roadmap
-          </button>
-          <a
-            href="https://github.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-zinc-900 transition-colors flex items-center gap-1 cursor-pointer"
-          >
-            <Github className="w-3.5 h-3.5" />
-            GitHub
-          </a>
+        {/* Legal & Navigation Links */}
+        <div className="flex flex-wrap items-center gap-6 text-xs font-medium text-zinc-400">
+          <Link to="/privacy" className="hover:text-white transition-colors">
+            Privacy Policy
+          </Link>
+          <Link to="/terms" className="hover:text-white transition-colors">
+            Terms of Service
+          </Link>
+          <Link to="/cookie-policy" className="hover:text-white transition-colors">
+            Cookie Policy
+          </Link>
+          <Link to="/contact" className="hover:text-white transition-colors">
+            Support & Contact
+          </Link>
         </div>
 
-        {/* Right Status Indicator & Get Started */}
+        {/* Right Status Indicator & Action */}
         <div className="flex items-center gap-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-50 border border-zinc-200/80 text-[11px] font-mono font-medium text-zinc-600">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-[11px] font-mono font-medium text-zinc-400">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>240 Frames Ready</span>
+            <span>Verified Domain</span>
           </div>
 
-          <button
-            onClick={onOpenGetStarted}
-            className="bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold px-4 py-2 rounded-full transition-all flex items-center gap-1 cursor-pointer"
-          >
-            Get Started
-            <ArrowUpRight className="w-3.5 h-3.5" />
-          </button>
+          {onOpenGetStarted && (
+            <button
+              onClick={onOpenGetStarted}
+              className="bg-white hover:bg-zinc-200 text-black text-xs font-semibold px-4 py-2 rounded-full transition-all flex items-center gap-1 cursor-pointer shadow-md"
+            >
+              Get Started
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto mt-12 pt-8 border-t border-zinc-100 flex flex-col sm:flex-row items-center justify-between text-[11px] text-zinc-400 gap-4">
+      <div className="max-w-7xl mx-auto mt-10 pt-8 border-t border-zinc-900/80 flex flex-col sm:flex-row items-center justify-between text-[11px] text-zinc-500 gap-4">
         <p>© {new Date().getFullYear()} Sakido Technologies Inc. All rights reserved.</p>
-        
-        {/* Legal Links for Google Console & OAuth */}
-        <div className="flex items-center gap-4 text-zinc-500 font-medium">
-          <a href="/privacy" className="hover:text-zinc-900 transition-colors">Privacy Policy</a>
-          <span>·</span>
-          <a href="/terms" className="hover:text-zinc-900 transition-colors">Terms of Service</a>
-          <span>·</span>
-          <a href="/cookie-policy" className="hover:text-zinc-900 transition-colors">Cookie Policy</a>
-          <span>·</span>
-          <a href="/contact" className="hover:text-zinc-900 transition-colors">Support & Contact</a>
+
+        {/* Legal Links Bar */}
+        <div className="flex flex-wrap items-center justify-center gap-3 text-zinc-400 font-medium">
+          <Link to="/privacy" className="hover:text-white transition-colors">Privacy</Link>
+          <span className="text-zinc-700">·</span>
+          <Link to="/terms" className="hover:text-white transition-colors">Terms</Link>
+          <span className="text-zinc-700">·</span>
+          <Link to="/cookie-policy" className="hover:text-white transition-colors">Cookies</Link>
+          <span className="text-zinc-700">·</span>
+          <Link to="/contact" className="hover:text-white transition-colors">Support</Link>
         </div>
 
-        <p className="mt-2 sm:mt-0 font-mono">Designed for quiet, distraction-free study.</p>
+        <p className="mt-2 sm:mt-0 font-mono text-zinc-500">Designed for quiet, distraction-free study.</p>
       </div>
     </footer>
   );

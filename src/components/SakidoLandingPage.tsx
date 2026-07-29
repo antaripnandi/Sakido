@@ -3,6 +3,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { FrameCanvas } from './FrameCanvas';
 import { AuthModal } from './auth/AuthModal';
+import { Footer } from './landing/Footer';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import { User } from 'lucide-react';
 
@@ -241,6 +242,9 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <Footer onOpenGetStarted={() => setIsAuthOpen(true)} />
 
       {/* Auth Modal */}
       <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} onGoToDashboard={onOpenDashboard} />
