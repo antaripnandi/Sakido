@@ -128,15 +128,24 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     return () => gsap.ticker.remove(updateFrame);
   }, [targetFrame]);
 
-  // Overall scroll progress -> 3D Canvas Frame synchronization
+  // Overall scroll progress -> 3D Canvas Frame synchronization & snap fallback
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
+
+    const sections = gsap.utils.toArray<HTMLElement>('.snap-section');
+    const totalSnapPoints = sections.length > 1 ? sections.length - 1 : 1;
 
     const st = ScrollTrigger.create({
       trigger: container,
       start: 'top top',
       end: 'bottom bottom',
+      snap: {
+        snapTo: 1 / totalSnapPoints,
+        duration: { min: 0.3, max: 0.6 },
+        delay: 0.05,
+        ease: 'power2.inOut',
+      },
       onUpdate: (self) => {
         const frame = Math.min(239, Math.max(0, self.progress * 239));
         setTargetFrame(frame);
@@ -148,21 +157,14 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     };
   }, []);
 
-  // Apple-style GSAP Observer + ScrollToPlugin section snapping with isSnapping lock & momentum cooldown
+  // GSAP ScrollTrigger + ScrollToPlugin section snapping with isSnapping lock
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    let observerInstance: Observer | null = null;
-    let cleanupKeydown: (() => void) | undefined;
+    let triggers: ScrollTrigger[] = [];
 
     const setupSnapping = () => {
-      if (observerInstance) {
-        observerInstance.kill();
-        observerInstance = null;
-      }
-      if (cleanupKeydown) {
-        cleanupKeydown();
-        cleanupKeydown = undefined;
-      }
+      triggers.forEach((st) => st.kill());
+      triggers = [];
 
       // Requirement 1: Disable snapping if reduced motion is preferred
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
@@ -172,96 +174,32 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
       const sections = gsap.utils.toArray<HTMLElement>('.snap-section');
       if (!sections.length) return;
 
-      let currentIndex = 0;
       let isSnapping = false; // THE CRITICAL FIX: prevents overlapping snaps
-      let lastSnapEndTime = 0;
-      const INERTIA_COOLDOWN_MS = 450; // Buffer after snap completes to ignore trackpad inertia
-
-      // Keep currentIndex in sync with initial or restored scroll position
-      const currentScrollY = window.scrollY;
-      const viewportHeight = window.innerHeight;
-      if (viewportHeight > 0) {
-        currentIndex = Math.min(
-          sections.length - 1,
-          Math.max(0, Math.round(currentScrollY / viewportHeight))
-        );
-      }
 
       const goToSection = (i: number) => {
-        const targetIndex = Math.min(sections.length - 1, Math.max(0, i));
-        if (isSnapping || targetIndex === currentIndex) return;
+        if (isSnapping) return;
         isSnapping = true;
-        currentIndex = targetIndex;
 
         gsap.to(window, {
-          scrollTo: { y: sections[targetIndex], autoKill: false },
+          scrollTo: { y: sections[i], autoKill: false },
           duration: 0.8,
           ease: 'power2.inOut',
           onComplete: () => {
             isSnapping = false;
-            lastSnapEndTime = Date.now();
           },
         });
       };
 
-      // 1. Observer for Wheel, Touch, and Pointer gestures with trackpad inertia protection
-      observerInstance = Observer.create({
-        target: window,
-        type: 'wheel,touch,pointer',
-        wheelSpeed: -1,
-        tolerance: 20,
-        preventDefault: true,
-        onUp: () => {
-          const now = Date.now();
-          if (
-            !isSnapping &&
-            now - lastSnapEndTime > INERTIA_COOLDOWN_MS &&
-            currentIndex < sections.length - 1
-          ) {
-            goToSection(currentIndex + 1);
-          }
-        },
-        onDown: () => {
-          const now = Date.now();
-          if (!isSnapping && now - lastSnapEndTime > INERTIA_COOLDOWN_MS && currentIndex > 0) {
-            goToSection(currentIndex - 1);
-          }
-        },
+      sections.forEach((section, i) => {
+        const st = ScrollTrigger.create({
+          trigger: section,
+          start: 'top 50%',
+          end: 'bottom 50%',
+          onEnter: () => goToSection(i),
+          onEnterBack: () => goToSection(i),
+        });
+        triggers.push(st);
       });
-
-      // 2. Keyboard Navigation handling (Page Down, Page Up, Arrow keys, Space)
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (isSnapping) return;
-
-        // Ignore keyboard scroll triggers if focused on an input/textarea
-        const activeElem = document.activeElement;
-        if (
-          activeElem &&
-          (activeElem.tagName === 'INPUT' ||
-            activeElem.tagName === 'TEXTAREA' ||
-            (activeElem as HTMLElement).isContentEditable)
-        ) {
-          return;
-        }
-
-        if (e.key === 'ArrowDown' || e.key === 'PageDown' || (e.key === ' ' && !e.shiftKey)) {
-          if (currentIndex < sections.length - 1) {
-            e.preventDefault();
-            goToSection(currentIndex + 1);
-          }
-        } else if (e.key === 'ArrowUp' || e.key === 'PageUp' || (e.key === ' ' && e.shiftKey)) {
-          if (currentIndex > 0) {
-            e.preventDefault();
-            goToSection(currentIndex - 1);
-          }
-        }
-      };
-
-      window.addEventListener('keydown', handleKeyDown);
-
-      cleanupKeydown = () => {
-        window.removeEventListener('keydown', handleKeyDown);
-      };
     };
 
     setupSnapping();
@@ -273,15 +211,11 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     mediaQuery.addEventListener('change', handleMotionChange);
 
     return () => {
-      if (observerInstance) {
-        observerInstance.kill();
-      }
-      if (cleanupKeydown) {
-        cleanupKeydown();
-      }
+      triggers.forEach((st) => st.kill());
       mediaQuery.removeEventListener('change', handleMotionChange);
     };
   }, []);
+
 
   return (
     <div className="bg-black text-white min-h-screen font-sans selection:bg-white selection:text-black">
