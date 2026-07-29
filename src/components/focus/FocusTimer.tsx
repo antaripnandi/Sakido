@@ -1,22 +1,4 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  X, 
-  Play, 
-  Pause, 
-  RotateCcw, 
-  Timer, 
-  CloudRain, 
-  Waves, 
-  Wind, 
-  Volume2, 
-  VolumeX, 
-  CheckCircle2, 
-  Sparkles,
-  Maximize2,
-  Minimize2,
-  Plus,
-  Minus
-} from 'lucide-react';
 import { ambientSynth } from '../../utils/audioSynth';
 
 interface FocusTimerProps {
@@ -27,14 +9,6 @@ interface FocusTimerProps {
 }
 
 type Phase = 'setup' | 'running';
-
-const PRESETS = [
-  { label: '15m', minutes: 15, tag: 'Quick Rest' },
-  { label: '25m', minutes: 25, tag: 'Pomodoro' },
-  { label: '45m', minutes: 45, tag: 'Deep Work' },
-  { label: '60m', minutes: 60, tag: 'Intense Study' },
-  { label: '90m', minutes: 90, tag: 'Sprint' },
-];
 
 function formatTime(secs: number): string {
   const h = Math.floor(secs / 3600);
@@ -53,18 +27,17 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
   onClose,
 }) => {
   const initialSecs = initialMinutes * 60;
-  const [phase, setPhase] = useState<Phase>('running');
-  const [inputMinutes, setInputMinutes] = useState<string>(String(initialMinutes));
-  const [totalSecs, setTotalSecs] = useState(initialSecs);
+  const [phase] = useState<Phase>('running');
+  const [totalSecs] = useState(initialSecs);
   const [timeLeft, setTimeLeft] = useState(initialSecs);
   const [isRunning, setIsRunning] = useState(true);
   const [finished, setFinished] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Soundscape state
+  // Soundscape & Volume Popover State
   const [activeSound, setActiveSound] = useState<'none' | 'rain' | 'binaural' | 'brownian'>(initialSound);
   const [volume, setVolume] = useState(initialVolume);
-  const [showSoundControls, setShowSoundControls] = useState(false);
+  const [isVolumeOpen, setIsVolumeOpen] = useState(false);
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -80,21 +53,25 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
     }
   }, [initialSound, initialVolume]);
 
-  // Exit soundscape on unmount
+  // Stop audio on unmount
   useEffect(() => {
     return () => {
       ambientSynth.stop();
     };
   }, []);
 
-  // --- Ambient sound toggle ---
-  const handleToggleSound = (sound: 'rain' | 'binaural' | 'brownian') => {
-    if (activeSound === sound) {
+  // --- Ambient sound toggle / cycle ---
+  const handleCycleSound = () => {
+    const sequence: ('none' | 'rain' | 'binaural' | 'brownian')[] = ['none', 'rain', 'binaural', 'brownian'];
+    const nextIdx = (sequence.indexOf(activeSound) + 1) % sequence.length;
+    const nextSound = sequence[nextIdx];
+    
+    if (nextSound === 'none') {
       ambientSynth.stop();
       setActiveSound('none');
     } else {
-      setActiveSound(sound);
-      ambientSynth.play(sound);
+      setActiveSound(nextSound);
+      ambientSynth.play(nextSound);
       ambientSynth.setVolume(volume);
     }
   };
@@ -133,7 +110,6 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
   // --- Keyboard Shortcuts (Esc to Exit, Space for Pause, R for Reset) ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignore key events if typing in input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
         if (e.key === 'Escape') {
           handleQuit();
@@ -193,27 +169,13 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
   useEffect(() => {
     if (finished) {
       document.title = '✓ Focus Completed — Sakido';
-    } else if (phase === 'running') {
-      document.title = `${formatTime(timeLeft)} — ${isRunning ? 'Focusing' : 'Paused'} · Sakido`;
     } else {
-      document.title = 'Sakido Focus';
+      document.title = `${formatTime(timeLeft)} — ${isRunning ? 'Focusing' : 'Paused'} · Sakido`;
     }
     return () => {
       document.title = 'Sakido';
     };
-  }, [timeLeft, phase, finished, isRunning]);
-
-  // Actions
-  const handleStart = () => {
-    const mins = parseInt(inputMinutes, 10);
-    if (isNaN(mins) || mins < 1 || mins > 600) return;
-    const secs = mins * 60;
-    setTotalSecs(secs);
-    setTimeLeft(secs);
-    setFinished(false);
-    setPhase('running');
-    setIsRunning(true);
-  };
+  }, [timeLeft, finished, isRunning]);
 
   const handleReset = () => {
     setIsRunning(false);
@@ -222,444 +184,251 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
     setFinished(false);
   };
 
-  const handleRestartNew = () => {
-    setPhase('setup');
-    setIsRunning(false);
-    setFinished(false);
-  };
-
-  const adjustMinutes = (delta: number) => {
-    const cur = parseInt(inputMinutes, 10) || 25;
-    const next = Math.max(1, Math.min(300, cur + delta));
-    setInputMinutes(String(next));
-  };
-
-  // Ring geometry
-  const radius = 135;
-  const circumference = 2 * Math.PI * radius;
+  // Ring progress calculations
+  const circumference = 301.59;
   const progress = totalSecs > 0 ? (totalSecs - timeLeft) / totalSecs : 0;
   const strokeDashoffset = circumference * (1 - progress);
 
-  // Compute angle for tip dot
+  // Compute angle for dynamic progress indicator dot (r=48, center=50,50)
   const angle = progress * 360 - 90;
   const angleRad = (angle * Math.PI) / 180;
-  const dotX = 160 + radius * Math.cos(angleRad);
-  const dotY = 160 + radius * Math.sin(angleRad);
+  const dotX = 50 + 48 * Math.cos(angleRad);
+  const dotY = 50 + 48 * Math.sin(angleRad);
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-[#09090b] text-zinc-100 flex flex-col items-center justify-between p-6 md:p-10 select-none overflow-hidden font-sans">
-      {/* Background Ambient Glow */}
-      <div 
-        className="absolute inset-0 pointer-events-none opacity-40 transition-all duration-1000"
-        style={{
-          background: isRunning 
-            ? 'radial-gradient(circle at 50% 45%, rgba(245, 158, 11, 0.12) 0%, rgba(217, 119, 6, 0.04) 45%, transparent 70%)' 
-            : finished 
-            ? 'radial-gradient(circle at 50% 45%, rgba(16, 185, 129, 0.15) 0%, transparent 65%)'
-            : 'radial-gradient(circle at 50% 45%, rgba(120, 119, 198, 0.08) 0%, transparent 65%)'
-        }}
-      />
-
-      {/* --- TOP HEADER BAR --- */}
-      <header className="w-full max-w-4xl flex items-center justify-between z-10">
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-            <Timer className="w-4 h-4" />
-          </div>
-          <div>
-            <span className="text-xs font-bold tracking-wider uppercase text-zinc-300 flex items-center gap-2">
-              Focus Zone
-              {isRunning && (
-                <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium animate-pulse">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
-                  Active
-                </span>
-              )}
+    <div className="fixed inset-0 z-[9999] bg-background text-on-background min-h-screen flex flex-col font-body-md overflow-hidden select-none">
+      {/* Top Bar */}
+      <header className="w-full flex justify-between items-center px-4 md:px-10 py-4 z-10">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center justify-center w-12 h-12 rounded-full border border-outline-variant text-primary">
+            <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>
+              timer
             </span>
-            <p className="text-[11px] text-zinc-500">Sakido Zenith Protocol</p>
+          </div>
+          <div className="flex flex-col">
+            <div className="flex items-center gap-2">
+              <span className="font-syne text-lg font-semibold text-primary tracking-tight">FOCUS ZONE</span>
+            </div>
           </div>
         </div>
 
-        {/* Action Controls */}
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={toggleFullscreen}
             title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
-            className="p-2.5 rounded-xl border border-zinc-800 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-all active:scale-95"
+            className="flex items-center justify-center w-10 h-10 rounded-full border border-outline-variant text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
           >
-            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+            <span className="material-symbols-outlined text-sm">
+              {isFullscreen ? 'fullscreen_exit' : 'fullscreen'}
+            </span>
           </button>
 
           <button
+            type="button"
             onClick={handleQuit}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 transition-all active:scale-95 group"
-            title="Press Esc to exit"
+            className="flex items-center gap-2 px-4 py-2 rounded-full border border-outline-variant text-on-surface-variant hover:bg-surface-container-highest transition-colors font-body-sm text-sm justify-center cursor-pointer"
           >
-            <X className="w-4 h-4 text-zinc-400 group-hover:text-white transition-colors" />
+            <span className="material-symbols-outlined text-sm">close</span>
             <span>Exit</span>
-            <kbd className="hidden sm:inline-block ml-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">ESC</kbd>
+            <span className="px-1.5 py-0.5 rounded border border-outline-variant text-[10px] bg-surface-container font-mono ml-1">
+              ESC
+            </span>
           </button>
         </div>
       </header>
 
-      {/* --- MAIN CONTENT AREA --- */}
-      <main className="w-full max-w-lg flex flex-col items-center justify-center z-10 my-auto">
-        {phase === 'setup' ? (
-          /* SETUP MODE */
-          <div className="w-full flex flex-col items-center space-y-8 animate-in fade-in zoom-in duration-200">
-            <div className="text-center space-y-2">
-              <span className="text-[11px] font-bold tracking-[0.2em] uppercase text-amber-400/90">
-                Zenith Timer
-              </span>
-              <h1 className="text-3xl md:text-4xl font-semibold text-zinc-100 tracking-tight">
-                Select Focus Duration
-              </h1>
-              <p className="text-sm text-zinc-400 max-w-xs mx-auto">
-                Set your target time and immerse yourself in distraction-free deep work.
-              </p>
-            </div>
-
-            {/* Presets */}
-            <div className="grid grid-cols-5 gap-2 w-full">
-              {PRESETS.map(p => {
-                const isSelected = inputMinutes === String(p.minutes);
-                return (
-                  <button
-                    key={p.label}
-                    onClick={() => setInputMinutes(String(p.minutes))}
-                    className={`flex flex-col items-center justify-center py-3 px-1 rounded-2xl border transition-all ${
-                      isSelected
-                        ? 'bg-amber-500 text-zinc-950 border-amber-400 font-bold shadow-lg shadow-amber-500/20 scale-[1.03]'
-                        : 'bg-zinc-900/60 text-zinc-300 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-800/80'
-                    }`}
-                  >
-                    <span className="text-sm font-semibold">{p.label}</span>
-                    <span className={`text-[9px] mt-0.5 ${isSelected ? 'text-zinc-900 font-medium' : 'text-zinc-500'}`}>
-                      {p.tag}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Custom duration controls */}
-            <div className="w-full bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4 flex items-center justify-between">
-              <span className="text-xs font-medium text-zinc-400">Custom Duration</span>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => adjustMinutes(-5)}
-                  className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
-                >
-                  <Minus className="w-4 h-4" />
-                </button>
-
-                <div className="flex items-baseline gap-1">
-                  <input
-                    type="number"
-                    min={1}
-                    max={600}
-                    value={inputMinutes}
-                    onChange={e => setInputMinutes(e.target.value)}
-                    className="w-16 text-center text-2xl font-bold bg-transparent text-amber-400 focus:outline-none font-mono"
-                  />
-                  <span className="text-xs text-zinc-500 font-medium">min</span>
-                </div>
-
-                <button
-                  onClick={() => adjustMinutes(5)}
-                  className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Ambient Sound Selection Quick Bar */}
-            <div className="w-full space-y-2">
-              <div className="flex items-center justify-between text-xs text-zinc-400 px-1">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <Waves className="w-3.5 h-3.5 text-amber-400" />
-                  Background Audio
-                </span>
-                {activeSound !== 'none' && (
-                  <span className="text-[10px] text-amber-400 font-semibold">Active</span>
-                )}
-              </div>
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { id: 'none', label: 'Silent', icon: <VolumeX className="w-3.5 h-3.5" /> },
-                  { id: 'rain', label: 'Rain', icon: <CloudRain className="w-3.5 h-3.5" /> },
-                  { id: 'binaural', label: 'Alpha', icon: <Waves className="w-3.5 h-3.5" /> },
-                  { id: 'brownian', label: 'Deep', icon: <Wind className="w-3.5 h-3.5" /> },
-                ].map(s => (
-                  <button
-                    key={s.id}
-                    onClick={() => {
-                      if (s.id === 'none') {
-                        ambientSynth.stop();
-                        setActiveSound('none');
-                      } else {
-                        handleToggleSound(s.id as any);
-                      }
-                    }}
-                    className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-xl border text-xs font-medium transition-all ${
-                      activeSound === s.id
-                        ? 'bg-amber-500/15 border-amber-500/40 text-amber-300'
-                        : 'bg-zinc-900/40 border-zinc-800 text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200'
-                    }`}
-                  >
-                    {s.icon}
-                    <span>{s.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Start Button */}
-            <button
-              onClick={handleStart}
-              disabled={!inputMinutes || parseInt(inputMinutes) < 1}
-              className="w-full flex items-center justify-center gap-2.5 bg-amber-400 text-zinc-950 py-4 rounded-2xl font-bold text-base tracking-wide hover:bg-amber-300 transition-all shadow-xl shadow-amber-500/20 active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              <Play className="w-5 h-5 fill-current" />
-              Begin Focus Session
-            </button>
-          </div>
-        ) : finished ? (
-          /* FINISHED MODE */
-          <div className="flex flex-col items-center text-center space-y-6 animate-in fade-in zoom-in duration-300">
-            <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shadow-xl shadow-emerald-500/10">
-              <CheckCircle2 className="w-10 h-10" />
+      {/* Main Content (Timer) */}
+      <main className="flex-grow flex flex-col items-center justify-center relative z-10 w-full px-4 pt-8">
+        {finished ? (
+          /* Finished State */
+          <div className="flex flex-col items-center justify-center text-center space-y-6 animate-in fade-in zoom-in duration-300">
+            <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+              <span className="material-symbols-outlined text-4xl">check_circle</span>
             </div>
 
             <div className="space-y-2">
-              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-400">
+              <span className="font-label-caps text-xs tracking-[0.2em] uppercase text-emerald-600 dark:text-emerald-400 font-bold">
                 Session Accomplished
               </span>
-              <h1 className="text-4xl md:text-5xl font-mono font-bold text-zinc-100">
+              <h1 className="font-display text-5xl md:text-6xl font-bold text-primary tracking-tight">
                 {formatTime(totalSecs)}
               </h1>
-              <p className="text-sm text-zinc-400">
-                Great job! You stayed focused for {Math.round(totalSecs / 60)} minute{totalSecs / 60 !== 1 ? 's' : ''}.
+              <p className="font-body-md text-on-surface-variant text-sm md:text-base">
+                Great work! You stayed focused for {Math.round(totalSecs / 60)} minute{totalSecs / 60 !== 1 ? 's' : ''}.
               </p>
             </div>
 
             <div className="flex items-center gap-3 pt-2">
               <button
-                onClick={handleRestartNew}
-                className="flex items-center gap-2 px-6 py-3 rounded-2xl border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-200 text-sm font-semibold transition-all active:scale-95"
+                type="button"
+                onClick={handleReset}
+                className="flex items-center gap-2 px-6 py-3 rounded-full border border-outline-variant text-on-surface-variant hover:border-primary hover:text-primary transition-all font-body-sm text-sm font-semibold cursor-pointer"
               >
-                <RotateCcw className="w-4 h-4 text-zinc-400" />
-                New Session
+                <span className="material-symbols-outlined text-sm">replay</span>
+                Restart Session
               </button>
               <button
+                type="button"
                 onClick={handleQuit}
-                className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-amber-400 hover:bg-amber-300 text-zinc-950 text-sm font-bold transition-all active:scale-95 shadow-lg shadow-amber-500/20"
+                className="flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-on-primary font-headline-md text-sm font-bold shadow-md hover:opacity-90 transition-all cursor-pointer"
               >
                 Return to Workspace
               </button>
             </div>
           </div>
         ) : (
-          /* RUNNING MODE */
-          <div className="flex flex-col items-center space-y-8 w-full">
-            {/* Status pill */}
-            <div className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-zinc-900/90 border border-zinc-800 backdrop-blur-md shadow-md">
-              <span className={`w-2 h-2 rounded-full ${isRunning ? 'bg-amber-400 animate-ping' : 'bg-zinc-500'}`} />
-              <span className="text-xs font-semibold uppercase tracking-wider text-zinc-300">
-                {isRunning ? 'Deep Focus Session' : 'Session Paused'}
-              </span>
+          /* Active Countdown Mode */
+          <div className="flex flex-col items-center justify-center">
+            {/* Deep Focus Badge */}
+            <div className="mb-8 px-3 py-1 rounded-full bg-surface-container border border-outline-variant/40 text-on-surface-variant font-label-caps text-[10px] tracking-[0.2em] uppercase opacity-80 font-bold">
+              {isRunning ? 'DEEP FOCUS SESSION' : 'SESSION PAUSED'}
             </div>
 
-            {/* SVG Ring + Countdown */}
-            <div className="relative w-80 h-80 flex items-center justify-center">
-              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 320 320">
-                {/* Background Ring Track */}
+            {/* Circular Timer Container */}
+            <div className="relative flex flex-col items-center justify-center w-64 h-64 md:w-80 md:h-80 lg:w-96 lg:h-96 mb-10">
+              {/* Progress Ring SVG */}
+              <svg className="absolute inset-0 w-full h-full circular-progress" viewBox="0 0 100 100">
+                {/* Track */}
                 <circle
-                  cx="160"
-                  cy="160"
-                  r={radius}
+                  className="stroke-surface-container-highest"
+                  cx="50"
+                  cy="50"
                   fill="none"
-                  stroke="rgba(255, 255, 255, 0.05)"
-                  strokeWidth="6"
+                  r="48"
+                  strokeWidth="2"
                 />
-
-                {/* Progress Ring Stroke */}
+                {/* Fill */}
                 <circle
-                  cx="160"
-                  cy="160"
-                  r={radius}
+                  className="stroke-primary transition-all duration-1000 ease-linear"
+                  cx="50"
+                  cy="50"
                   fill="none"
-                  stroke="url(#focusGradient)"
-                  strokeWidth="6"
-                  strokeLinecap="round"
+                  r="48"
                   strokeDasharray={circumference}
                   strokeDashoffset={strokeDashoffset}
-                  className="transition-all duration-1000 ease-linear"
+                  strokeLinecap="round"
+                  strokeWidth="2"
                 />
-
-                {/* Glowing Dot tip */}
+                {/* Top Track Indicator */}
+                <circle className="fill-primary" cx="50" cy="2" r="2" />
+                {/* Dynamic Progress Tip Dot */}
                 {progress > 0 && progress < 1 && (
-                  <circle
-                    cx={dotX}
-                    cy={dotY}
-                    r="5"
-                    fill="#fbbf24"
-                    className="filter drop-shadow-[0_0_8px_#fbbf24]"
-                  />
+                  <circle className="fill-primary" cx={dotX} cy={dotY} r="2.5" />
                 )}
-
-                {/* Gradients */}
-                <defs>
-                  <linearGradient id="focusGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#f59e0b" />
-                    <stop offset="100%" stopColor="#d97706" />
-                  </linearGradient>
-                </defs>
               </svg>
 
               {/* Time Display */}
-              <div className="absolute flex flex-col items-center justify-center space-y-1">
-                <span className="text-5xl md:text-6xl font-mono font-light tracking-tighter text-zinc-100 tabular-nums">
+              <div className="flex flex-col items-center justify-center z-10 text-center">
+                <h1 className="font-display text-[48px] md:text-[64px] text-primary tabular-nums tracking-tighter mb-1 font-bold">
                   {formatTime(timeLeft)}
-                </span>
-                <span className="text-xs font-medium text-zinc-500 font-mono">
-                  Target: {formatTime(totalSecs)} ({Math.round(progress * 100)}%)
+                </h1>
+                <span className="font-label-sm text-xs text-on-surface-variant opacity-70">
+                  Target: {formatTime(totalSecs)}
                 </span>
               </div>
             </div>
 
-            {/* Controls Bar */}
-            <div className="flex items-center gap-3 z-20">
-              {/* Reset */}
+            {/* Controls Row */}
+            <div className="flex items-center gap-4 relative">
+              {/* Reset/Replay button */}
               <button
+                type="button"
                 onClick={handleReset}
-                title="Reset timer (R)"
-                className="p-3.5 rounded-2xl border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-all active:scale-95"
+                title="Replay / Reset Session (R)"
+                className="flex items-center justify-center w-14 h-14 rounded-full border border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary transition-all bg-surface-container-lowest cursor-pointer shadow-xs"
               >
-                <RotateCcw className="w-5 h-5" />
+                <span className="material-symbols-outlined text-xl">replay</span>
               </button>
 
-              {/* Play / Pause Main CTA */}
+              {/* Main Pause / Resume CTA Button */}
               <button
+                type="button"
                 onClick={() => setIsRunning(r => !r)}
-                className={`flex items-center justify-center gap-2.5 px-8 py-3.5 rounded-2xl text-sm font-bold transition-all shadow-xl active:scale-95 ${
-                  isRunning
-                    ? 'bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 shadow-amber-500/10'
-                    : 'bg-amber-400 text-zinc-950 hover:bg-amber-300 shadow-amber-500/20'
-                }`}
+                className="flex items-center gap-2 px-8 py-4 rounded-full bg-primary text-on-primary hover:opacity-90 transition-opacity font-headline-md text-headline-md border border-primary shadow-md cursor-pointer font-bold"
               >
-                {isRunning ? (
-                  <>
-                    <Pause className="w-4 h-4 fill-current" />
-                    <span>Pause Session</span>
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4 fill-current" />
-                    <span>Resume Focus</span>
-                  </>
-                )}
+                <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  {isRunning ? 'pause' : 'play_arrow'}
+                </span>
+                <span>{isRunning ? 'Pause Session' : 'Resume Session'}</span>
               </button>
 
-              {/* Ambient Sound Trigger */}
+              {/* Ambient Sound Selector Button */}
               <button
-                onClick={() => setShowSoundControls(s => !s)}
-                title="Soundscapes"
-                className={`p-3.5 rounded-2xl border transition-all active:scale-95 ${
+                type="button"
+                onClick={handleCycleSound}
+                title={`Ambient Audio: ${activeSound} (Click to cycle)`}
+                className={`flex items-center justify-center w-14 h-14 rounded-full border transition-all cursor-pointer shadow-xs ${
                   activeSound !== 'none'
-                    ? 'bg-amber-500/10 border-amber-500/40 text-amber-400'
-                    : 'border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+                    ? 'border-primary text-primary bg-primary-fixed-dim/20'
+                    : 'border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary bg-surface-container-lowest'
                 }`}
               >
-                <Waves className="w-5 h-5" />
+                <span className="material-symbols-outlined text-xl">
+                  {activeSound === 'rain' ? 'water_drop' : activeSound === 'binaural' ? 'graphic_eq' : activeSound === 'brownian' ? 'filter_vintage' : 'water'}
+                </span>
               </button>
-            </div>
 
-            {/* Ambient Sound Controls Popover */}
-            {showSoundControls && (
-              <div className="w-full max-w-sm bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 space-y-3 backdrop-blur-xl animate-in fade-in slide-in-from-bottom-2 duration-150">
-                <div className="flex items-center justify-between text-xs font-semibold text-zinc-300">
-                  <span className="flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    Ambient Audio Synthesizer
+              {/* Speaker / Volume Control Container */}
+              <div className="relative z-20 flex flex-col items-center">
+                {/* Volume Slider Popover (Hidden by default, shown ONLY when volume button is toggled) */}
+                <div
+                  id="volume-slider-container"
+                  className={`absolute bottom-full mb-3 transition-all duration-200 h-36 w-12 bg-surface-container-highest rounded-full flex flex-col items-center justify-between py-3 shadow-lg border border-outline-variant z-30 ${
+                    isVolumeOpen ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-2 pointer-events-none'
+                  }`}
+                >
+                  <span className="text-[10px] font-mono text-on-surface-variant font-bold">
+                    {Math.round(volume * 100)}%
                   </span>
-                  <span className="text-[10px] text-zinc-500">Real-time Web Audio</span>
-                </div>
-
-                <div className="grid grid-cols-4 gap-2">
-                  {[
-                    { id: 'none', label: 'Off', icon: <VolumeX className="w-3.5 h-3.5" /> },
-                    { id: 'rain', label: 'Rain', icon: <CloudRain className="w-3.5 h-3.5" /> },
-                    { id: 'binaural', label: 'Alpha', icon: <Waves className="w-3.5 h-3.5" /> },
-                    { id: 'brownian', label: 'Deep', icon: <Wind className="w-3.5 h-3.5" /> },
-                  ].map(s => (
-                    <button
-                      key={s.id}
-                      onClick={() => {
-                        if (s.id === 'none') {
-                          ambientSynth.stop();
-                          setActiveSound('none');
-                        } else {
-                          handleToggleSound(s.id as any);
-                        }
-                      }}
-                      className={`flex flex-col items-center justify-center gap-1 py-2 px-1 rounded-xl border text-[11px] font-medium transition-all ${
-                        activeSound === s.id
-                          ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
-                          : 'bg-zinc-950/60 border-zinc-800 text-zinc-400 hover:bg-zinc-800/80 hover:text-zinc-200'
-                      }`}
-                    >
-                      {s.icon}
-                      <span>{s.label}</span>
-                    </button>
-                  ))}
-                </div>
-
-                {activeSound !== 'none' && (
-                  <div className="pt-2 border-t border-zinc-800/60 flex items-center gap-3">
-                    <Volume2 className="w-3.5 h-3.5 text-zinc-400" />
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      value={volume}
-                      onChange={e => handleVolumeChange(Number(e.target.value))}
-                      className="w-full accent-amber-400 cursor-pointer h-1 bg-zinc-800 rounded-lg"
+                  
+                  <div className="h-24 w-1.5 bg-surface-container-lowest rounded-full relative cursor-pointer flex items-end overflow-hidden">
+                    <div
+                      className="w-full bg-primary rounded-full transition-all"
+                      style={{ height: `${volume * 100}%` }}
                     />
-                    <span className="text-[10px] font-mono text-zinc-400 w-8 text-right">
-                      {Math.round(volume * 100)}%
-                    </span>
                   </div>
-                )}
+
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={volume}
+                    onChange={(e) => handleVolumeChange(Number(e.target.value))}
+                    className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+                  />
+                </div>
+
+                {/* Speaker Icon Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsVolumeOpen(v => !v)}
+                  title="Toggle Volume Control"
+                  className={`flex items-center justify-center w-14 h-14 rounded-full border transition-all bg-surface-container-lowest shadow-xs cursor-pointer ${
+                    isVolumeOpen
+                      ? 'text-primary border-primary ring-2 ring-primary/20'
+                      : 'border-outline-variant text-on-surface-variant hover:text-primary hover:border-primary'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-xl">
+                    {volume === 0 ? 'volume_off' : 'volume_up'}
+                  </span>
+                </button>
               </div>
-            )}
+            </div>
           </div>
         )}
       </main>
 
-      {/* --- FOOTER HINTS --- */}
-      <footer className="w-full max-w-4xl flex items-center justify-between text-[11px] text-zinc-500 z-10">
+      {/* Bottom Status Bar */}
+      <footer className="relative z-10 px-6 py-4 flex justify-between items-center opacity-60 font-label-sm text-xs text-on-surface">
         <div className="flex items-center gap-4">
-          <span className="flex items-center gap-1.5">
-            <kbd className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 font-mono text-[10px]">ESC</kbd> Exit
-          </span>
-          {phase === 'running' && (
-            <>
-              <span className="flex items-center gap-1.5">
-                <kbd className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 font-mono text-[10px]">SPACE</kbd> Pause/Resume
-              </span>
-              <span className="flex items-center gap-1.5">
-                <kbd className="px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 font-mono text-[10px]">R</kbd> Reset
-              </span>
-            </>
-          )}
+          <span><kbd className="px-1 py-0.5 rounded border border-outline-variant font-mono text-[10px] bg-surface-container">ESC</kbd> Exit</span>
+          <span><kbd className="px-1 py-0.5 rounded border border-outline-variant font-mono text-[10px] bg-surface-container">SPACE</kbd> Pause/Resume</span>
+          <span><kbd className="px-1 py-0.5 rounded border border-outline-variant font-mono text-[10px] bg-surface-container">R</kbd> Reset</span>
         </div>
-
-        <span className="hidden md:inline text-zinc-600">
-          Sakido Focus Workspace
-        </span>
+        <div>Sakido Zenith Protocol</div>
       </footer>
     </div>
   );
