@@ -81,15 +81,15 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           pin: pinnedRef.current,
           start: 'top top',
           end: 'bottom bottom',
-          scrub: prefersReducedMotion ? true : 0.15, // Responsive 0.15s catchup scrub (no lag/jitter against snap)
+          scrub: prefersReducedMotion ? true : 0.3, // Uniform smooth linear scrub
           ...(prefersReducedMotion
             ? {}
             : {
                 snap: {
                   snapTo: 1 / (TOTAL_SECTIONS - 1),
-                  duration: { min: 0.25, max: 0.6 },
-                  delay: 0.05,
-                  ease: 'power2.inOut',
+                  duration: 0.3,
+                  delay: 0.02,
+                  ease: 'none', // 100% linear scroll snapping (no variable S-curve speed)
                 },
               }),
           onUpdate: (self) => {
