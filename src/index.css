@@ -221,14 +221,22 @@ html.lenis, html.lenis body {
   font-family: 'Manrope', 'Inter', sans-serif;
 }
 
-/* Form Autofill styles to maintain dark mode aesthetic */
+/* Form Autofill styles */
 input:-webkit-autofill,
-input:-webkit-autofill:hover, 
-input:-webkit-autofill:focus, 
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 30px #fff8f5 inset !important;
+  -webkit-text-fill-color: #1f1b18 !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+html.dark input:-webkit-autofill,
+html.dark input:-webkit-autofill:hover,
+html.dark input:-webkit-autofill:focus,
+html.dark input:-webkit-autofill:active {
   -webkit-box-shadow: 0 0 0 30px #181310 inset !important;
   -webkit-text-fill-color: #f9efe9 !important;
-  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* Scrollbar Utilities & Front Page Scrollbar Removal */

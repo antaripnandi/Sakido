@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { 
-  Layers, 
-  Plus, 
-  RotateCw, 
-  CheckCircle2, 
-  Clock, 
-  Trash2, 
-  Edit3, 
-  BookOpen, 
+import {
+  Layers,
+  Plus,
+  RotateCw,
+  CheckCircle2,
+  Clock,
+  Trash2,
+  Edit3,
+  BookOpen,
   Sparkles,
   ChevronRight,
   Brain,
@@ -43,24 +43,19 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-  // Helper to check if a card is due today
   const isCardDue = (card: Flashcard) => card.nextReviewDate <= todayStr;
 
-  // Filter flashcards by class
   const filteredCards = selectedClassId === 'all'
     ? flashcards
     : flashcards.filter(c => c.classId === selectedClassId);
 
-  // Get active study deck cards that are due
   const activeDeckCards = activeStudyDeckId === 'all'
     ? flashcards
     : flashcards.filter(c => c.classId === activeStudyDeckId);
 
   const dueStudyCards = activeDeckCards.filter(isCardDue);
-
   const currentStudyCard = dueStudyCards[currentCardIndex];
 
-  // Calculate earliest upcoming review date if all caught up
   const getEarliestUpcomingDate = (cards: Flashcard[]) => {
     const upcoming = cards.filter(c => c.nextReviewDate > todayStr);
     if (upcoming.length === 0) return null;
@@ -70,10 +65,8 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
 
   const handleRating = (quality: 0 | 1 | 2 | 3) => {
     if (!currentStudyCard) return;
-
     const updated = calculateSM2(currentStudyCard, quality);
     onUpdateCard(updated);
-
     setIsFlipped(false);
     if (currentCardIndex >= dueStudyCards.length - 1) {
       setCurrentCardIndex(0);
@@ -83,7 +76,6 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
   const handleCreateCard = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newFront.trim() || !newBack.trim() || !newClassId) return;
-
     const targetCourse = courses.find(c => c.id === newClassId);
     onAddCard({
       classId: newClassId,
@@ -92,7 +84,6 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
       front: newFront.trim(),
       back: newBack.trim()
     });
-
     setNewFront('');
     setNewBack('');
     setIsAddCardOpen(false);
@@ -112,13 +103,12 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
               setIsFlipped(false);
               setCurrentCardIndex(0);
             }}
-            className="flex items-center gap-1.5 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer"
+            className="flex items-center gap-1.5 text-xs font-semibold text-secondary hover:text-on-surface transition-colors cursor-pointer"
           >
             <span>← Back to Decks</span>
           </button>
-
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-zinc-500">SM-2 Spaced Repetition</span>
+            <span className="text-xs font-mono text-secondary">SM-2 Spaced Repetition</span>
           </div>
         </div>
 
@@ -126,25 +116,25 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
         {dueStudyCards.length > 0 && currentStudyCard ? (
           <div className="space-y-6">
             {/* Progress Bar */}
-            <div className="bg-zinc-100 dark:bg-zinc-800/60 p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-800 flex items-center justify-between">
+            <div className="bg-surface-container-high p-4 rounded-xl border border-outline-variant/40 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Brain className="w-4 h-4 text-[#8b5e3c]" />
-                <span className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+                <span className="text-xs font-semibold text-on-surface">
                   Reviewing {currentStudyCard.className}
                 </span>
               </div>
-              <span className="text-xs font-mono font-medium text-zinc-500">
+              <span className="text-xs font-mono font-medium text-secondary">
                 Card {currentCardIndex + 1} of {dueStudyCards.length} due today
               </span>
             </div>
 
-            {/* Flashcard Container (Flip Interaction) */}
+            {/* Flashcard Container */}
             <div
               onClick={() => setIsFlipped(!isFlipped)}
-              className="relative min-h-[320px] sm:min-h-[380px] w-full rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-8 sm:p-12 flex flex-col justify-between items-center text-center shadow-lg cursor-pointer transition-all duration-300 hover:border-[#8b5e3c]/50 group"
+              className="relative min-h-[320px] sm:min-h-[380px] w-full rounded-2xl border border-outline-variant/60 bg-surface-container-low p-8 sm:p-12 flex flex-col justify-between items-center text-center shadow-lg cursor-pointer transition-all duration-300 hover:border-primary/40 group"
             >
               {/* Card Badge Header */}
-              <div className="w-full flex items-center justify-between text-xs text-zinc-400">
+              <div className="w-full flex items-center justify-between text-xs text-secondary">
                 <span
                   className="px-2.5 py-0.5 rounded-full font-mono text-[11px] font-semibold text-white"
                   style={{ backgroundColor: currentStudyCard.classColor }}
@@ -158,11 +148,11 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
 
               {/* Card Body Text */}
               <div className="my-auto py-8 max-w-xl">
-                <p className="text-xl sm:text-2xl font-semibold leading-relaxed text-zinc-900 dark:text-zinc-100">
+                <p className="text-xl sm:text-2xl font-semibold leading-relaxed text-on-surface">
                   {isFlipped ? currentStudyCard.back : currentStudyCard.front}
                 </p>
                 {!isFlipped && (
-                  <p className="mt-4 text-xs text-zinc-400 font-medium">
+                  <p className="mt-4 text-xs text-secondary font-medium">
                     (Click anywhere or button below to reveal answer)
                   </p>
                 )}
@@ -175,55 +165,35 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
                     e.stopPropagation();
                     setIsFlipped(true);
                   }}
-                  className="px-6 py-2.5 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl text-xs font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-sm cursor-pointer"
+                  className="px-6 py-2.5 bg-on-surface text-surface rounded-xl text-xs font-semibold hover:opacity-90 transition-all shadow-sm cursor-pointer"
                 >
                   Show Answer
                 </button>
               )}
             </div>
 
-            {/* SM-2 4-Point Rating Buttons (Revealed after answer) */}
+            {/* SM-2 Rating Buttons */}
             {isFlipped && (
               <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
-                <p className="text-center text-xs font-medium text-zinc-500">
+                <p className="text-center text-xs font-medium text-secondary">
                   How well did you remember this card?
                 </p>
-
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  {/* Again (Quality 0) */}
-                  <button
-                    onClick={() => handleRating(0)}
-                    className="p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold text-xs transition-all cursor-pointer active:scale-95 flex flex-col items-center gap-1"
-                  >
+                  <button onClick={() => handleRating(0)} className="p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold text-xs transition-all cursor-pointer active:scale-95 flex flex-col items-center gap-1">
                     <span className="font-bold text-sm">Again</span>
                     <span className="text-[10px] opacity-75 font-mono">1 day</span>
                   </button>
-
-                  {/* Hard (Quality 1) */}
-                  <button
-                    onClick={() => handleRating(1)}
-                    className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-semibold text-xs transition-all cursor-pointer active:scale-95 flex flex-col items-center gap-1"
-                  >
+                  <button onClick={() => handleRating(1)} className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-semibold text-xs transition-all cursor-pointer active:scale-95 flex flex-col items-center gap-1">
                     <span className="font-bold text-sm">Hard</span>
                     <span className="text-[10px] opacity-75 font-mono">1 day</span>
                   </button>
-
-                  {/* Good (Quality 2) */}
-                  <button
-                    onClick={() => handleRating(2)}
-                    className="p-3.5 rounded-xl border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 font-semibold text-xs transition-all cursor-pointer active:scale-95 flex flex-col items-center gap-1"
-                  >
+                  <button onClick={() => handleRating(2)} className="p-3.5 rounded-xl border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 font-semibold text-xs transition-all cursor-pointer active:scale-95 flex flex-col items-center gap-1">
                     <span className="font-bold text-sm">Good</span>
                     <span className="text-[10px] opacity-75 font-mono">
                       {currentStudyCard.repetitions === 0 ? '1 day' : currentStudyCard.repetitions === 1 ? '6 days' : `${Math.round(currentStudyCard.interval * currentStudyCard.easeFactor)} days`}
                     </span>
                   </button>
-
-                  {/* Easy (Quality 3) */}
-                  <button
-                    onClick={() => handleRating(3)}
-                    className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold text-xs transition-all cursor-pointer active:scale-95 flex flex-col items-center gap-1"
-                  >
+                  <button onClick={() => handleRating(3)} className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold text-xs transition-all cursor-pointer active:scale-95 flex flex-col items-center gap-1">
                     <span className="font-bold text-sm">Easy</span>
                     <span className="text-[10px] opacity-75 font-mono">
                       {currentStudyCard.repetitions === 0 ? '1 day' : currentStudyCard.repetitions === 1 ? '6 days' : `${Math.round(currentStudyCard.interval * (currentStudyCard.easeFactor + 0.15))} days`}
@@ -235,14 +205,12 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
           </div>
         ) : (
           /* All Caught Up State */
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-12 text-center space-y-4 shadow-sm">
+          <div className="bg-surface-container-low border border-outline-variant/40 rounded-2xl p-12 text-center space-y-4 shadow-sm">
             <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto">
               <CheckCircle2 className="w-6 h-6" />
             </div>
-            <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
-              You're all caught up!
-            </h3>
-            <p className="text-sm text-zinc-500 max-w-md mx-auto">
+            <h3 className="text-xl font-bold text-on-surface">You're all caught up!</h3>
+            <p className="text-sm text-secondary max-w-md mx-auto">
               {earliestNext
                 ? `No cards are due right now. Your next review session is scheduled for ${earliestNext}.`
                 : 'No cards are due for review right now.'}
@@ -265,18 +233,15 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
       {/* Top Action Bar */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">
-            Flashcard Decks
-          </h2>
-          <p className="text-xs text-zinc-500">
+          <h2 className="text-lg font-bold text-on-surface tracking-tight">Flashcard Decks</h2>
+          <p className="text-xs text-secondary">
             Spaced repetition memory review powered by the SM-2 algorithm.
           </p>
         </div>
-
         <button
           onClick={() => setIsAddCardOpen(true)}
           disabled={courses.length === 0}
-          className="flex items-center gap-1.5 px-4 py-2 bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 rounded-xl text-xs font-semibold hover:bg-zinc-800 dark:hover:bg-zinc-200 transition-all shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center gap-1.5 px-4 py-2 bg-on-surface text-surface rounded-xl text-xs font-semibold hover:opacity-90 transition-all shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus className="w-4 h-4" />
           <span>New Flashcard</span>
@@ -290,13 +255,12 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
             onClick={() => setSelectedClassId('all')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
               selectedClassId === 'all'
-                ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold'
-                : 'bg-zinc-100 dark:bg-zinc-800/60 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900'
+                ? 'bg-on-surface text-surface font-semibold'
+                : 'bg-surface-container-high text-secondary hover:text-on-surface'
             }`}
           >
             All Decks ({flashcards.length})
           </button>
-
           {courses.map((course) => {
             const courseCards = flashcards.filter(c => c.classId === course.id);
             return (
@@ -305,8 +269,8 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
                 onClick={() => setSelectedClassId(course.id)}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-2 ${
                   selectedClassId === course.id
-                    ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-semibold'
-                    : 'bg-zinc-100 dark:bg-zinc-800/60 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900'
+                    ? 'bg-on-surface text-surface font-semibold'
+                    : 'bg-surface-container-high text-secondary hover:text-on-surface'
                 }`}
               >
                 <span className="w-2 h-2 rounded-full" style={{ backgroundColor: course.color }} />
@@ -319,14 +283,12 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
 
       {/* Empty State: No Classes */}
       {courses.length === 0 ? (
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-12 text-center space-y-3">
+        <div className="bg-surface-container-low border border-outline-variant/40 rounded-2xl p-12 text-center space-y-3">
           <div className="w-12 h-12 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center mx-auto">
             <BookOpen className="w-6 h-6" />
           </div>
-          <h3 className="text-base font-semibold text-zinc-900 dark:text-zinc-100">
-            No decks yet — add a class first
-          </h3>
-          <p className="text-xs text-zinc-500 max-w-sm mx-auto">
+          <h3 className="text-base font-semibold text-on-surface">No decks yet — add a class first</h3>
+          <p className="text-xs text-secondary max-w-sm mx-auto">
             Flashcard decks are organized by your enrolled courses. Add a course in the My Courses section to start building decks.
           </p>
         </div>
@@ -338,11 +300,10 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
             .map((course) => {
               const deckCards = flashcards.filter(c => c.classId === course.id);
               const dueCount = deckCards.filter(isCardDue).length;
-
               return (
                 <div
                   key={course.id}
-                  className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4 hover:border-[#8b5e3c]/40 transition-all group"
+                  className="bg-surface-container-low border border-outline-variant/40 rounded-2xl p-5 shadow-xs flex flex-col justify-between space-y-4 hover:border-primary/40 transition-all group"
                 >
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -358,15 +319,12 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
                         </span>
                       )}
                     </div>
-                    <h3 className="font-semibold text-sm text-zinc-900 dark:text-zinc-100">
-                      {course.name}
-                    </h3>
-                    <p className="text-xs text-zinc-500">
+                    <h3 className="font-semibold text-sm text-on-surface">{course.name}</h3>
+                    <p className="text-xs text-secondary">
                       {deckCards.length} {deckCards.length === 1 ? 'card' : 'cards'} total
                     </p>
                   </div>
-
-                  <div className="pt-2 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between">
+                  <div className="pt-2 border-t border-outline-variant/30 flex items-center justify-between">
                     <button
                       onClick={() => setActiveStudyDeckId(course.id)}
                       disabled={deckCards.length === 0}
@@ -375,8 +333,7 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
                       <Zap className="w-3.5 h-3.5" />
                       <span>{dueCount > 0 ? `Study (${dueCount} Due)` : 'Review Deck'}</span>
                     </button>
-
-                    <span className="text-[11px] font-mono text-zinc-400">
+                    <span className="text-[11px] font-mono text-secondary">
                       {dueCount === 0 && deckCards.length > 0 ? 'Caught Up' : ''}
                     </span>
                   </div>
@@ -388,16 +345,15 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
 
       {/* Cards List Section */}
       {filteredCards.length > 0 && (
-        <div className="space-y-3 pt-6 border-t border-zinc-200 dark:border-zinc-800">
-          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+        <div className="space-y-3 pt-6 border-t border-outline-variant/30">
+          <h3 className="text-sm font-semibold text-on-surface">
             Card Repository ({filteredCards.length})
           </h3>
-
           <div className="space-y-2">
             {filteredCards.map((card) => (
               <div
                 key={card.id}
-                className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs"
+                className="bg-surface-container-low border border-outline-variant/40 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs"
               >
                 <div className="space-y-1 flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -407,16 +363,11 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
                     >
                       {card.className}
                     </span>
-                    <span className="font-semibold text-zinc-900 dark:text-zinc-100 truncate">
-                      Q: {card.front}
-                    </span>
+                    <span className="font-semibold text-on-surface truncate">Q: {card.front}</span>
                   </div>
-                  <p className="text-zinc-500 truncate">
-                    A: {card.back}
-                  </p>
+                  <p className="text-secondary truncate">A: {card.back}</p>
                 </div>
-
-                <div className="flex items-center gap-4 text-zinc-400 font-mono text-[11px] shrink-0">
+                <div className="flex items-center gap-4 text-secondary font-mono text-[11px] shrink-0">
                   <span>Interval: {card.interval}d</span>
                   <span>Next: {card.nextReviewDate}</span>
                   <button
@@ -436,73 +387,56 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
       {/* New Flashcard Modal */}
       {isAddCardOpen && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-base text-zinc-900 dark:text-zinc-100">
-                Create New Flashcard
-              </h3>
+              <h3 className="font-semibold text-base text-on-surface">Create New Flashcard</h3>
               <button
                 onClick={() => setIsAddCardOpen(false)}
-                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+                className="text-secondary hover:text-on-surface cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
-
             <form onSubmit={handleCreateCard} className="space-y-4">
-              {/* Select Class */}
               <div className="space-y-1">
-                <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                  Target Course
-                </label>
+                <label className="text-xs font-medium text-on-surface-variant">Target Course</label>
                 <select
                   value={newClassId}
                   onChange={(e) => setNewClassId(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                  className="w-full px-3 py-2 rounded-xl border border-outline-variant/50 bg-surface-container-low text-xs font-medium text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   {courses.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.code} — {c.name}
-                    </option>
+                    <option key={c.id} value={c.id}>{c.code} — {c.name}</option>
                   ))}
                 </select>
               </div>
-
-              {/* Front Text */}
               <div className="space-y-1">
-                <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                  Front Side (Question / Term)
-                </label>
+                <label className="text-xs font-medium text-on-surface-variant">Front Side (Question / Term)</label>
                 <textarea
                   value={newFront}
                   onChange={(e) => setNewFront(e.target.value)}
                   placeholder="e.g. What is the time complexity of QuickSort average case?"
                   rows={3}
                   required
-                  className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                  className="w-full px-3 py-2 rounded-xl border border-outline-variant/50 bg-surface-container-low text-xs text-on-surface placeholder:text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                 />
               </div>
-
-              {/* Back Text */}
               <div className="space-y-1">
-                <label className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                  Back Side (Answer / Definition)
-                </label>
+                <label className="text-xs font-medium text-on-surface-variant">Back Side (Answer / Definition)</label>
                 <textarea
                   value={newBack}
                   onChange={(e) => setNewBack(e.target.value)}
                   placeholder="e.g. O(N log N)"
                   rows={3}
                   required
-                  className="w-full px-3 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-800 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-[#8b5e3c]"
+                  className="w-full px-3 py-2 rounded-xl border border-outline-variant/50 bg-surface-container-low text-xs text-on-surface placeholder:text-secondary/60 focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                 />
               </div>
-
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
                   onClick={() => setIsAddCardOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs font-medium text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
+                  className="px-4 py-2 rounded-xl border border-outline-variant/50 text-xs font-medium text-secondary hover:text-on-surface hover:bg-surface-container-high cursor-pointer transition-colors"
                 >
                   Cancel
                 </button>
