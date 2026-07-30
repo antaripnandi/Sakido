@@ -370,19 +370,10 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
       // Handle 401 token refresh
       if (folderSearchRes.status === 401) {
-        const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
-        if (refreshToken) {
-          const refreshRes = await fetch('/api/refresh-token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refresh_token: refreshToken }),
-          });
-          if (refreshRes.ok) {
-            const refreshData = await refreshRes.json();
-            token = refreshData.access_token;
-            localStorage.setItem('sakido_provider_token', token);
-            folderSearchRes = await searchFolder(token);
-          }
+        const freshToken = await refreshGoogleToken();
+        if (freshToken) {
+          token = freshToken;
+          folderSearchRes = await searchFolder(token);
         }
       }
 
@@ -501,7 +492,14 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               localStorage.setItem('sakido_provider_token', session.provider_token);
             }
             if ((session as any).provider_refresh_token) {
-              localStorage.setItem('sakido_provider_refresh_token', (session as any).provider_refresh_token);
+              const supabase = getSupabaseClient();
+              supabase?.from('google_tokens').upsert({
+                user_id: session.user.id,
+                refresh_token: (session as any).provider_refresh_token,
+                updated_at: new Date().toISOString(),
+              }, { onConflict: 'user_id' }).then(({ error }) => {
+                if (error) console.warn('Database token save notice:', error.message);
+              });
             }
             setConnectors((prev) => {
               const updated = { ...prev, [pending]: true };
@@ -557,67 +555,76 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     course?: string;
   } | null>(null);
 
+  // Single shared helper — gets a fresh Google access token via server JWT validation.
+  // The server reads the refresh token from DB; the client never touches it.
+  const refreshGoogleToken = useCallback(async (): Promise<string | null> => {
+    const supabase = getSupabaseClient();
+    if (!supabase) return null;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) return null;
+
+    try {
+      const res = await fetch('/api/refresh-token', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        if (body.error === 'reconnect_required') {
+          setConnectors((prev) => {
+            const updated = { ...prev, googleCalendar: false, googleDrive: false, gmail: false };
+            try { localStorage.setItem('sakido_connectors', JSON.stringify(updated)); } catch {}
+            return updated;
+          });
+          localStorage.removeItem('sakido_provider_token');
+          localStorage.removeItem('sakido_provider_refresh_token');
+        }
+        return null;
+      }
+
+      const data = await res.json();
+      if (data.access_token) {
+        localStorage.setItem('sakido_provider_token', data.access_token);
+        return data.access_token;
+      }
+      return null;
+    } catch (err) {
+      console.warn('Error refreshing Google token:', err);
+      return null;
+    }
+  }, []);
+
   // Generic helper for authenticated Google API requests with automatic 401 token refresh
   const executeGoogleApi = useCallback(async (
     apiCall: (accessToken: string) => Promise<Response>
   ): Promise<Response | null> => {
     let token = localStorage.getItem('sakido_provider_token');
 
-    // If initial token missing, attempt auto-refresh using saved refresh_token
+    // No token cached — try a silent refresh before the first call
     if (!token) {
-      const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
-      if (refreshToken) {
-        try {
-          const refreshRes = await fetch('/api/refresh-token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refresh_token: refreshToken }),
-          });
-          if (refreshRes.ok) {
-            const refreshData = await refreshRes.json();
-            if (refreshData.access_token) {
-              const freshToken: string = refreshData.access_token;
-              token = freshToken;
-              localStorage.setItem('sakido_provider_token', freshToken);
-            }
-          }
-        } catch (e) {
-          console.warn('Initial Google token refresh error:', e);
-        }
-      }
+      token = await refreshGoogleToken();
+      if (!token) return null;
     }
-
-    if (!token) return null;
 
     try {
       let res = await apiCall(token);
 
-      // If 401 Unauthorized (token expired after 1 hour), refresh token and retry call
+      // Token expired mid-session — refresh once and retry
       if (res.status === 401) {
-        const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
-        if (refreshToken) {
-          const refreshRes = await fetch('/api/refresh-token', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refresh_token: refreshToken }),
-          });
-          if (refreshRes.ok) {
-            const refreshData = await refreshRes.json();
-            if (refreshData.access_token) {
-              const freshToken: string = refreshData.access_token;
-              token = freshToken;
-              localStorage.setItem('sakido_provider_token', freshToken);
-              res = await apiCall(freshToken);
-            }
-          }
-        }
+        token = await refreshGoogleToken();
+        if (!token) return null;
+        res = await apiCall(token);
       }
+
       return res;
     } catch (err) {
       console.warn('Google API execution error:', err);
       return null;
     }
-  }, []);
+  }, [refreshGoogleToken]);
 
   // Live Google Calendar event fetching with auto-refresh & 20s polling
   const [googleCalendarEvents, setGoogleCalendarEvents] = useState<any[]>([]);
@@ -714,18 +721,9 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         );
 
         if (folderRes.status === 401) {
-          const refreshToken = localStorage.getItem('sakido_provider_refresh_token');
-          if (refreshToken) {
-            const refreshRes = await fetch('/api/refresh-token', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ refresh_token: refreshToken }),
-            });
-            if (refreshRes.ok) {
-              const refreshData = await refreshRes.json();
-              token = refreshData.access_token;
-              localStorage.setItem('sakido_provider_token', token!);
-            }
+          const freshToken = await refreshGoogleToken();
+          if (freshToken) {
+            token = freshToken;
           }
         }
 
@@ -1346,6 +1344,17 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
     // Handle Disconnect Action
     if (connectors[serviceKey]) {
+      const supabase = getSupabaseClient();
+      supabase?.auth.getSession().then(({ data }) => {
+        if (data?.session?.user?.id) {
+          supabase.from('google_tokens').delete().eq('user_id', data.session.user.id).then(({ error }) => {
+            if (error) console.warn('Database token deletion notice:', error.message);
+          });
+        }
+      });
+      localStorage.removeItem('sakido_provider_token');
+      localStorage.removeItem('sakido_provider_refresh_token');
+
       setConnectors((prev) => {
         const updated = { ...prev, [serviceKey]: false };
         try {

@@ -60,29 +60,38 @@ export default async function handler(req, res) {
   const userToken = authHeader.split(' ')[1];
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
   const supabaseAnonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey) {
+  if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
     return res.status(500).json({ error: 'Authentication service temporarily unconfigured.' });
   }
 
+  let user = null;
   try {
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
     const { data: userData, error: userError } = await supabase.auth.getUser(userToken);
     if (userError || !userData?.user) {
       return res.status(401).json({ error: 'Invalid or expired session authorization.' });
     }
+    user = userData.user;
   } catch {
     return res.status(401).json({ error: 'Session validation failed.' });
   }
 
-  // 4. Validate payload
-  const { refresh_token } = req.body || {};
-  if (!refresh_token || typeof refresh_token !== 'string' || refresh_token.length > 2048) {
-    return res.status(400).json({ error: 'Invalid or missing refresh_token parameter.' });
+  // 4. Fetch User Refresh Token securely from DB using Admin Client (Server-Side Only)
+  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+  const { data: tokenRow, error: tokenError } = await supabaseAdmin
+    .from('google_tokens')
+    .select('refresh_token')
+    .eq('user_id', user.id)
+    .single();
+
+  if (tokenError || !tokenRow?.refresh_token) {
+    return res.status(400).json({ error: 'reconnect_required', message: 'No Google refresh token found for user account.' });
   }
 
   // 5. Google OAuth Credentials Verification
-  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientId = process.env.GOOGLE_CLIENT_ID || process.env.VITE_GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
@@ -96,7 +105,7 @@ export default async function handler(req, res) {
       body: new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
-        refresh_token: refresh_token,
+        refresh_token: tokenRow.refresh_token,
         grant_type: 'refresh_token',
       }),
     });
@@ -105,15 +114,24 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       return res.status(response.status).json({
-        error: 'Token refresh failed.',
+        error: data.error || 'google_token_refresh_failed',
       });
     }
 
-    // Return fresh token securely
+    // 6. Automatically handle Google Token Rotation if a new refresh_token was issued
+    if (data.refresh_token) {
+      await supabaseAdmin.from('google_tokens').upsert({
+        user_id: user.id,
+        refresh_token: data.refresh_token,
+        updated_at: new Date().toISOString(),
+      });
+    }
+
+    // Return fresh short-lived access token strictly to the client (Refresh token NEVER returned)
     return res.status(200).json({
       access_token: data.access_token,
       expires_in: data.expires_in,
-      token_type: data.token_type,
+      token_type: data.token_type || 'Bearer',
     });
   } catch {
     // Sanitized Error Response - Never leak internal err.message or stack trace
