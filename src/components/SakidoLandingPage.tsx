@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { FrameCanvas } from './FrameCanvas';
+import Lenis from 'lenis';
 import { AuthModal } from './auth/AuthModal';
 import { Footer } from './landing/Footer';
 import { getSupabaseClient } from '../lib/supabaseClient';
@@ -104,6 +105,31 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     return () => {
       clearTimeout(timer);
       ctx.revert();
+    };
+  }, []);
+
+  // Initialize Lenis smooth scroll with lerp damping & GSAP ticker sync
+  useEffect(() => {
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
+    const lenis = new Lenis({
+      lerp: 0.09, // Damping lerp factor (0.09 for fluid, instant-catchup damping)
+      smoothWheel: true,
+    });
+
+    lenis.on('scroll', ScrollTrigger.update);
+
+    const updateLenis = (time: number) => {
+      lenis.raf(time * 1000);
+    };
+
+    gsap.ticker.add(updateLenis);
+    gsap.ticker.lagSmoothing(0);
+
+    return () => {
+      gsap.ticker.remove(updateLenis);
+      lenis.destroy();
     };
   }, []);
 
