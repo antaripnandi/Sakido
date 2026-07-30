@@ -10,8 +10,6 @@ export interface FocusSessionConfig {
   pomoFocusMinutes: number;
   pomoBreakMinutes: number;
   pomodoroCycles: number;
-  sound: 'none' | 'rain' | 'binaural' | 'brownian';
-  volume: number;
 }
 
 interface FocusTimerViewProps {
@@ -79,8 +77,6 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
       pomoFocusMinutes,
       pomoBreakMinutes: currentBreakMinutes,
       pomodoroCycles,
-      sound: 'none',
-      volume: 0,
     });
   };
 

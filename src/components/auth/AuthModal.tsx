@@ -299,6 +299,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         });
         setStep('success');
         if (onSuccess) onSuccess();
+      } else {
+        setErrorMessage('Verification succeeded but no session was created. Please try signing in again.');
       }
     } catch {
       setErrorMessage('Authentication verification failed.');
@@ -455,7 +457,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
                   {otpCode.map((digit, index) => (
                     <input
                       key={index}
-                      ref={(el) => (otpInputsRef.current[index] = el)}
+                      ref={(el) => { otpInputsRef.current[index] = el; }}
                       type="text"
                       inputMode="numeric"
                       maxLength={1}
@@ -576,8 +578,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
         <footer className="mt-12 pt-6 border-t border-[#262626] flex flex-col gap-2 text-center">
           <p className="font-label-sm text-xs text-[#c4c7c8]">
             By continuing, you agree to our{' '}
-            <a className="text-white hover:underline" href="#">Terms</a> and{' '}
-            <a className="text-white hover:underline" href="#">Privacy Policy</a>.
+            <a className="text-white hover:underline" href="/terms">Terms</a> and{' '}
+            <a className="text-white hover:underline" href="/privacy">Privacy Policy</a>.
           </p>
         </footer>
       </div>

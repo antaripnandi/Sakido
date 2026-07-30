@@ -26,8 +26,6 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
     pomoFocusMinutes: 25,
     pomoBreakMinutes: 5,
     pomodoroCycles: 4,
-    sound: 'none',
-    volume: 0,
   },
   onClose,
   onComplete,
@@ -57,11 +55,16 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Attempt fullscreen on start
+  // Attempt fullscreen on start with exit cleanup on unmount
   useEffect(() => {
     if (!document.fullscreenElement) {
       document.documentElement.requestFullscreen().catch(() => {});
     }
+    return () => {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    };
   }, []);
 
   // --- Fullscreen helpers ---

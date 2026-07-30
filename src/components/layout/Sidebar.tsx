@@ -99,13 +99,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 key={item.id}
                 onClick={() => onNavigate(item.id)}
-                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-all duration-150 ${
+                className={`w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs font-medium transition-all duration-150 relative ${
                   isActive
                     ? 'bg-zinc-100 dark:bg-zinc-800/90 text-zinc-900 dark:text-zinc-50 font-semibold shadow-xs'
                     : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 hover:text-zinc-900 dark:hover:text-zinc-200'
                 }`}
               >
-                <div className="flex items-center gap-2.5">
+                {isActive && <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-md bg-[#8b5e3c] dark:bg-[#f4bb92] transition-all duration-200" />}
+                <div className="flex items-center gap-2.5 pl-1">
                   <span className={`${isActive ? 'text-zinc-900 dark:text-zinc-100' : 'text-zinc-600 dark:text-zinc-400'}`}>
                     {item.icon}
                   </span>

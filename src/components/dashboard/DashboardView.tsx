@@ -47,14 +47,40 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [selectedCourse, setSelectedCourse] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState<number>(new Date().getDate());
 
-  // Derive Summary Strip Metrics directly from REAL user data
-  const now = new Date();
-  const urgentTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'submitted');
-  
+  // Helper to calculate status accurately by comparing ISO dates
+  const now = useMemo(() => new Date(), []);
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+  const getTaskCalculatedStatus = (t: Task): 'upcoming' | 'due-soon' | 'overdue' | 'completed' => {
+    if (t.status === 'completed' || t.status === 'submitted' || t.completed) return 'completed';
+    if (!t.dueDate || t.dueDate === 'Upcoming') return 'upcoming';
+    const dueStr = t.dueDate.split('T')[0];
+    if (dueStr < todayStr) return 'overdue';
+
+    const todayMs = new Date().setHours(0, 0, 0, 0);
+    const dueMs = new Date(t.dueDate).setHours(0, 0, 0, 0);
+    if (!isNaN(dueMs)) {
+      const diffDays = Math.ceil((dueMs - todayMs) / (1000 * 60 * 60 * 24));
+      if (diffDays >= 0 && diffDays <= 2) return 'due-soon';
+    }
+    return 'upcoming';
+  };
+
+  const urgentTasks = useMemo(
+    () => tasks.filter((t) => getTaskCalculatedStatus(t) !== 'completed'),
+    [tasks, todayStr]
+  );
+
   // Categorize real tasks for metrics
-  const overdueCount = tasks.filter(t => t.priority === 'urgent' && t.status !== 'completed' && t.status !== 'submitted').length;
-  const dueSoonCount = tasks.filter(t => (t.priority === 'high' || t.priority === 'urgent') && t.status !== 'completed' && t.status !== 'submitted').length;
-  
+  const overdueCount = useMemo(
+    () => tasks.filter((t) => getTaskCalculatedStatus(t) === 'overdue').length,
+    [tasks, todayStr]
+  );
+  const dueSoonCount = useMemo(
+    () => tasks.filter((t) => getTaskCalculatedStatus(t) === 'due-soon').length,
+    [tasks, todayStr]
+  );
+
   // Combine real tasks & schedule events into unified list
   const unifiedAcademicItems = useMemo(() => {
     const items: Array<{
@@ -71,14 +97,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     // Add Tasks
     tasks.forEach(t => {
-      let status: 'upcoming' | 'due-soon' | 'overdue' | 'completed' = 'upcoming';
-      if (t.status === 'completed' || t.status === 'submitted') {
-        status = 'completed';
-      } else if (t.priority === 'urgent') {
-        status = 'overdue';
-      } else if (t.priority === 'high') {
-        status = 'due-soon';
-      }
+      const status = getTaskCalculatedStatus(t);
 
       items.push({
         id: `task-${t.id}`,
@@ -108,7 +127,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     });
 
     return items;
-  }, [tasks, schedule]);
+  }, [tasks, schedule, todayStr]);
 
   // Filtered Items for Main View
   const filteredAcademicItems = useMemo(() => {
@@ -130,13 +149,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const progressPercent = Math.min(100, Math.round((completedMinutesToday / dailyGoalMinutes) * 100));
   const streakDays = profile?.streakDays || 0;
 
-  // DYNAMIC Compact Calendar Days Generator (Computed 100% from REAL user schedule & tasks)
+  // DYNAMIC Compact Calendar Days Generator (Computed 100% from REAL user schedule & tasks with firstDay offset)
   const currentMonthDays = useMemo(() => {
     const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth();
     const totalDays = new Date(year, month + 1, 0).getDate();
-    
+    const firstDayOfMonth = new Date(year, month, 1).getDay();
+
     // Set of real task due dates
     const taskDays = new Set<number>();
     tasks.forEach(t => {
@@ -159,7 +179,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       }
     });
 
-    const daysArr = [];
+    const daysArr: Array<{ day: number | null; hasTask: boolean; hasExam: boolean }> = [];
+    for (let p = 0; p < firstDayOfMonth; p++) {
+      daysArr.push({ day: null, hasTask: false, hasExam: false });
+    }
     for (let d = 1; d <= totalDays; d++) {
       daysArr.push({
         day: d,
@@ -486,16 +509,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {/* Dynamic Calendar Days */}
             <div className="grid grid-cols-7 gap-1">
-              {currentMonthDays.map((d) => {
+              {currentMonthDays.map((d, index) => {
+                if (d.day === null) {
+                  return <div key={`pad-${index}`} className="h-8" />;
+                }
                 const isSelected = selectedDate === d.day;
                 const isToday = d.day === now.getDate();
 
                 return (
                   <button
-                    key={d.day}
+                    key={`day-${d.day}`}
                     onClick={() => {
-                      setSelectedDate(d.day);
-                      onNavigate('calendar');
+                      if (d.day !== null) {
+                        setSelectedDate(d.day);
+                        onNavigate('calendar');
+                      }
                     }}
                     className={`h-8 rounded-xl flex flex-col items-center justify-center relative text-xs font-medium transition-all cursor-pointer ${
                       isToday

@@ -18,7 +18,7 @@ const FEATURE_CALLOUTS = [
   { id: 'calendar', sectionIndex: 2, category: '02 / SCHEDULE', title: 'Calendar', text: 'See your classes and deadlines. Connect Google Calendar if you want.', align: 'right' as const },
   { id: 'tasks-grades', sectionIndex: 3, category: '03 / ACADEMICS', title: 'Tasks & grades', text: 'Track assignments and calculate your grade.', align: 'left' as const },
   { id: 'knowledge-inbox', sectionIndex: 4, category: '04 / KNOWLEDGE', title: 'Knowledge Inbox', text: "Save a link — a video, article, or PDF — so you don't lose it. Share a YouTube link and it plays right on the page.", align: 'right' as const },
-  { id: 'chat', sectionIndex: 5, category: '05 / COMMUNITY', title: 'Chat', text: 'Message people at your university, or join the global chat.', align: 'left' as const },
+  { id: 'flashcards', sectionIndex: 5, category: '05 / RECALL', title: 'Flashcards', text: 'Spaced repetition flashcards with SM-2 algorithm to master exams.', align: 'left' as const },
   { id: 'dashboard', sectionIndex: 6, category: '06 / OVERVIEW', title: 'Dashboard', text: "Opens to today's classes and what's due next.", align: 'right' as const },
 ];
 
@@ -289,7 +289,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
                   Sakido
                 </h1>
                 <p className="mt-6 text-lg sm:text-2xl text-zinc-300 font-sans font-normal tracking-tight leading-relaxed max-w-2xl mx-auto">
-                  Notes, calendar, tasks, saved links, and chat — one app instead of five.
+                  Notes, calendar, tasks, flashcards, and saved links — one app instead of five.
                 </p>
               </div>
               <div className="text-center text-xs text-zinc-500 font-mono tracking-[0.2em] uppercase mb-6">
@@ -342,7 +342,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
             Everything school.<br className="hidden sm:inline" /> One app.
           </h2>
           <p className="text-zinc-400 text-base sm:text-xl font-sans max-w-xl mx-auto font-normal leading-relaxed">
-            Notes, calendar, tasks, saved links, and university chat — all unified in one essentialist academic platform.
+            Notes, calendar, tasks, flashcards, and saved links — all unified in one essentialist academic platform.
           </p>
           <div className="pt-4 flex justify-center">
             <SpecularButton

@@ -82,18 +82,14 @@ async function startServer() {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   });
 
-  // Supabase Backend Status & Test Endpoint
-  app.get('/api/supabase/status', async (req, res) => {
+  // Supabase Backend Status & Test Endpoint (Protected)
+  app.get('/api/supabase/status', authenticateUser, async (req: Request, res: Response) => {
     try {
       const supabase = getSupabaseAdmin();
-      const { data, error } = await supabase.auth.getSession();
+      const { error } = await supabase.auth.getSession();
 
       res.json({
         connected: true,
-        url: process.env.SUPABASE_URL || null,
-        hasSecretKey: Boolean(process.env.SUPABASE_SECRET_KEY),
-        hasPublishableKey: Boolean(process.env.SUPABASE_PUBLISHABLE_KEY),
-        hasJwksUrl: Boolean(process.env.SUPABASE_JWKS_URL),
         authError: error ? 'Authentication service notice' : null,
       });
     } catch (err: any) {

@@ -1,4 +1,4 @@
-export type NavView = 'dashboard' | 'tasks' | 'notes' | 'focus' | 'schedule' | 'habits' | 'courses' | 'flashcards';
+export type NavView = 'dashboard' | 'overview' | 'tasks' | 'notes' | 'focus' | 'schedule' | 'calendar' | 'habits' | 'courses' | 'flashcards' | 'connectors' | 'university' | 'ai';
 
 export interface Flashcard {
   id: string;
@@ -62,6 +62,7 @@ export interface Task {
   dueDate: string; // ISO date string or formatted
   priority: TaskPriority;
   status: TaskStatus;
+  completed?: boolean;
   estimatedMinutes?: number;
   subtasks?: { id: string; title: string; completed: boolean }[];
   tags?: string[];
@@ -106,7 +107,8 @@ export interface ScheduleEvent {
   dayOfWeek: number; // 1 (Mon) - 5 (Fri)
   startTime: string; // e.g., "09:00"
   endTime: string;   // e.g., "10:30"
-  type: 'lecture' | 'lab' | 'discussion' | 'office_hours';
+  date?: string;
+  type: 'lecture' | 'lab' | 'discussion' | 'office_hours' | 'exam';
   color: string;
 }
 

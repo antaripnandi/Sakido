@@ -11,13 +11,18 @@ interface HeaderProps {
 
 const viewTitles: Record<NavView, { title: string; subtitle: string }> = {
   dashboard: { title: 'Good morning, Alex 👋', subtitle: 'Here is your academic overview and focus plan for today.' },
+  overview: { title: 'Good morning, Alex 👋', subtitle: 'Here is your academic overview and focus plan for today.' },
   tasks: { title: 'Tasks & Assignments', subtitle: 'Manage coursework, problem sets, and submission deadlines.' },
   notes: { title: 'Course Notes & Knowledge', subtitle: 'Lecture summaries, markdown documents, and active recall notes.' },
   focus: { title: 'Zen Focus Room', subtitle: 'Deep work timer with ambient focus soundscapes.' },
   schedule: { title: 'Class Timetable', subtitle: 'Weekly lecture schedule, discussion sections, and room locations.' },
+  calendar: { title: 'Academic Calendar', subtitle: 'Unified view of class timetables, exam schedules, and deadlines.' },
   habits: { title: 'Daily Habits & Routines', subtitle: 'Track study consistency, physical health, and personal goals.' },
   courses: { title: 'Enrolled Courses', subtitle: 'Academic syllabus, grade benchmarks, and professor contact info.' },
   flashcards: { title: 'Spaced Repetition Flashcards', subtitle: 'Anki-style SM-2 review scheduling for active recall mastery.' },
+  connectors: { title: 'Service Connectors', subtitle: 'Integrate Google Workspace, Drive, and external services.' },
+  university: { title: 'University & People', subtitle: 'Campus directory, classmates, and academic resources.' },
+  ai: { title: 'AI Features', subtitle: 'Smart academic assistant and study tools.' },
 };
 
 export const Header: React.FC<HeaderProps> = ({
