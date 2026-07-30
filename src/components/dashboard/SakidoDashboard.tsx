@@ -115,7 +115,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   // Theme state with localStorage persistence
   const [isDarkMode, setIsDarkMode] = useLocalStorageState<boolean>('sakido_theme_mode', () => {
-    return document.documentElement.classList.contains('dark');
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
   // Persistent Collapsible Sidebar state
@@ -1045,11 +1045,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     };
   }, []);
 
-  // Sync dark mode class on document element & localStorage
+  // Sync dark mode class on document element
   useEffect(() => {
-    try {
-      localStorage.setItem('sakido_theme', isDarkMode ? 'dark' : 'light');
-    } catch {}
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
     } else {
