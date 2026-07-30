@@ -1,32 +1,90 @@
+import { createClient } from '@supabase/supabase-js';
+
+// Simple in-memory rate limiting map for Edge fallback + headers protection
+const rateMap = new Map();
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  const windowMs = 15 * 60 * 1000; // 15 mins
+  const limit = 50; // max 50 requests per 15 min window
+
+  const current = rateMap.get(ip);
+  if (!current || now > current.resetTime) {
+    rateMap.set(ip, { count: 1, resetTime: now + windowMs });
+    return false;
+  }
+
+  if (current.count >= limit) {
+    return true;
+  }
+
+  current.count += 1;
+  return false;
+}
+
 export default async function handler(req, res) {
-  // CORS & Security Headers
+  // 1. Strict CORS & Security Headers
   const allowedOrigin = process.env.ALLOWED_ORIGIN || 'https://sakidoapp.vercel.app';
-  res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  const reqOrigin = req.headers.origin;
+
+  if (reqOrigin && (reqOrigin === allowedOrigin || reqOrigin.endsWith('.vercel.app'))) {
+    res.setHeader('Access-Control-Allow-Origin', reqOrigin);
+  } else {
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+  }
+
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
 
-  // Only allow POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { refresh_token } = req.body || {};
-
-  if (!refresh_token || typeof refresh_token !== 'string' || refresh_token.length > 2048) {
-    return res.status(400).json({ error: 'Invalid or missing refresh_token' });
+  // 2. IP Rate Limiting Check
+  const clientIp = req.headers['x-forwarded-for']?.toString().split(',')[0] || req.socket?.remoteAddress || 'unknown';
+  if (isRateLimited(clientIp)) {
+    return res.status(429).json({ error: 'Too many refresh requests. Please try again later.' });
   }
 
-  // Google OAuth client credentials from Vercel env vars
+  // 3. Supabase Auth Verification Guard
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized. Active session token required.' });
+  }
+
+  const userToken = authHeader.split(' ')[1];
+  const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const supabaseAnonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+
+  if (supabaseUrl && supabaseAnonKey) {
+    try {
+      const supabase = createClient(supabaseUrl, supabaseAnonKey);
+      const { data: userData, error: userError } = await supabase.auth.getUser(userToken);
+      if (userError || !userData?.user) {
+        return res.status(401).json({ error: 'Invalid or expired session authorization.' });
+      }
+    } catch {
+      return res.status(401).json({ error: 'Session validation failed.' });
+    }
+  }
+
+  // 4. Validate payload
+  const { refresh_token } = req.body || {};
+  if (!refresh_token || typeof refresh_token !== 'string' || refresh_token.length > 2048) {
+    return res.status(400).json({ error: 'Invalid or missing refresh_token parameter.' });
+  }
+
+  // 5. Google OAuth Credentials Verification
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
   if (!clientId || !clientSecret) {
-    return res.status(500).json({ error: 'Server configuration issue: missing Google OAuth keys' });
+    return res.status(500).json({ error: 'Authentication service temporarily unconfigured.' });
   }
 
   try {
@@ -45,18 +103,18 @@ export default async function handler(req, res) {
 
     if (!response.ok) {
       return res.status(response.status).json({
-        error: data.error || 'Token refresh failed',
-        error_description: data.error_description || '',
+        error: 'Token refresh failed.',
       });
     }
 
-    // Return the fresh access token
+    // Return fresh token securely
     return res.status(200).json({
       access_token: data.access_token,
       expires_in: data.expires_in,
       token_type: data.token_type,
     });
-  } catch (err) {
-    return res.status(500).json({ error: 'Failed to refresh token', details: err.message });
+  } catch {
+    // Sanitized Error Response - Never leak internal err.message or stack trace
+    return res.status(500).json({ error: 'Internal server error while processing token refresh.' });
   }
 }

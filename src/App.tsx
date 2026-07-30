@@ -32,12 +32,6 @@ function AppContent() {
     supabase.auth.getSession().then(({ data }) => {
       if (data.session?.user) {
         const u = data.session.user;
-        if (data.session.provider_token) {
-          try { localStorage.setItem('sakido_provider_token', data.session.provider_token); } catch {}
-        }
-        if (data.session.provider_refresh_token) {
-          try { localStorage.setItem('sakido_provider_refresh_token', data.session.provider_refresh_token); } catch {}
-        }
         setCurrentUser({
           id: u.id,
           email: u.email,
@@ -51,12 +45,6 @@ function AppContent() {
     const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         const u = session.user;
-        if (session?.provider_token) {
-          try { localStorage.setItem('sakido_provider_token', session.provider_token); } catch {}
-        }
-        if (session?.provider_refresh_token) {
-          try { localStorage.setItem('sakido_provider_refresh_token', session.provider_refresh_token); } catch {}
-        }
         setCurrentUser({
           id: u.id,
           email: u.email,
