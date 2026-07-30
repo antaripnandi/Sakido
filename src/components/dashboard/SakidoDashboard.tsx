@@ -39,7 +39,9 @@ import {
   Archive,
   Palette,
   CheckSquare,
-  Square,
+  LayoutDashboard,
+  PanelLeftClose,
+  PanelLeftOpen,
   Tag
 } from 'lucide-react';
 import { getSupabaseClient } from '../../lib/supabaseClient';
@@ -52,6 +54,7 @@ import { FocusTimer } from '../focus/FocusTimer';
 import { FocusTimerView, FocusSessionConfig } from '../focus/FocusTimerView';
 
 const TAB_SLUG_MAP: Record<string, string> = {
+  overview: 'Overview',
   classes: 'Classes',
   calendar: 'Calendar',
   tasks: 'Tasks & Grades',
@@ -67,6 +70,7 @@ const TAB_SLUG_MAP: Record<string, string> = {
 };
 
 const TAB_NAME_TO_SLUG: Record<string, string> = {
+  Overview: 'overview',
   Classes: 'classes',
   Calendar: 'calendar',
   'Tasks & Grades': 'tasks',
@@ -99,11 +103,11 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const navigate = useNavigate();
 
   // Derive active tab from URL path
-  const subPath = location.pathname.replace(/^\/dashboard\/?/, '').toLowerCase() || 'classes';
-  const activeTab = TAB_SLUG_MAP[subPath] || 'Classes';
+  const subPath = location.pathname.replace(/^\/dashboard\/?/, '').toLowerCase() || 'overview';
+  const activeTab = TAB_SLUG_MAP[subPath] || 'Overview';
 
   const handleSelectTab = (tabName: string) => {
-    const slug = TAB_NAME_TO_SLUG[tabName] || 'classes';
+    const slug = TAB_NAME_TO_SLUG[tabName] || 'overview';
     navigate(`/dashboard/${slug}`);
     setIsMobileMenuOpen(false);
   };
@@ -112,6 +116,25 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const [isDarkMode, setIsDarkMode] = useLocalStorageState<boolean>('sakido_theme_mode', () => {
     return document.documentElement.classList.contains('dark');
   });
+
+  // Persistent Collapsible Sidebar state
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('sakido_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('sakido_sidebar_collapsed', String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   // Focus timer overlay state & initial parameters
   const [isFocusTimerOpen, setIsFocusTimerOpen] = useState<boolean>(false);
@@ -2682,44 +2705,50 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         </div>
       </div>
 
-      {/* Sidebar Navigation - Fixed 256px Layout */}
+      {/* Sidebar Navigation - Collapsible Layout */}
       <nav
-        className={`fixed top-0 left-0 h-screen w-64 bg-surface-container-low border-r border-outline-variant/30 flex flex-col z-50 transition-transform duration-300 ${
+        className={`fixed top-0 left-0 h-screen bg-surface-container-low border-r border-outline-variant/30 flex flex-col z-50 transition-all duration-300 ${
+          isSidebarCollapsed ? 'w-20' : 'w-64'
+        } ${
           isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
         {/* Scrollable Navigation Links */}
-        <div className="flex-1 overflow-y-auto py-6 px-4 flex flex-col">
-          {/* Brand */}
-          <div className="mb-6 flex items-center justify-between shrink-0">
+        <div className="flex-1 overflow-y-auto py-6 px-3 flex flex-col no-scrollbar">
+          {/* Brand & Collapse Toggle */}
+          <div className="mb-6 flex items-center justify-between shrink-0 px-1">
             <div className="flex items-center gap-3">
               <SakidoLogo size="w-8 h-8" />
-              <div>
-                <h1 className="font-display text-2xl font-bold tracking-tight text-on-surface">
-                  Sakido
-                </h1>
-                <p className="text-secondary text-xs mt-0.5 font-mono">
-                  Productivity Portal
-                </p>
-              </div>
+              {!isSidebarCollapsed && (
+                <div>
+                  <h1 className="font-display text-2xl font-bold tracking-tight text-on-surface">
+                    Sakido
+                  </h1>
+                  <p className="text-secondary text-xs mt-0.5 font-mono">
+                    Productivity Portal
+                  </p>
+                </div>
+              )}
             </div>
-            {onBackToLanding && (
-              <button
-                onClick={onBackToLanding}
-                className="p-1.5 rounded-lg border border-outline-variant/40 hover:bg-surface-container text-secondary hover:text-on-surface transition-colors cursor-pointer"
-                title="Return to Landing Page"
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </button>
-            )}
+
+            <button
+              onClick={toggleSidebar}
+              className="p-1.5 rounded-lg border border-outline-variant/40 hover:bg-surface-container text-secondary hover:text-on-surface transition-colors cursor-pointer"
+              title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+            >
+              {isSidebarCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+            </button>
           </div>
 
           {/* Student Section */}
-          <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0">
-            Student Workspace
-          </div>
+          {!isSidebarCollapsed && (
+            <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0 px-2">
+              Student Workspace
+            </div>
+          )}
           <ul className="space-y-1 mb-6 shrink-0">
             {[
+              { name: 'Overview', icon: LayoutDashboard },
               { name: 'Classes', icon: BookOpen },
               { name: 'Calendar', icon: CalendarIcon },
               { name: 'Tasks & Grades', icon: CheckCircle2 },
@@ -2733,88 +2762,106 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 <li key={item.name}>
                   <button
                     onClick={() => handleSelectTab(item.name)}
+                    title={isSidebarCollapsed ? item.name : undefined}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                      isSidebarCollapsed ? 'justify-center px-2' : ''
+                    } ${
                       isActive
                         ? 'text-primary font-bold bg-surface-container border border-primary-container/20 shadow-2xs'
                         : 'text-secondary hover:text-on-surface hover:bg-surface-container/60'
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
-                    <span>{item.name}</span>
+                    <Icon className="w-4 h-4 shrink-0" />
+                    {!isSidebarCollapsed && <span className="truncate">{item.name}</span>}
                   </button>
                 </li>
               );
             })}
           </ul>
 
-          {/* Connectors Section */}
-          <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0">
-            Integrations
-          </div>
+          {/* Integrations Section */}
+          {!isSidebarCollapsed && (
+            <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0 px-2">
+              Integrations
+            </div>
+          )}
           <ul className="space-y-1 mb-6 shrink-0">
             <li>
               <button
                 onClick={() => handleSelectTab('Connectors')}
+                title={isSidebarCollapsed ? "Connectors" : undefined}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                  isSidebarCollapsed ? 'justify-center px-2' : ''
+                } ${
                   activeTab === 'Connectors'
                     ? 'text-primary font-bold bg-surface-container border border-primary-container/20 shadow-2xs'
                     : 'text-secondary hover:text-on-surface hover:bg-surface-container/60'
                 }`}
               >
-                <Sliders className="w-4 h-4" />
-                <span>Connectors</span>
+                <Sliders className="w-4 h-4 shrink-0" />
+                {!isSidebarCollapsed && <span className="truncate">Connectors</span>}
               </button>
             </li>
           </ul>
 
-          {/* Focus Timer */}
-          <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0">
-            Focus
-          </div>
+          {/* Focus Section */}
+          {!isSidebarCollapsed && (
+            <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0 px-2">
+              Focus
+            </div>
+          )}
           <ul className="space-y-1 mb-6 shrink-0">
             <li>
               <button
                 onClick={() => handleSelectTab('Focus Timer')}
+                title={isSidebarCollapsed ? "Focus Timer" : undefined}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                  isSidebarCollapsed ? 'justify-center px-2' : ''
+                } ${
                   activeTab === 'Focus Timer'
                     ? 'text-primary font-bold bg-surface-container border border-primary-container/20 shadow-2xs'
                     : 'text-secondary hover:text-on-surface hover:bg-surface-container/60'
                 }`}
               >
-                <Clock className="w-4 h-4" />
-                <span>Focus Timer</span>
+                <Clock className="w-4 h-4 shrink-0" />
+                {!isSidebarCollapsed && <span className="truncate">Focus Timer</span>}
               </button>
             </li>
           </ul>
 
-          {/* Other Section */}
-          <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0">
-            Modules
-          </div>
+          {/* Modules Section */}
+          {!isSidebarCollapsed && (
+            <div className="mb-2 text-[11px] font-bold text-secondary uppercase tracking-wider font-mono shrink-0 px-2">
+              Modules
+            </div>
+          )}
           <ul className="space-y-1 mb-6 shrink-0">
             {['University & People', 'AI Features'].map((item) => (
               <li key={item}>
                 <button
                   onClick={() => handleSelectTab(item)}
+                  title={isSidebarCollapsed ? item : undefined}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                    isSidebarCollapsed ? 'justify-center px-2' : ''
+                  } ${
                     activeTab === item
                       ? 'text-primary font-bold bg-surface-container border border-primary-container/20 shadow-2xs'
                       : 'text-secondary hover:text-on-surface hover:bg-surface-container/60'
                   }`}
                 >
-                  <Info className="w-4 h-4 text-secondary/60" />
-                  <span>{item}</span>
+                  <Info className="w-4 h-4 text-secondary/60 shrink-0" />
+                  {!isSidebarCollapsed && <span className="truncate">{item}</span>}
                 </button>
               </li>
             ))}
           </ul>
         </div>
 
-        {/* Footer User Info (Pinned at bottom of fixed sidebar) */}
-        <div className="border-t border-outline-variant/30 px-4 py-3.5 bg-surface-container-low flex items-center justify-between shrink-0 shadow-xs">
+        {/* Footer User Info */}
+        <div className="border-t border-outline-variant/30 px-3 py-3.5 bg-surface-container-low flex items-center justify-between shrink-0 shadow-xs">
           <button
             onClick={() => setIsProfileModalOpen(true)}
-            className="flex items-center gap-2.5 min-w-0 hover:bg-surface-container/80 p-1.5 -ml-1.5 rounded-xl transition-all cursor-pointer text-left flex-1"
+            className="flex items-center gap-2.5 min-w-0 hover:bg-surface-container/80 p-1.5 rounded-xl transition-all cursor-pointer text-left flex-1"
             title={userName}
           >
             <div className="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant/40 flex items-center justify-center overflow-hidden shrink-0">
@@ -2824,10 +2871,10 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 <UserIcon className="w-4 h-4 text-secondary" />
               )}
             </div>
-            <span className="text-xs font-bold text-on-surface truncate">{userName}</span>
+            {!isSidebarCollapsed && <span className="text-xs font-bold text-on-surface truncate">{userName}</span>}
           </button>
 
-          {onSignOut && (
+          {!isSidebarCollapsed && onSignOut && (
             <button
               onClick={() => setIsLogoutConfirmOpen(true)}
               className="p-2 rounded-lg text-secondary hover:text-error hover:bg-surface-container-high transition-colors cursor-pointer shrink-0 ml-1"
@@ -2839,8 +2886,10 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         </div>
       </nav>
 
-      {/* Main Container with lg:pl-64 Sidebar Offset */}
-      <main className="flex-1 lg:pl-64 flex flex-col min-h-screen pt-16 lg:pt-0 w-full overflow-x-hidden">
+      {/* Main Container with dynamic Sidebar Offset */}
+      <main className={`flex-1 flex flex-col min-h-screen pt-16 lg:pt-0 w-full overflow-x-hidden transition-all duration-300 ${
+        isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
+      }`}>
         {/* Banner Hero Section - Fixes Overlap Bug! */}
         <div className="relative w-full px-4 sm:px-8 lg:px-12 pt-6">
           <div
@@ -2890,59 +2939,63 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             </p>
           </div>
 
-          {/* Main Dashboard 12-Column Grid */}
+          {/* Main Dashboard Grid */}
           <div className="grid grid-cols-12 gap-8 flex-1">
-            {/* Left Column (Clock & Real Date Widget) */}
-            <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
-              <div className="p-6 rounded-2xl border border-outline-variant/40 bg-surface-container-low shadow-xs flex flex-col items-center sm:items-start gap-4">
-                <div className="flex items-center gap-6">
-                  {/* Live Analog Clock */}
-                  <div className="analog-clock-container bg-surface-container-lowest">
-                    {/* Ticks */}
-                    <div className="tick" style={{ transform: 'translateX(-50%) rotate(0deg)' }}></div>
-                    <div className="tick" style={{ transform: 'translateX(-50%) rotate(90deg)' }}></div>
-                    <div className="tick" style={{ transform: 'translateX(-50%) rotate(180deg)' }}></div>
-                    <div className="tick" style={{ transform: 'translateX(-50%) rotate(270deg)' }}></div>
+            {/* Left Column (Clock & Real Date Widget - STRICTLY SCOPED TO OVERVIEW) */}
+            {activeTab === 'Overview' && (
+              <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
+                <div className="p-6 rounded-2xl border border-outline-variant/40 bg-surface-container-low shadow-xs flex flex-col items-center sm:items-start gap-4">
+                  <div className="flex items-center gap-6">
+                    {/* Live Analog Clock */}
+                    <div className="analog-clock-container bg-surface-container-lowest">
+                      {/* Ticks */}
+                      <div className="tick" style={{ transform: 'translateX(-50%) rotate(0deg)' }}></div>
+                      <div className="tick" style={{ transform: 'translateX(-50%) rotate(90deg)' }}></div>
+                      <div className="tick" style={{ transform: 'translateX(-50%) rotate(180deg)' }}></div>
+                      <div className="tick" style={{ transform: 'translateX(-50%) rotate(270deg)' }}></div>
 
-                    {/* Hands */}
-                    <div className="hand hour-hand" style={{ transform: `translateX(-50%) rotate(${hourDeg}deg)` }}></div>
-                    <div className="hand minute-hand" style={{ transform: `translateX(-50%) rotate(${minuteDeg}deg)` }}></div>
-                    <div className="hand second-hand" style={{ transform: `translateX(-50%) rotate(${secondDeg}deg)` }}></div>
-                    <div className="clock-center"></div>
+                      {/* Hands */}
+                      <div className="hand hour-hand" style={{ transform: `translateX(-50%) rotate(${hourDeg}deg)` }}></div>
+                      <div className="hand minute-hand" style={{ transform: `translateX(-50%) rotate(${minuteDeg}deg)` }}></div>
+                      <div className="hand second-hand" style={{ transform: `translateX(-50%) rotate(${secondDeg}deg)` }}></div>
+                      <div className="clock-center"></div>
+                    </div>
+
+                    {/* Real Date Display */}
+                    <div className="text-left">
+                      <p className="font-mono text-xs uppercase tracking-widest text-primary-container font-bold">
+                        {now.toLocaleDateString('en-US', { weekday: 'long' })}
+                      </p>
+                      <p className="font-display font-bold text-xl text-on-surface mt-0.5">
+                        {now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+                      </p>
+                      <p className="font-mono text-xs text-secondary mt-1">
+                        {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                      </p>
+                    </div>
                   </div>
 
-                  {/* Real Date Display */}
-                  <div className="text-left">
-                    <p className="font-mono text-xs uppercase tracking-widest text-primary-container font-bold">
-                      {now.toLocaleDateString('en-US', { weekday: 'long' })}
-                    </p>
-                    <p className="font-display font-bold text-xl text-on-surface mt-0.5">
-                      {now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
-                    </p>
-                    <p className="font-mono text-xs text-secondary mt-1">
-                      {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Quick Academic Summary */}
-                <div className="w-full pt-4 border-t border-outline-variant/20 grid grid-cols-2 gap-3 text-center sm:text-left">
-                  <div>
-                    <span className="text-[10px] font-mono uppercase text-secondary">Active Courses</span>
-                    <p className="font-display font-bold text-lg text-on-surface">{classes.length}</p>
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-mono uppercase text-secondary">Pending Tasks</span>
-                    <p className="font-display font-bold text-lg text-on-surface">
-                      {tasks.filter((t) => !t.completed).length}
-                    </p>
+                  {/* Quick Academic Summary */}
+                  <div className="w-full pt-4 border-t border-outline-variant/20 grid grid-cols-2 gap-3 text-center sm:text-left">
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-secondary">Active Courses</span>
+                      <p className="font-display font-bold text-lg text-on-surface">{classes.length}</p>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-secondary">Pending Tasks</span>
+                      <p className="font-display font-bold text-lg text-on-surface">
+                        {tasks.filter((t) => !t.completed).length}
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
-            {/* Right Column (Dynamic Tab Content View) */}
-            {renderTabContent()}
+            {/* Dynamic Tab Content View */}
+            <div className={activeTab === 'Overview' ? 'col-span-12 lg:col-span-8' : 'col-span-12'}>
+              {renderTabContent()}
+            </div>
           </div>
         </div>
       </main>
