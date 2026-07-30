@@ -34,6 +34,8 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
       imagesRef.current[0] = firstImg;
       isLoadedMapRef.current[0] = true;
       loadedCount++;
+      // Immediately draw Frame 1 to canvas on load (eliminates 0ms black screen)
+      requestAnimationFrame(() => drawFrame(0));
       if (onPreloadProgress) {
         onPreloadProgress(Math.min(100, Math.round((loadedCount / totalFrames) * 100)));
       }
@@ -148,6 +150,13 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
             img = imagesRef.current[next];
             break;
           }
+        }
+      }
+
+      // Fallback to initial hero frame (Frame 1) if no nearby frame is ready
+      if (!img || !img.complete || img.naturalWidth === 0) {
+        if (imagesRef.current[0]?.complete && imagesRef.current[0]!.naturalWidth > 0) {
+          img = imagesRef.current[0];
         }
       }
 
