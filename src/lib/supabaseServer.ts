@@ -12,11 +12,11 @@ let supabaseAdminInstance: SupabaseClient | null = null;
 export function getSupabaseAdmin(): SupabaseClient {
   if (!supabaseAdminInstance) {
     const supabaseUrl = process.env.SUPABASE_URL;
-    const secretKey = process.env.SUPABASE_SECRET_KEY;
+    const secretKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !secretKey) {
       throw new Error(
-        'Missing SUPABASE_URL or SUPABASE_SECRET_KEY in server environment variables.'
+        'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in server environment variables.'
       );
     }
 

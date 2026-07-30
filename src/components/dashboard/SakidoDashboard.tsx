@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { getProviderToken, setProviderToken, clearProviderToken } from '../../lib/googleTokenStore';
 import {
   Sun,
   Moon,
@@ -451,7 +452,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   const debouncedSyncNotesToGoogleDrive = useCallback((updatedNotes: any[]) => {
     if (!connectors.googleDrive) return;
-    const token = localStorage.getItem('sakido_provider_token');
+    const token = getProviderToken();
     if (!token) return;
 
     if (driveSyncTimeoutRef.current) {
@@ -478,7 +479,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           // Only mark as connected if user returned with an active session containing valid provider token or Google identity
           if (session && (session.provider_token || session.user?.identities?.some(i => i.provider === 'google'))) {
             if (session.provider_token) {
-              localStorage.setItem('sakido_provider_token', session.provider_token);
+              setProviderToken(session.provider_token);
             }
             if ((session as any).provider_refresh_token) {
               const supabase = getSupabaseClient();
@@ -549,27 +550,24 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     try {
       const res = await fetch('/api/refresh-token', {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
+        headers: { 'Authorization': `Bearer ${session.access_token}` },
       });
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        // Disconnect only on explicit signals that the refresh token is permanently dead.
+        // Only disconnect on hard failures — revoked or missing refresh token.
         // Transient errors (500, 429, network blip) must NOT wipe connector state.
         const hardFail = body.error === 'reconnect_required' || body.error === 'invalid_grant';
         if (hardFail) {
           setConnectors((prev) => ({ ...prev, googleCalendar: false, googleDrive: false, gmail: false }));
-          localStorage.removeItem('sakido_provider_token');
-          localStorage.removeItem('sakido_provider_refresh_token');
+          clearProviderToken();
         }
         return null;
       }
 
       const data = await res.json();
       if (data.access_token) {
-        localStorage.setItem('sakido_provider_token', data.access_token);
+        setProviderToken(data.access_token);
         return data.access_token;
       }
       return null;
@@ -583,7 +581,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const executeGoogleApi = useCallback(async (
     apiCall: (accessToken: string) => Promise<Response>
   ): Promise<Response | null> => {
-    let token = localStorage.getItem('sakido_provider_token');
+    let token = getProviderToken();
 
     // No token cached — try a silent refresh before the first call
     if (!token) {
@@ -695,7 +693,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     if (!connectors.googleDrive) return;
 
     const fetchGoogleNotes = async () => {
-      let token = localStorage.getItem('sakido_provider_token');
+      let token = getProviderToken();
       if (!token) return;
 
       try {
@@ -1313,8 +1311,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           });
         }
       });
-      localStorage.removeItem('sakido_provider_token');
-      localStorage.removeItem('sakido_provider_refresh_token');
+      clearProviderToken();
 
       setConnectors((prev) => ({ ...prev, [serviceKey]: false }));
       setConnectorNotice(`Disconnected ${serviceNames[serviceKey]}.`);
