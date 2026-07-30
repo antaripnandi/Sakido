@@ -59,15 +59,28 @@ function AppContent() {
       // the SIGNED_IN event fired immediately after the OAuth redirect lands.
       // getSession() called anywhere later will return null for this field.
       // Guard: only write when it's actually present (won't overwrite on normal session restores).
+      // Also reads and preserves existing flag columns so a first-time INSERT never defaults
+      // connector flags to false alongside a valid refresh_token (defense-in-depth).
       if (event === 'SIGNED_IN' && session?.provider_refresh_token) {
-        supabase.from('google_tokens').upsert({
-          user_id: session.user.id,
-          refresh_token: session.provider_refresh_token,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: 'user_id' }).then(({ error }) => {
-          if (error) console.warn('[auth] google_tokens upsert failed:', error.message);
-          else console.log('[auth] provider_refresh_token saved for user', session.user.id);
-        });
+        // Read existing flag state first (if any) to preserve on upsert
+        supabase.from('google_tokens')
+          .select('google_calendar_connected, google_drive_connected, gmail_connected')
+          .eq('user_id', session.user.id)
+          .maybeSingle()
+          .then(({ data, error }) => {
+            if (error) console.warn('[auth] google_tokens read failed:', error.message);
+            supabase.from('google_tokens').upsert({
+              user_id: session.user.id,
+              refresh_token: session.provider_refresh_token,
+              google_calendar_connected: data?.google_calendar_connected ?? false,
+              google_drive_connected: data?.google_drive_connected ?? false,
+              gmail_connected: data?.gmail_connected ?? false,
+              updated_at: new Date().toISOString(),
+            }, { onConflict: 'user_id' }).then(({ error: upsertError }) => {
+              if (upsertError) console.warn('[auth] google_tokens upsert failed:', upsertError.message);
+              else console.log('[auth] provider_refresh_token + flags saved for user', session.user.id);
+            });
+          });
       } else if (event === 'SIGNED_IN' && !session?.provider_refresh_token) {
         // Log when SIGNED_IN fires without a refresh token — signals regression or missing prompt:consent
         console.log('[auth] SIGNED_IN fired without provider_refresh_token — normal session restore or missing access_type:offline');

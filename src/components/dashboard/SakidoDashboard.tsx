@@ -253,37 +253,52 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     gmail: boolean;
   }>('sakido_connectors', { googleCalendar: false, googleDrive: false, gmail: false });
 
+  // Gate: ensures mount sync completes before OAuth callback writes connector state.
+  // Prevents the race where mount sync reads stale DB flags and overwrites fresh
+  // OAuth-set flags (Issue 5 in audit).
+  const [mountSynced, setMountSynced] = useState(false);
+
   // Sync connector state from DB on mount — fixes cross-device visibility.
   // All three service flags are stored as columns on google_tokens.
   useEffect(() => {
-    if (!currentUser?.id) return;
+    if (!currentUser?.id) {
+      setMountSynced(true);
+      return;
+    }
     const supabase = getSupabaseClient();
-    if (!supabase) return;
+    if (!supabase) {
+      setMountSynced(true);
+      return;
+    }
 
-    supabase
-      .from('google_tokens')
-      .select('refresh_token, google_calendar_connected, google_drive_connected, gmail_connected')
-      .eq('user_id', currentUser.id)
-      .maybeSingle()
-      .then(({ data, error }) => {
-        if (error) {
-          console.warn('[connectors] DB sync failed:', error.message);
-          return;
-        }
-        if (!data) return; // no row = never connected, keep localStorage as-is
-        const fromDB = {
-          googleCalendar: Boolean(data.google_calendar_connected),
-          googleDrive: Boolean(data.google_drive_connected),
-          gmail: Boolean(data.gmail_connected),
-        };
-        setConnectors(prev => {
-          const changed = (Object.keys(fromDB) as (keyof typeof fromDB)[])
-            .some(k => prev[k] !== fromDB[k]);
-          if (!changed) return prev;
-          console.log('[connectors] DB sync:', fromDB);
-          return { ...prev, ...fromDB };
-        });
-      });
+    // Wrap in Promise.resolve() because Supabase .then() returns PromiseLike
+    // (which lacks .finally()).
+    Promise.resolve(
+      supabase
+        .from('google_tokens')
+        .select('google_calendar_connected, google_drive_connected, gmail_connected')
+        .eq('user_id', currentUser.id)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (error) {
+            console.warn('[connectors] DB sync failed:', error.message);
+            return;
+          }
+          if (!data) return; // no row = never connected, keep localStorage as-is
+          const fromDB = {
+            googleCalendar: Boolean(data.google_calendar_connected),
+            googleDrive: Boolean(data.google_drive_connected),
+            gmail: Boolean(data.gmail_connected),
+          };
+          setConnectors(prev => {
+            const changed = (Object.keys(fromDB) as (keyof typeof fromDB)[])
+              .some(k => prev[k] !== fromDB[k]);
+            if (!changed) return prev;
+            console.log('[connectors] DB sync:', fromDB);
+            return { ...prev, ...fromDB };
+          });
+        })
+    ).finally(() => setMountSynced(true));
   }, [currentUser?.id]);
 
   // Bulk sync helper: push all existing Sakido events to Google Calendar
@@ -498,8 +513,12 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     }, 2500);
   }, [connectors.googleDrive]);
 
-  // Verify pending connector ONLY after user completes OAuth authorization callback
+  // Verify pending connector ONLY after user completes OAuth authorization callback.
+  // Waits for mountSync to complete first (Issue 5 fix) so it never overwrites
+  // fresh OAuth-set flags with stale DB data from the mount read.
   useEffect(() => {
+    if (!mountSynced) return; // wait for mount sync to complete first
+
     const verifyOAuthCallback = async () => {
       try {
         const pending = localStorage.getItem('sakido_pending_connector');
@@ -517,29 +536,22 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             }
             if ((session as any).provider_refresh_token) {
               const supabase = getSupabaseClient();
-              supabase?.from('google_tokens').upsert({
-                user_id: session.user.id,
-                refresh_token: (session as any).provider_refresh_token,
-                updated_at: new Date().toISOString(),
-              }, { onConflict: 'user_id' }).then(({ error }) => {
-                if (error) console.warn('Database token save notice:', error.message);
-              });
-            }
-            setConnectors((prev) => ({ ...prev, [pending]: true }));
-            // Persist per-service flag to DB so other devices sync on mount
-            const supabaseForFlag = getSupabaseClient();
-            if (supabaseForFlag && session.user.id) {
               const flagCol = pending === 'googleCalendar' ? 'google_calendar_connected'
                 : pending === 'googleDrive' ? 'google_drive_connected'
                 : 'gmail_connected';
-              supabaseForFlag.from('google_tokens').upsert({
+              // Single upsert — never split refresh_token and flag into separate calls
+              // because two upserts with onConflict can race and null out each other's fields
+              supabase?.from('google_tokens').upsert({
                 user_id: session.user.id,
+                refresh_token: (session as any).provider_refresh_token,
                 [flagCol]: true,
                 updated_at: new Date().toISOString(),
               }, { onConflict: 'user_id' }).then(({ error }) => {
-                if (error) console.warn('[connectors] flag upsert failed:', error.message);
+                if (error) console.warn('[connectors] token+flag upsert failed:', error.message);
+                else console.log('[connectors] token+flag saved:', flagCol);
               });
             }
+            setConnectors((prev) => ({ ...prev, [pending]: true }));
             const serviceNames: Record<string, string> = {
               googleCalendar: 'Google Calendar',
               googleDrive: 'Google Drive',
@@ -564,7 +576,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     };
 
     verifyOAuthCallback();
-  }, []);
+  }, [mountSynced]);
 
   // Custom events state for Academic Calendar with debounced persistence
   const [events, setEvents] = useLocalStorageState<any[]>('sakido_events', [], 300);
@@ -1352,31 +1364,63 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     // Handle Disconnect Action
     if (connectors[serviceKey]) {
       const supabase = getSupabaseClient();
-      supabase?.auth.getSession().then(({ data }) => {
-        if (!data?.session?.user?.id) return;
-        const uid = data.session.user.id;
-        const flagCol = serviceKey === 'googleCalendar' ? 'google_calendar_connected'
-          : serviceKey === 'googleDrive' ? 'google_drive_connected'
-          : 'gmail_connected';
 
-        // Clear this service's flag; only delete the whole row if all three are now off
-        const newState = { ...connectors, [serviceKey]: false };
-        const allOff = !newState.googleCalendar && !newState.googleDrive && !newState.gmail;
+      // Compute allOff SYNCHRONOUSLY (before any async call) to avoid stale closure.
+      // connectors at this point is the state at click time — guaranteed correct for same-tab.
+      const flagCol = serviceKey === 'googleCalendar' ? 'google_calendar_connected'
+        : serviceKey === 'googleDrive' ? 'google_drive_connected'
+        : 'gmail_connected';
+      const allOff = !Object.values({ ...connectors, [serviceKey]: false }).some(Boolean);
 
-        if (allOff) {
-          supabase.from('google_tokens').delete().eq('user_id', uid)
-            .then(({ error }) => { if (error) console.warn('[connectors] row delete failed:', error.message); });
-        } else {
-          supabase.from('google_tokens').update({ [flagCol]: false, updated_at: new Date().toISOString() })
-            .eq('user_id', uid)
-            .then(({ error }) => { if (error) console.warn('[connectors] flag clear failed:', error.message); });
-        }
-      });
+      // Optimistic local state update (synchronous, before async DB work)
       clearProviderToken();
-
       setConnectors((prev) => ({ ...prev, [serviceKey]: false }));
       setConnectorNotice(`Disconnected ${serviceNames[serviceKey]}.`);
       setConnectingService(null);
+
+      // DB operations (async — use pre-computed allOff for same-tab correctness)
+      supabase?.auth.getSession().then(({ data }) => {
+        if (!data?.session?.user?.id) return;
+        const uid = data.session.user.id;
+
+        if (!allOff) {
+          // Some other service is still connected — just clear this flag
+          supabase.from('google_tokens').update({ [flagCol]: false, updated_at: new Date().toISOString() })
+            .eq('user_id', uid)
+            .then(({ error }) => { if (error) console.warn('[connectors] flag clear failed:', error.message); });
+        } else {
+          // This was the last connected service. Cross-tab safety: verify from DB before deleting.
+          supabase.from('google_tokens')
+            .select('google_calendar_connected, google_drive_connected, gmail_connected')
+            .eq('user_id', uid)
+            .maybeSingle()
+            .then(({ data: dbState, error }) => {
+              if (error) {
+                console.warn('[connectors] DB re-read failed before delete:', error.message);
+                return;
+              }
+              const dbAllOff = !dbState || (
+                !dbState.google_calendar_connected &&
+                !dbState.google_drive_connected &&
+                !dbState.gmail_connected
+              );
+              if (dbAllOff) {
+                // DB confirms all flags are false — safe to delete the row
+                supabase.from('google_tokens').delete().eq('user_id', uid)
+                  .then(({ error: delError }) => {
+                    if (delError) console.warn('[connectors] row delete failed:', delError.message);
+                  });
+              } else {
+                // Another tab reconnected in the meantime — just clear this one flag
+                supabase.from('google_tokens').update({ [flagCol]: false, updated_at: new Date().toISOString() })
+                  .eq('user_id', uid)
+                  .then(({ error: updError }) => {
+                    if (updError) console.warn('[connectors] flag clear failed:', updError.message);
+                  });
+              }
+            });
+        }
+      });
       return;
     }
 
