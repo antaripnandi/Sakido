@@ -245,12 +245,40 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     setFlashcards(prev => prev.filter(c => c.id !== id));
   };
 
-  // Connectors OAuth status state with localStorage persistence
+  // Connectors OAuth status — localStorage as optimistic local cache, google_tokens DB as source of truth.
+  // On mount we fetch the DB and override localStorage so all devices stay in sync.
   const [connectors, setConnectors] = useLocalStorageState<{
     googleCalendar: boolean;
     googleDrive: boolean;
     gmail: boolean;
   }>('sakido_connectors', { googleCalendar: false, googleDrive: false, gmail: false });
+
+  // Sync connector state from DB on mount — fixes cross-device visibility.
+  // google_tokens row existing with non-null refresh_token = connected.
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    supabase
+      .from('google_tokens')
+      .select('refresh_token')
+      .eq('user_id', currentUser.id)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (error) {
+          console.warn('[connectors] DB sync failed:', error.message);
+          return;
+        }
+        const connected = Boolean(data?.refresh_token);
+        // Only update if DB disagrees with local cache — avoids unnecessary re-renders
+        setConnectors(prev => {
+          if (prev.googleCalendar === connected) return prev;
+          console.log('[connectors] DB sync: googleCalendar', connected);
+          return { ...prev, googleCalendar: connected };
+        });
+      });
+  }, [currentUser?.id]);
 
   // Bulk sync helper: push all existing Sakido events to Google Calendar
   const bulkSyncEventsToGCal = async (accessToken: string) => {
