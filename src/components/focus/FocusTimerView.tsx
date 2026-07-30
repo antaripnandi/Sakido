@@ -21,11 +21,11 @@ interface FocusTimerViewProps {
 }
 
 const NORMAL_PRESETS = [
-  { value: 15, title: '15m', label: 'Quick rest' },
-  { value: 25, title: '25m', label: 'Pomodoro' },
-  { value: 45, title: '45m', label: 'Deep work' },
-  { value: 60, title: '60m', label: 'Study' },
-  { value: 90, title: '90m', label: 'Sprint' },
+  { value: 15, title: '15m' },
+  { value: 25, title: '25m' },
+  { value: 45, title: '45m' },
+  { value: 60, title: '60m' },
+  { value: 90, title: '90m' },
 ];
 
 const POMODORO_RATIOS: { key: PomodoroRatioKey; title: string; defaultFocus: number }[] = [
@@ -138,19 +138,12 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
                         key={preset.value}
                         type="button"
                         onClick={() => setDurationMinutes(preset.value)}
-                        className={`preset-card group flex flex-col items-center justify-center py-5 md:py-6 bg-surface-container border border-outline-variant transition-all rounded-full ${
+                        className={`preset-card group flex items-center justify-center py-4 md:py-5 bg-surface-container border border-outline-variant transition-all rounded-full ${
                           isActive ? 'active' : 'hover:bg-surface-container-high'
                         }`}
                       >
                         <span className={`font-display text-xl md:text-2xl font-bold ${isActive ? '' : 'text-on-surface'}`}>
                           {preset.title}
-                        </span>
-                        <span
-                          className={`font-label-sm text-[10px] md:text-xs text-on-surface-variant group-hover:text-on-surface ${
-                            isActive ? 'opacity-90 uppercase tracking-wider text-white dark:text-[#51361c]' : ''
-                          }`}
-                        >
-                          {preset.label}
                         </span>
                       </button>
                     );
