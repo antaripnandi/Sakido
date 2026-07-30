@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Make dark: variant respond to html.dark class, not OS preference */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-surface: #fff8f5;
   --color-surface-dim: #e2d8d3;
