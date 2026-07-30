@@ -317,10 +317,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* Unified List Items */}
           <div className="space-y-3">
             {filteredAcademicItems.length === 0 ? (
-              <div className="p-8 text-center rounded-2xl border border-dashed border-outline-variant/40 bg-surface-container-low">
-                <CheckSquare className="w-8 h-8 text-secondary/60 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-on-surface">No academic items match current filter</p>
-                <p className="text-xs text-secondary mt-1">Try switching status filters or adding a new assignment</p>
+              <div className="p-8 text-center rounded-2xl border border-dashed border-outline-variant/40 bg-surface-container-low/60 flex flex-col items-center justify-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-secondary shadow-2xs">
+                  <CheckSquare className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-on-surface">
+                    {statusFilter !== 'all' || selectedCourse !== 'all' ? 'No items match filter' : 'No upcoming tasks due'}
+                  </h4>
+                  <p className="text-xs text-secondary mt-1 max-w-xs mx-auto">
+                    {statusFilter !== 'all' || selectedCourse !== 'all'
+                      ? 'Try selecting a different status filter or class.'
+                      : 'Your task list is clear! Add a new assignment to keep track of deadlines.'}
+                  </p>
+                </div>
+                <button
+                  onClick={onQuickAddTask}
+                  className="mt-1 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold hover:opacity-90 transition-all shadow-2xs cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Task
+                </button>
               </div>
             ) : (
               filteredAcademicItems.slice(0, 7).map((item) => {
@@ -500,22 +517,41 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             <div className="space-y-3">
-              {courses.slice(0, 4).map((course) => (
-                <div
-                  key={course.id}
-                  onClick={() => onNavigate('courses')}
-                  className="p-3 rounded-xl bg-surface-container/40 hover:bg-surface-container border border-outline-variant/20 transition-all cursor-pointer flex items-center justify-between group"
-                >
-                  <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-bold text-on-surface">{course.code}</span>
-                      <span className="text-[10px] font-mono text-secondary">{course.currentGrade}</span>
-                    </div>
-                    <p className="text-[11px] text-secondary truncate max-w-[160px]">{course.name}</p>
+              {courses.length === 0 ? (
+                <div className="p-5 text-center rounded-xl border border-dashed border-outline-variant/40 bg-surface-container/30 flex flex-col items-center justify-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-secondary shadow-2xs">
+                    <BookOpen className="w-4 h-4" />
                   </div>
-                  <ChevronRight className="w-4 h-4 text-secondary group-hover:translate-x-0.5 transition-transform" />
+                  <div>
+                    <p className="text-xs font-bold text-on-surface">No classes added yet</p>
+                    <p className="text-[11px] text-secondary mt-0.5">Enroll to track grades and assignment deadlines</p>
+                  </div>
+                  <button
+                    onClick={() => onNavigate('courses')}
+                    className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold hover:opacity-90 transition-all shadow-2xs cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add Class
+                  </button>
                 </div>
-              ))}
+              ) : (
+                courses.slice(0, 4).map((course) => (
+                  <div
+                    key={course.id}
+                    onClick={() => onNavigate('courses')}
+                    className="p-3 rounded-xl bg-surface-container/40 hover:bg-surface-container border border-outline-variant/20 transition-all cursor-pointer flex items-center justify-between group"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-on-surface">{course.code}</span>
+                        <span className="text-[10px] font-mono text-secondary">{course.currentGrade}</span>
+                      </div>
+                      <p className="text-[11px] text-secondary truncate max-w-[160px]">{course.name}</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-secondary group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

@@ -2715,26 +2715,27 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       >
         {/* Scrollable Navigation Links */}
         <div className="flex-1 overflow-y-auto py-6 px-3 flex flex-col no-scrollbar">
-          {/* Brand & Collapse Toggle */}
-          <div className="mb-6 flex items-center justify-between shrink-0 px-1">
-            <div className="flex items-center gap-3">
-              <SakidoLogo size="w-8 h-8" />
+          {/* Unified Brand & Collapse Header Row */}
+          <div className="mb-6 flex items-center justify-between shrink-0 px-2 pb-4 border-b border-outline-variant/20">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <SakidoLogo size="w-7 h-7" />
               {!isSidebarCollapsed && (
-                <div>
-                  <h1 className="font-display text-2xl font-bold tracking-tight text-on-surface">
+                <div className="min-w-0 flex flex-col justify-center">
+                  <h1 className="font-display text-lg font-bold tracking-tight text-on-surface leading-tight truncate">
                     Sakido
                   </h1>
-                  <p className="text-secondary text-xs mt-0.5 font-mono">
+                  <span className="text-[10px] text-secondary font-mono leading-none tracking-wide">
                     Productivity Portal
-                  </p>
+                  </span>
                 </div>
               )}
             </div>
 
             <button
               onClick={toggleSidebar}
-              className="p-1.5 rounded-lg border border-outline-variant/40 hover:bg-surface-container text-secondary hover:text-on-surface transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg border border-outline-variant/40 hover:bg-surface-container text-secondary hover:text-on-surface transition-colors cursor-pointer shrink-0"
               title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+              aria-label={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
             >
               {isSidebarCollapsed ? <PanelLeftOpen className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
             </button>
