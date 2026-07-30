@@ -242,7 +242,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
                   } bg-black/55 sm:bg-transparent backdrop-blur-lg sm:backdrop-blur-none rounded-2xl sm:rounded-none border border-white/15 sm:border-none shadow-2xl sm:shadow-none`}
                   style={{ opacity: opacityStyle, transform: transformStyle }}
                 >
-                  <span className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-amber-400/90 font-mono font-bold mb-1.5 block">
+                  <span className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-white font-mono font-bold mb-1.5 block">
                     {item.category}
                   </span>
                   <h2 className="font-display text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white mb-2 leading-tight drop-shadow-md">
