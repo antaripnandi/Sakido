@@ -5,6 +5,7 @@ import { FocusSessionConfig } from './FocusTimerView';
 interface FocusTimerProps {
   config?: FocusSessionConfig;
   onClose: () => void;
+  onComplete?: (minutes: number) => void;
 }
 
 function formatTime(secs: number): string {
@@ -29,6 +30,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
     volume: 0,
   },
   onClose,
+  onComplete,
 }) => {
   const isPomodoro = config.mode === 'pomodoro';
   const pomoFocusMins = config.pomoFocusMinutes || 25;
@@ -179,6 +181,17 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [isRunning, timeLeft, stage, isPomodoro, currentCycle, config.pomodoroCycles, pomoFocusMins, pomoBreakMins, isExitConfirmOpen]);
+
+  // Notify parent when session completes
+  useEffect(() => {
+    if (finished && onComplete) {
+      const focusMinutes = isPomodoro
+        ? config.pomodoroCycles * pomoFocusMins
+        : config.durationMinutes;
+      onComplete(focusMinutes);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finished]);
 
   // Document title updates
   useEffect(() => {

@@ -169,6 +169,44 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   // Live time & date state
   const [now, setNow] = useState<Date>(new Date());
 
+  // Focus stats — daily minutes and streak, persisted in localStorage
+  const today = new Date().toISOString().split('T')[0];
+  const [focusStats, setFocusStats] = useLocalStorageState<{
+    date: string;
+    completedMinutesToday: number;
+    streakDays: number;
+    lastStreakDate: string;
+  }>('sakido_focus_stats', {
+    date: today,
+    completedMinutesToday: 0,
+    streakDays: 0,
+    lastStreakDate: '',
+  });
+
+  // Reset daily minutes if it's a new day
+  const resolvedFocusStats = React.useMemo(() => {
+    if (focusStats.date !== today) {
+      return { ...focusStats, date: today, completedMinutesToday: 0 };
+    }
+    return focusStats;
+  }, [focusStats, today]);
+
+  const handleFocusComplete = useCallback((minutes: number) => {
+    setFocusStats(prev => {
+      const isNewDay = prev.date !== today;
+      const prevMinutes = isNewDay ? 0 : prev.completedMinutesToday;
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+      const streakContinues = prev.lastStreakDate === yesterday || prev.lastStreakDate === today;
+      const newStreak = streakContinues ? (prev.lastStreakDate === today ? prev.streakDays : prev.streakDays + 1) : 1;
+      return {
+        date: today,
+        completedMinutesToday: prevMinutes + minutes,
+        streakDays: newStreak,
+        lastStreakDate: today,
+      };
+    });
+  }, [today, setFocusStats]);
+
   // App data state (persisted per user session with debouncing for high-frequency edits)
   const [classes, setClasses] = useLocalStorageState<any[]>('sakido_classes', []);
   const [tasks, setTasks] = useLocalStorageState<any[]>('sakido_tasks', [], 300);
@@ -1351,9 +1389,9 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       return (
         <DashboardView
           profile={{
-            completedMinutesToday: 45,
+            completedMinutesToday: resolvedFocusStats.completedMinutesToday,
             dailyGoalMinutes: 60,
-            streakDays: 7,
+            streakDays: resolvedFocusStats.streakDays,
           }}
           tasks={tasks}
           courses={classes}
@@ -3656,6 +3694,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         <FocusTimer
           config={focusConfig}
           onClose={() => setIsFocusTimerOpen(false)}
+          onComplete={handleFocusComplete}
         />
       )}
     </div>
