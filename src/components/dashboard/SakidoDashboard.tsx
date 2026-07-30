@@ -193,13 +193,19 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     lastStreakDate: '',
   });
 
-  // Reset daily minutes if it's a new day
+  // Reset daily minutes if it's a new day and persist to localStorage
   const resolvedFocusStats = React.useMemo(() => {
     if (focusStats.date !== today) {
       return { ...focusStats, date: today, completedMinutesToday: 0 };
     }
     return focusStats;
   }, [focusStats, today]);
+
+  useEffect(() => {
+    if (focusStats.date !== today) {
+      setFocusStats((prev) => ({ ...prev, date: today, completedMinutesToday: 0 }));
+    }
+  }, [focusStats.date, today, setFocusStats]);
 
   const handleFocusComplete = useCallback((minutes: number) => {
     setFocusStats(prev => {
@@ -474,6 +480,23 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     }
   };
 
+  // Debounced Google Drive sync to prevent sequential API call bursts during note editing
+  const driveSyncTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const debouncedSyncNotesToGoogleDrive = useCallback((updatedNotes: any[]) => {
+    if (!connectors.googleDrive) return;
+    const token = localStorage.getItem('sakido_provider_token');
+    if (!token) return;
+
+    if (driveSyncTimeoutRef.current) {
+      clearTimeout(driveSyncTimeoutRef.current);
+    }
+
+    driveSyncTimeoutRef.current = setTimeout(() => {
+      syncNotesToGoogleDrive(updatedNotes, token);
+    }, 2500);
+  }, [connectors.googleDrive]);
+
   // Verify pending connector ONLY after user completes OAuth authorization callback
   useEffect(() => {
     const verifyOAuthCallback = async () => {
@@ -698,10 +721,12 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
     if (!connectors.googleCalendar) return;
 
-    // Automatic polling every 20 seconds for seamless live 2-way sync
+    // Automatic polling every 60 seconds for live 2-way sync, paused on hidden tabs
     const interval = setInterval(() => {
-      fetchGoogleEvents();
-    }, 20000);
+      if (document.visibilityState !== 'hidden') {
+        fetchGoogleEvents();
+      }
+    }, 60000);
 
     return () => clearInterval(interval);
   }, [connectors.googleCalendar, calendarMonth, fetchGoogleEvents]);
@@ -1254,10 +1279,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
     setNotes((prev) => {
       const updated = [newNote, ...prev];
-      if (connectors.googleDrive) {
-        const token = localStorage.getItem('sakido_provider_token');
-        if (token) syncNotesToGoogleDrive(updated, token);
-      }
+      debouncedSyncNotesToGoogleDrive(updated);
       return updated;
     });
 
@@ -1273,10 +1295,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const handleDeleteNote = (id: string) => {
     setNotes((prev) => {
       const updated = prev.filter((n) => n.id !== id);
-      if (connectors.googleDrive) {
-        const token = localStorage.getItem('sakido_provider_token');
-        if (token) syncNotesToGoogleDrive(updated, token);
-      }
+      debouncedSyncNotesToGoogleDrive(updated);
       return updated;
     });
     setConnectorNotice('🟢 Note deleted.');
@@ -1285,10 +1304,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const handleTogglePinNote = (id: string) => {
     setNotes((prev) => {
       const updated = prev.map((n) => (n.id === id ? { ...n, pinned: !n.pinned } : n));
-      if (connectors.googleDrive) {
-        const token = localStorage.getItem('sakido_provider_token');
-        if (token) syncNotesToGoogleDrive(updated, token);
-      }
+      debouncedSyncNotesToGoogleDrive(updated);
       return updated;
     });
   };
@@ -1296,10 +1312,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const handleToggleArchiveNote = (id: string) => {
     setNotes((prev) => {
       const updated = prev.map((n) => (n.id === id ? { ...n, archived: !n.archived } : n));
-      if (connectors.googleDrive) {
-        const token = localStorage.getItem('sakido_provider_token');
-        if (token) syncNotesToGoogleDrive(updated, token);
-      }
+      debouncedSyncNotesToGoogleDrive(updated);
       return updated;
     });
   };
@@ -1313,10 +1326,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         );
         return { ...n, checklistItems: updatedItems };
       });
-      if (connectors.googleDrive) {
-        const token = localStorage.getItem('sakido_provider_token');
-        if (token) syncNotesToGoogleDrive(updated, token);
-      }
+      debouncedSyncNotesToGoogleDrive(updated);
       return updated;
     });
   };
