@@ -125,7 +125,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           <div className="fixed top-5 right-6 z-50 flex items-center gap-3">
             {currentUser ? (
               <button
-                onClick={() => (onOpenDashboard ? onOpenDashboard() : setIsAuthOpen(true))}
+                onClick={() => setIsAuthOpen(true)}
                 className="group px-3.5 py-1.5 rounded-full bg-zinc-900/90 border border-zinc-800 hover:border-zinc-600 text-xs text-zinc-200 flex items-center gap-2.5 transition-all shadow-md backdrop-blur-md cursor-pointer hover:bg-zinc-800"
               >
                 <div className="w-6 h-6 rounded-full bg-black border border-[#444748] flex items-center justify-center text-white overflow-hidden shrink-0 shadow-inner">
