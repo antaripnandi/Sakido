@@ -112,15 +112,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       });
     });
 
-    // Add Exams & Lectures from Schedule
-    schedule.forEach(s => {
+    // Add Exams & Lectures from Schedule (including live Google Calendar events)
+    schedule.forEach((s: any) => {
+      const isGCal = s.id?.toString().startsWith('gcal-') || s.type === 'Google Cal';
+      const eventTitle = s.title || s.summary || (s.type === 'exam' ? `EXAM: ${s.courseName}` : s.courseName || 'Calendar Event');
+      const eventCourse = s.courseCode || (isGCal ? 'GCal' : 'Lecture');
+      const eventColor = s.color || s.courseColor || (isGCal ? '#4285f4' : '#8b5e3c');
+      const eventTime = s.date
+        ? `${s.date}${s.time ? ` (${s.time})` : s.startTime ? ` (${s.startTime} - ${s.endTime})` : ''}`
+        : `${s.startTime || '09:00'} - ${s.endTime || '10:00'}`;
+
       items.push({
         id: `schedule-${s.id}`,
-        title: `${s.type === 'exam' ? 'EXAM: ' : ''}${s.courseName}`,
-        courseName: s.courseCode,
-        courseColor: s.color,
+        title: eventTitle,
+        courseName: eventCourse,
+        courseColor: eventColor,
         type: s.type === 'exam' ? 'exam' : 'lecture',
-        dueDate: `${s.startTime} - ${s.endTime}`,
+        dueDate: eventTime,
         status: s.type === 'exam' ? 'due-soon' : 'upcoming',
         rawObject: s,
       });
