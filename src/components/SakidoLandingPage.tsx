@@ -233,22 +233,22 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
                 <div
                   key={item.id}
                   aria-hidden={!isCurrent}
-                  className={`absolute top-1/2 p-4 sm:p-8 md:p-12 max-w-sm sm:max-w-md lg:max-w-lg transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                  className={`absolute top-1/2 p-5 sm:p-8 md:p-10 max-w-[calc(100vw-2.5rem)] sm:max-w-md lg:max-w-lg transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                     isCurrent ? 'pointer-events-auto' : 'pointer-events-none'
                   } ${
                     isLeft
-                      ? 'left-6 sm:left-12 md:left-16 lg:left-24 text-left'
-                      : 'right-6 sm:right-12 md:right-16 lg:right-24 text-right'
-                  }`}
+                      ? 'left-5 sm:left-12 md:left-16 lg:left-24 text-left'
+                      : 'right-5 sm:right-12 md:right-16 lg:right-24 text-left sm:text-right'
+                  } bg-black/55 sm:bg-transparent backdrop-blur-lg sm:backdrop-blur-none rounded-2xl sm:rounded-none border border-white/15 sm:border-none shadow-2xl sm:shadow-none`}
                   style={{ opacity: opacityStyle, transform: transformStyle }}
                 >
-                  <span className="text-xs uppercase tracking-[0.2em] text-zinc-400 font-mono font-semibold mb-2 block">
+                  <span className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-amber-400/90 font-mono font-bold mb-1.5 block">
                     {item.category}
                   </span>
-                  <h2 className="font-display text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white mb-3 leading-[1.1] drop-shadow-md">
+                  <h2 className="font-display text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white mb-2 leading-tight drop-shadow-md">
                     {item.title}
                   </h2>
-                  <p className="text-sm sm:text-lg md:text-xl font-sans text-zinc-300 font-normal tracking-tight leading-relaxed">
+                  <p className="text-xs sm:text-base md:text-lg font-sans text-zinc-200/90 font-normal tracking-normal leading-relaxed text-balance">
                     {item.text}
                   </p>
                 </div>

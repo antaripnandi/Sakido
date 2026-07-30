@@ -52,6 +52,7 @@ import { Flashcard } from '../../types';
 import { useLocalStorageState } from '../../hooks/useLocalStorageState';
 import { FocusTimer } from '../focus/FocusTimer';
 import { FocusTimerView, FocusSessionConfig } from '../focus/FocusTimerView';
+import { DashboardView } from './DashboardView';
 
 const TAB_SLUG_MAP: Record<string, string> = {
   overview: 'Overview',
@@ -1346,6 +1347,27 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   // Render Content based on active tab
   const renderTabContent = () => {
+    if (activeTab === 'Overview') {
+      return (
+        <DashboardView
+          profile={{
+            completedMinutesToday: 45,
+            dailyGoalMinutes: 60,
+            streakDays: 7,
+          }}
+          tasks={tasks}
+          courses={classes}
+          schedule={events}
+          onNavigate={(tab) => handleSelectTab(tab)}
+          onToggleTaskStatus={(id) => {
+            setTasks(prev => prev.map(t => t.id === id ? { ...t, status: t.status === 'completed' ? 'pending' : 'completed' } : t));
+          }}
+          onStartFocusWithTask={(title) => handleStartFocusSession({ mode: 'normal', durationMinutes: 25, pomodoroRatio: '5:1', pomoFocusMinutes: 25, pomoBreakMinutes: 5, pomodoroCycles: 4, sound: 'none', volume: 0.5 })}
+          onQuickAddTask={() => handleSelectTab('Tasks & Grades')}
+        />
+      );
+    }
+
     if (['University & People', 'AI Features'].includes(activeTab)) {
       return (
         <div className="col-span-12 lg:col-span-8 flex flex-col items-center justify-center min-h-[380px] p-8 border border-dashed border-outline-variant/50 rounded-2xl bg-surface-container-low/40 dark:bg-surface-container-low/10">
