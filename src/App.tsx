@@ -42,7 +42,7 @@ function AppContent() {
       setIsAuthLoading(false);
     });
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
         const u = session.user;
         setCurrentUser({
@@ -53,6 +53,24 @@ function AppContent() {
         });
       } else {
         setCurrentUser(null);
+      }
+
+      // Capture provider_refresh_token at the ONLY moment Supabase exposes it —
+      // the SIGNED_IN event fired immediately after the OAuth redirect lands.
+      // getSession() called anywhere later will return null for this field.
+      // Guard: only write when it's actually present (won't overwrite on normal session restores).
+      if (event === 'SIGNED_IN' && session?.provider_refresh_token) {
+        supabase.from('google_tokens').upsert({
+          user_id: session.user.id,
+          refresh_token: session.provider_refresh_token,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' }).then(({ error }) => {
+          if (error) console.warn('[auth] google_tokens upsert failed:', error.message);
+          else console.log('[auth] provider_refresh_token saved for user', session.user.id);
+        });
+      } else if (event === 'SIGNED_IN' && !session?.provider_refresh_token) {
+        // Log when SIGNED_IN fires without a refresh token — signals regression or missing prompt:consent
+        console.log('[auth] SIGNED_IN fired without provider_refresh_token — normal session restore or missing access_type:offline');
       }
     });
 
