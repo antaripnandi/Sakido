@@ -137,7 +137,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
               heroRef.current.style.transform = `translateY(${heroY}px)`;
             }
 
-// Feature callouts: each eases in from below, out above, linked to progress
+            // Feature callouts: each eases in from below, out above, linked to progress
             const sectionWidth = 1 / (TOTAL_SECTIONS - 1);
             calloutRefs.current.forEach((el, i) => {
               if (!el) return;
@@ -279,9 +279,8 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
             <div
               ref={heroRef}
               aria-hidden={currentSection !== 0}
-              className={`absolute inset-0 flex flex-col justify-between items-center pt-24 sm:pt-32 pb-12 px-6 sm:px-12 landing-callout ${
-                currentSection === 0 ? 'pointer-events-auto' : 'pointer-events-none'
-              }`}
+              className={`absolute inset-0 flex flex-col justify-between items-center pt-24 sm:pt-32 pb-12 px-6 sm:px-12 landing-callout ${currentSection === 0 ? 'pointer-events-auto' : 'pointer-events-none'
+                }`}
               style={{ opacity: 1, transform: 'translateY(0)' }}
             >
               <div className="text-center max-w-3xl">
@@ -307,13 +306,11 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
                   key={item.id}
                   ref={(el) => { calloutRefs.current[i] = el; }}
                   aria-hidden={!isCurrent}
-                  className={`landing-callout absolute top-1/2 p-5 sm:p-8 md:p-10 max-w-[calc(100vw-2.5rem)] sm:max-w-md lg:max-w-lg ${
-                    isCurrent ? 'pointer-events-auto' : 'pointer-events-none'
-                  } ${
-                    isLeft
+                  className={`landing-callout absolute top-1/2 p-5 sm:p-8 md:p-10 max-w-[calc(100vw-2.5rem)] sm:max-w-md lg:max-w-lg ${isCurrent ? 'pointer-events-auto' : 'pointer-events-none'
+                    } ${isLeft
                       ? 'left-5 sm:left-12 md:left-16 lg:left-24 text-left'
                       : 'right-5 sm:right-12 md:right-16 lg:right-24 text-left sm:text-right'
-                  } bg-black/55 sm:bg-transparent backdrop-blur-lg sm:backdrop-blur-none rounded-2xl sm:rounded-none border border-white/15 sm:border-none shadow-2xl sm:shadow-none`}
+                    } bg-black/55 sm:bg-transparent backdrop-blur-lg sm:backdrop-blur-none rounded-2xl sm:rounded-none border border-white/15 sm:border-none shadow-2xl sm:shadow-none`}
                   style={{ opacity: 0, transform: 'translateY(calc(-50% + 80px))' }}
                 >
                   <span className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-white font-mono font-bold mb-1.5 block">
@@ -337,12 +334,15 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
         ref={ctaRef}
         className="cta-section relative z-30 min-h-screen bg-black flex flex-col items-center justify-center px-6 py-24 border-t border-zinc-900 text-center"
       >
-        <div className="max-w-3xl mx-auto space-y-8">
+        <div className="max-w-3xl mx-auto space-y-8 flex flex-col items-center">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-mono text-amber-400 font-semibold">
+            <span>Sakido Academic Portal</span>
+          </div>
           <h2 className="font-display text-5xl sm:text-7xl md:text-8xl font-extrabold tracking-tight text-white leading-none">
             Everything school.<br className="hidden sm:inline" /> One app.
           </h2>
-          <p className="text-zinc-400 text-base sm:text-xl font-sans max-w-xl mx-auto font-normal leading-relaxed">
-            Notes, calendar, tasks, flashcards, and saved links — all unified in one essentialist academic platform.
+          <p className="text-zinc-300 text-base sm:text-lg font-sans max-w-2xl mx-auto font-normal leading-relaxed">
+            <strong className="text-white">Sakido</strong> is a unified student productivity platform. Sakido integrates with Google Calendar and Google Drive to sync your class schedules, assignment deadlines, and study notes directly into one personal student dashboard.
           </p>
           <div className="pt-4 flex justify-center">
             <SpecularButton

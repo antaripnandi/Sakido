@@ -23,16 +23,11 @@ import {
   Sparkles,
   GraduationCap,
   Mail,
-  HardDrive,
   Check,
-  ShieldAlert,
   ArrowRight,
   Menu,
   X,
-  ArrowLeft,
   Play,
-  Settings,
-  ShieldCheck,
   RotateCw,
   Layers,
   Pin,
@@ -55,46 +50,31 @@ import { FocusTimerView, FocusSessionConfig } from '../focus/FocusTimerView';
 import { DashboardView } from './DashboardView';
 import { ConnectorsView } from '../connectors/ConnectorsView';
 
-const TAB_SLUG_MAP: Record<string, string> = {
-  overview: 'Overview',
-  classes: 'Classes',
-  calendar: 'Calendar',
-  tasks: 'Tasks & Grades',
-  flashcards: 'Flashcards',
-  watch: 'Watch Later',
-  'watch-later': 'Watch Later',
-  notes: 'Notes',
-  connectors: 'Connectors',
-  university: 'University & People',
-  ai: 'AI Features',
-  focus: 'Focus Timer',
-  'focus-timer': 'Focus Timer',
-};
+const TAB_SLUGS: { slug: string; name: string }[] = [
+  { slug: 'overview', name: 'Overview' },
+  { slug: 'classes', name: 'Classes' },
+  { slug: 'calendar', name: 'Calendar' },
+  { slug: 'tasks', name: 'Tasks & Grades' },
+  { slug: 'flashcards', name: 'Flashcards' },
+  { slug: 'watch-later', name: 'Watch Later' },
+  { slug: 'notes', name: 'Notes' },
+  { slug: 'connectors', name: 'Connectors' },
+  { slug: 'university', name: 'University & People' },
+  { slug: 'ai', name: 'AI Features' },
+  { slug: 'focus', name: 'Focus Timer' },
+];
 
-const TAB_NAME_TO_SLUG: Record<string, string> = {
-  Overview: 'overview',
-  overview: 'overview',
-  Classes: 'classes',
-  classes: 'classes',
-  Calendar: 'calendar',
-  calendar: 'calendar',
-  'Tasks & Grades': 'tasks',
-  tasks: 'tasks',
-  Flashcards: 'flashcards',
-  flashcards: 'flashcards',
-  'Watch Later': 'watch-later',
-  'watch-later': 'watch-later',
-  Notes: 'notes',
-  notes: 'notes',
-  Connectors: 'connectors',
-  connectors: 'connectors',
-  'University & People': 'university',
-  university: 'university',
-  'AI Features': 'ai',
-  ai: 'ai',
-  'Focus Timer': 'focus',
-  focus: 'focus',
-};
+const TAB_SLUG_MAP = Object.fromEntries(TAB_SLUGS.flatMap(({ slug, name }) => [
+  [slug, name],
+  // aliases
+  ...(slug === 'watch-later' ? [['watch', name]] : []),
+  ...(slug === 'focus' ? [['focus-timer', name]] : []),
+]));
+
+const TAB_NAME_TO_SLUG = Object.fromEntries(TAB_SLUGS.flatMap(({ slug, name }) => [
+  [name, slug],
+  [slug, slug],
+]));
 
 interface SakidoDashboardProps {
   currentUser?: {
@@ -131,23 +111,9 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   });
 
   // Persistent Collapsible Sidebar state
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('sakido_sidebar_collapsed') === 'true';
-    } catch {
-      return false;
-    }
-  });
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useLocalStorageState<boolean>('sakido_sidebar_collapsed', false);
 
-  const toggleSidebar = () => {
-    setIsSidebarCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem('sakido_sidebar_collapsed', String(next));
-      } catch {}
-      return next;
-    });
-  };
+  const toggleSidebar = () => setIsSidebarCollapsed(prev => !prev);
 
   // Focus timer overlay state & initial parameters
   const [isFocusTimerOpen, setIsFocusTimerOpen] = useState<boolean>(false);
@@ -211,7 +177,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     setFocusStats(prev => {
       const isNewDay = prev.date !== today;
       const prevMinutes = isNewDay ? 0 : prev.completedMinutesToday;
-      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  const yesterday = normalizeToISODate(new Date(Date.now() - 86400000));
       const streakContinues = prev.lastStreakDate === yesterday || prev.lastStreakDate === today;
       const newStreak = streakContinues ? (prev.lastStreakDate === today ? prev.streakDays : prev.streakDays + 1) : 1;
       return {
@@ -524,13 +490,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 if (error) console.warn('Database token save notice:', error.message);
               });
             }
-            setConnectors((prev) => {
-              const updated = { ...prev, [pending]: true };
-              try {
-                localStorage.setItem('sakido_connectors', JSON.stringify(updated));
-              } catch {}
-              return updated;
-            });
+            setConnectors((prev) => ({ ...prev, [pending]: true }));
             const serviceNames: Record<string, string> = {
               googleCalendar: 'Google Calendar',
               googleDrive: 'Google Drive',
@@ -597,11 +557,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         if (body.error === 'reconnect_required') {
-          setConnectors((prev) => {
-            const updated = { ...prev, googleCalendar: false, googleDrive: false, gmail: false };
-            try { localStorage.setItem('sakido_connectors', JSON.stringify(updated)); } catch {}
-            return updated;
-          });
+          setConnectors((prev) => ({ ...prev, googleCalendar: false, googleDrive: false, gmail: false }));
           localStorage.removeItem('sakido_provider_token');
           localStorage.removeItem('sakido_provider_refresh_token');
         }
@@ -1020,11 +976,9 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const [newNoteChecklistRaw, setNewNoteChecklistRaw] = useState<string>('');
   const [noteTabFilter, setNoteTabFilter] = useState<'active' | 'archived'>('active');
   const [selectedNoteTag, setSelectedNoteTag] = useState<string>('all');
-  const [activeEditingNote, setActiveEditingNote] = useState<any | null>(null);
 
   // Calendar View Mode ('month' | 'timetable')
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'timetable'>('month');
-  const [selectedDateEvents, setSelectedDateEvents] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [activeDayInspector, setActiveDayInspector] = useState<{
     dateStr: string;
@@ -1037,7 +991,6 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   // Notes Search & Modal State
   const [notesSearchQuery, setNotesSearchQuery] = useState('');
-  const [activeNoteModal, setActiveNoteModal] = useState<any | null>(null);
 
   const [connectingService, setConnectingService] = useState<string | null>(null);
   const [connectorNotice, setConnectorNotice] = useState<string | null>(null);
@@ -1134,11 +1087,6 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     const url = newBannerInput.trim();
     if (url) {
       setBannerImageUrl(url);
-      try {
-        localStorage.setItem('sakido_banner_url', url);
-      } catch (err) {
-        console.warn('Could not persist banner to localStorage:', err);
-      }
       setIsEditingBanner(false);
       setNewBannerInput('');
       setConnectorNotice('🟢 Banner wallpaper updated!');
@@ -1365,13 +1313,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       localStorage.removeItem('sakido_provider_token');
       localStorage.removeItem('sakido_provider_refresh_token');
 
-      setConnectors((prev) => {
-        const updated = { ...prev, [serviceKey]: false };
-        try {
-          localStorage.setItem('sakido_connectors', JSON.stringify(updated));
-        } catch {}
-        return updated;
-      });
+      setConnectors((prev) => ({ ...prev, [serviceKey]: false }));
       setConnectorNotice(`Disconnected ${serviceNames[serviceKey]}.`);
       setConnectingService(null);
       return;
@@ -1904,20 +1846,6 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             </div>
           )}
 
-          {selectedDateEvents && (
-            <div className="p-4 rounded-xl border border-primary-container/40 bg-surface-container-low dark:bg-[#251e19] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <CalendarIcon className="w-5 h-5 text-primary-container shrink-0" />
-                <span className="text-sm font-medium text-on-surface whitespace-pre-line">{selectedDateEvents}</span>
-              </div>
-              <button
-                onClick={() => setSelectedDateEvents(null)}
-                className="text-xs text-secondary hover:text-on-surface shrink-0"
-              >
-                Dismiss
-              </button>
-            </div>
-          )}
         </div>
       );
     }
@@ -2170,7 +2098,6 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       return (
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 pl-0 lg:pl-8 border-t lg:border-t-0 lg:border-l border-outline-variant/30 pt-6 lg:pt-0">
           <FocusTimerView
-            tasks={tasks}
             onStartFocusSession={handleStartFocusSession}
           />
         </div>

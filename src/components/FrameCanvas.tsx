@@ -89,11 +89,7 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
       currentIdx = end;
 
       if (currentIdx < totalFrames) {
-        if ('requestIdleCallback' in window) {
-          (window as any).requestIdleCallback(processNextBatch);
-        } else {
-          setTimeout(processNextBatch, 16);
-        }
+        requestIdleCallback(processNextBatch);
       }
     };
 

@@ -4,7 +4,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 let supabaseAdminInstance: SupabaseClient | null = null;
-let supabasePublicInstance: SupabaseClient | null = null;
 
 /**
  * Returns a server-side Supabase client initialized with the secret key (service_role/secret).
@@ -30,24 +29,4 @@ export function getSupabaseAdmin(): SupabaseClient {
   }
 
   return supabaseAdminInstance;
-}
-
-/**
- * Returns a Supabase client initialized with the publishable/anon key for standard user operations.
- */
-export function getSupabasePublic(): SupabaseClient {
-  if (!supabasePublicInstance) {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
-
-    if (!supabaseUrl || !publishableKey) {
-      throw new Error(
-        'Missing SUPABASE_URL or SUPABASE_PUBLISHABLE_KEY in environment variables.'
-      );
-    }
-
-    supabasePublicInstance = createClient(supabaseUrl, publishableKey);
-  }
-
-  return supabasePublicInstance;
 }

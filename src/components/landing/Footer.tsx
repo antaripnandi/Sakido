@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 
 interface FooterProps {
   onOpenGetStarted?: () => void;
-  onNavigateSection?: (sectionId: string) => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({

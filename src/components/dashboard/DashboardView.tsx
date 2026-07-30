@@ -48,8 +48,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [selectedDate, setSelectedDate] = useState<number>(new Date().getDate());
 
   // Helper to calculate status accurately by comparing ISO dates
-  const now = useMemo(() => new Date(), []);
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const { now, todayStr } = useMemo(() => {
+    const n = new Date();
+    return { now: n, todayStr: n.toISOString().split('T')[0] };
+  }, []);
 
   const getTaskCalculatedStatus = (t: Task): 'upcoming' | 'due-soon' | 'overdue' | 'completed' => {
     if (t.status === 'completed' || t.status === 'submitted' || t.completed) return 'completed';
@@ -57,7 +59,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const dueStr = t.dueDate.split('T')[0];
     if (dueStr < todayStr) return 'overdue';
 
-    const todayMs = new Date().setHours(0, 0, 0, 0);
+    const todayMs = new Date(todayStr).getTime();
     const dueMs = new Date(t.dueDate).setHours(0, 0, 0, 0);
     if (!isNaN(dueMs)) {
       const diffDays = Math.ceil((dueMs - todayMs) / (1000 * 60 * 60 * 24));

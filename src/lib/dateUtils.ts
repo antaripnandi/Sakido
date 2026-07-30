@@ -3,53 +3,27 @@
  * Enforces ISO 8601 YYYY-MM-DD formatting and safe Date parsing across the codebase.
  */
 
+const todayISO = () => new Date().toISOString().split('T')[0];
+
 /**
  * Normalizes any date string or Date object into a guaranteed YYYY-MM-DD string.
  */
 export function normalizeToISODate(input: string | Date | null | undefined): string {
-  if (!input) {
-    return new Date().toISOString().split('T')[0];
-  }
+  if (!input) return todayISO();
 
-  if (input instanceof Date) {
-    if (isNaN(input.getTime())) {
-      return new Date().toISOString().split('T')[0];
-    }
-    return input.toISOString().split('T')[0];
-  }
+  const d = input instanceof Date ? input : new Date(
+    // DD-MM-YYYY or DD/MM/YYYY → rewrite to YYYY-MM-DD before parsing
+    typeof input === 'string'
+      ? input.replace(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/, '$3-$2-$1')
+      : input
+  );
 
-  const str = String(input).trim();
-  if (!str) {
-    return new Date().toISOString().split('T')[0];
-  }
+  if (isNaN(d.getTime())) return todayISO();
 
-  // Already YYYY-MM-DD format
-  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
-    return str;
-  }
+  // If original was already YYYY-MM-DD (no time component), return as-is
+  if (typeof input === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
 
-  // If string contains ISO time e.g. "2026-07-31T09:00:00"
-  if (str.includes('T') && /^\d{4}-\d{2}-\d{2}/.test(str)) {
-    return str.split('T')[0];
-  }
-
-  // DD-MM-YYYY or DD/MM/YYYY format e.g. "31-07-2026" or "31/07/2026"
-  const ddmmyyyyMatch = str.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
-  if (ddmmyyyyMatch) {
-    const day = ddmmyyyyMatch[1].padStart(2, '0');
-    const month = ddmmyyyyMatch[2].padStart(2, '0');
-    const year = ddmmyyyyMatch[3];
-    return `${year}-${month}-${day}`;
-  }
-
-  // Fallback to JS Date parsing
-  const parsed = new Date(str);
-  if (!isNaN(parsed.getTime())) {
-    return parsed.toISOString().split('T')[0];
-  }
-
-  // Default to today if parsing fails completely
-  return new Date().toISOString().split('T')[0];
+  return d.toISOString().split('T')[0];
 }
 
 /**

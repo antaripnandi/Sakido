@@ -66,10 +66,12 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Authentication service temporarily unconfigured.' });
   }
 
+  // 4. Fetch User Refresh Token securely from DB using Admin Client (Server-Side Only)
+  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
   let user = null;
   try {
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-    const { data: userData, error: userError } = await supabase.auth.getUser(userToken);
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(userToken);
     if (userError || !userData?.user) {
       return res.status(401).json({ error: 'Invalid or expired session authorization.' });
     }
@@ -77,9 +79,6 @@ export default async function handler(req, res) {
   } catch {
     return res.status(401).json({ error: 'Session validation failed.' });
   }
-
-  // 4. Fetch User Refresh Token securely from DB using Admin Client (Server-Side Only)
-  const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
   const { data: tokenRow, error: tokenError } = await supabaseAdmin
     .from('google_tokens')
     .select('refresh_token')

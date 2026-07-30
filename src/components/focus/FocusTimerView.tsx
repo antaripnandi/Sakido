@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Task, UserProfile } from '../../types';
 
 export type PomodoroRatioKey = '5:1' | '45:15' | '52:17' | '2:1';
 
@@ -13,9 +12,7 @@ export interface FocusSessionConfig {
 }
 
 interface FocusTimerViewProps {
-  tasks?: Task[];
   onStartFocusSession: (config: FocusSessionConfig) => void;
-  profile?: UserProfile;
 }
 
 const NORMAL_PRESETS = [
@@ -35,17 +32,13 @@ const POMODORO_RATIOS: { key: PomodoroRatioKey; title: string; defaultFocus: num
 
 const CYCLE_PRESETS = [1, 2, 3, 4, 6, 8];
 
+const BREAK_DIVISORS: Record<PomodoroRatioKey, number> = { '5:1': 5, '45:15': 3, '2:1': 2, '52:17': 52 / 17 };
+
 function computeBreakMinutes(ratioKey: PomodoroRatioKey, focusMins: number): number {
-  if (ratioKey === '5:1') return Math.max(1, Math.round(focusMins / 5));
-  if (ratioKey === '45:15') return Math.max(1, Math.round(focusMins / 3));
-  if (ratioKey === '2:1') return Math.max(1, Math.round(focusMins / 2));
-  if (ratioKey === '52:17') return Math.max(1, Math.round((focusMins * 17) / 52));
-  return Math.max(1, Math.round(focusMins / 5));
+  return Math.max(1, Math.round(focusMins / BREAK_DIVISORS[ratioKey]));
 }
 
-export const FocusTimerView: React.FC<FocusTimerViewProps> = ({
-  onStartFocusSession,
-}) => {
+export const FocusTimerView: React.FC<FocusTimerViewProps> = ({ onStartFocusSession }) => {
   const [timerMode, setTimerMode] = useState<'normal' | 'pomodoro'>('normal');
 
   // Normal mode state

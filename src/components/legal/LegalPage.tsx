@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Shield, FileText, Cookie, Mail, ArrowLeft, ExternalLink, CheckCircle } from 'lucide-react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 type LegalTab = 'terms' | 'privacy' | 'cookies' | 'contact';
 
@@ -10,18 +10,7 @@ interface LegalPageProps {
 
 export const LegalPage: React.FC<LegalPageProps> = ({ initialTab = 'privacy' }) => {
   const navigate = useNavigate();
-  const location = useLocation();
   const [activeTab, setActiveTab] = useState<LegalTab>(initialTab);
-
-  // Sync route with active tab
-  useEffect(() => {
-    const path = location.pathname.toLowerCase();
-    if (path.includes('terms')) setActiveTab('terms');
-    else if (path.includes('privacy')) setActiveTab('privacy');
-    else if (path.includes('cookie')) setActiveTab('cookies');
-    else if (path.includes('contact')) setActiveTab('contact');
-    else setActiveTab(initialTab);
-  }, [location.pathname, initialTab]);
 
   const handleTabChange = (tab: LegalTab) => {
     setActiveTab(tab);
