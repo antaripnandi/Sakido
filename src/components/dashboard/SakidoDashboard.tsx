@@ -556,7 +556,10 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        if (body.error === 'reconnect_required') {
+        // Disconnect only on explicit signals that the refresh token is permanently dead.
+        // Transient errors (500, 429, network blip) must NOT wipe connector state.
+        const hardFail = body.error === 'reconnect_required' || body.error === 'invalid_grant';
+        if (hardFail) {
           setConnectors((prev) => ({ ...prev, googleCalendar: false, googleDrive: false, gmail: false }));
           localStorage.removeItem('sakido_provider_token');
           localStorage.removeItem('sakido_provider_refresh_token');

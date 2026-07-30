@@ -18,8 +18,8 @@ export const Footer: React.FC<FooterProps> = ({
             Sakido
           </span>
           <span className="text-zinc-700 text-xs">·</span>
-          <span className="text-xs text-zinc-500 font-normal">
-            © {new Date().getFullYear()} Sakido
+          <span className="text-xs text-zinc-400 font-normal">
+            © {new Date().getFullYear()} Sakido Academic Portal
           </span>
         </div>
 

@@ -59,10 +59,9 @@ export default async function handler(req, res) {
 
   const userToken = authHeader.split(' ')[1];
   const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const supabaseAnonKey = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceKey) {
+  if (!supabaseUrl || !supabaseServiceKey) {
     return res.status(500).json({ error: 'Authentication service temporarily unconfigured.' });
   }
 

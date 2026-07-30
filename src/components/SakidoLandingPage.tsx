@@ -335,9 +335,6 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
         className="cta-section relative z-30 min-h-screen bg-black flex flex-col items-center justify-center px-6 py-24 border-t border-zinc-900 text-center"
       >
         <div className="max-w-3xl mx-auto space-y-8 flex flex-col items-center">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-xs font-mono text-amber-400 font-semibold">
-            <span>Sakido Academic Portal</span>
-          </div>
           <h2 className="font-display text-5xl sm:text-7xl md:text-8xl font-extrabold tracking-tight text-white leading-none">
             Everything school.<br className="hidden sm:inline" /> One app.
           </h2>
