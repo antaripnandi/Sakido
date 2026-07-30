@@ -254,7 +254,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   }>('sakido_connectors', { googleCalendar: false, googleDrive: false, gmail: false });
 
   // Sync connector state from DB on mount — fixes cross-device visibility.
-  // google_tokens row existing with non-null refresh_token = connected.
+  // All three service flags are stored as columns on google_tokens.
   useEffect(() => {
     if (!currentUser?.id) return;
     const supabase = getSupabaseClient();
@@ -262,7 +262,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
     supabase
       .from('google_tokens')
-      .select('refresh_token')
+      .select('refresh_token, google_calendar_connected, google_drive_connected, gmail_connected')
       .eq('user_id', currentUser.id)
       .maybeSingle()
       .then(({ data, error }) => {
@@ -270,12 +270,18 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           console.warn('[connectors] DB sync failed:', error.message);
           return;
         }
-        const connected = Boolean(data?.refresh_token);
-        // Only update if DB disagrees with local cache — avoids unnecessary re-renders
+        if (!data) return; // no row = never connected, keep localStorage as-is
+        const fromDB = {
+          googleCalendar: Boolean(data.google_calendar_connected),
+          googleDrive: Boolean(data.google_drive_connected),
+          gmail: Boolean(data.gmail_connected),
+        };
         setConnectors(prev => {
-          if (prev.googleCalendar === connected) return prev;
-          console.log('[connectors] DB sync: googleCalendar', connected);
-          return { ...prev, googleCalendar: connected };
+          const changed = (Object.keys(fromDB) as (keyof typeof fromDB)[])
+            .some(k => prev[k] !== fromDB[k]);
+          if (!changed) return prev;
+          console.log('[connectors] DB sync:', fromDB);
+          return { ...prev, ...fromDB };
         });
       });
   }, [currentUser?.id]);
@@ -520,6 +526,20 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               });
             }
             setConnectors((prev) => ({ ...prev, [pending]: true }));
+            // Persist per-service flag to DB so other devices sync on mount
+            const supabaseForFlag = getSupabaseClient();
+            if (supabaseForFlag && session.user.id) {
+              const flagCol = pending === 'googleCalendar' ? 'google_calendar_connected'
+                : pending === 'googleDrive' ? 'google_drive_connected'
+                : 'gmail_connected';
+              supabaseForFlag.from('google_tokens').upsert({
+                user_id: session.user.id,
+                [flagCol]: true,
+                updated_at: new Date().toISOString(),
+              }, { onConflict: 'user_id' }).then(({ error }) => {
+                if (error) console.warn('[connectors] flag upsert failed:', error.message);
+              });
+            }
             const serviceNames: Record<string, string> = {
               googleCalendar: 'Google Calendar',
               googleDrive: 'Google Drive',
@@ -1333,10 +1353,23 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     if (connectors[serviceKey]) {
       const supabase = getSupabaseClient();
       supabase?.auth.getSession().then(({ data }) => {
-        if (data?.session?.user?.id) {
-          supabase.from('google_tokens').delete().eq('user_id', data.session.user.id).then(({ error }) => {
-            if (error) console.warn('Database token deletion notice:', error.message);
-          });
+        if (!data?.session?.user?.id) return;
+        const uid = data.session.user.id;
+        const flagCol = serviceKey === 'googleCalendar' ? 'google_calendar_connected'
+          : serviceKey === 'googleDrive' ? 'google_drive_connected'
+          : 'gmail_connected';
+
+        // Clear this service's flag; only delete the whole row if all three are now off
+        const newState = { ...connectors, [serviceKey]: false };
+        const allOff = !newState.googleCalendar && !newState.googleDrive && !newState.gmail;
+
+        if (allOff) {
+          supabase.from('google_tokens').delete().eq('user_id', uid)
+            .then(({ error }) => { if (error) console.warn('[connectors] row delete failed:', error.message); });
+        } else {
+          supabase.from('google_tokens').update({ [flagCol]: false, updated_at: new Date().toISOString() })
+            .eq('user_id', uid)
+            .then(({ error }) => { if (error) console.warn('[connectors] flag clear failed:', error.message); });
         }
       });
       clearProviderToken();
