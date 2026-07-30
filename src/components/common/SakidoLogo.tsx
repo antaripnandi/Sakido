@@ -11,7 +11,7 @@ export const SakidoLogo: React.FC<{ size?: string; showText?: boolean; textClass
         <img
           src="/logos/main_logo_sakido.png"
           alt="Sakido Logo"
-          className="w-full h-full object-contain"
+          className="w-full h-full object-contain dark:invert"
         />
       </div>
       {showText && (

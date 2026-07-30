@@ -2967,47 +2967,62 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             {/* Left Column (Clock & Real Date Widget - STRICTLY SCOPED TO OVERVIEW) */}
             {activeTab === 'Overview' && (
               <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
-                <div className="p-6 rounded-2xl border border-outline-variant/40 bg-surface-container-low shadow-xs flex flex-col items-center sm:items-start gap-4">
-                  <div className="flex items-center gap-6">
-                    {/* Live Analog Clock */}
-                    <div className="analog-clock-container bg-surface-container-lowest">
-                      {/* Ticks */}
-                      <div className="tick" style={{ transform: 'translateX(-50%) rotate(0deg)' }}></div>
-                      <div className="tick" style={{ transform: 'translateX(-50%) rotate(90deg)' }}></div>
-                      <div className="tick" style={{ transform: 'translateX(-50%) rotate(180deg)' }}></div>
-                      <div className="tick" style={{ transform: 'translateX(-50%) rotate(270deg)' }}></div>
+                <div className="p-6 rounded-2xl border border-outline-variant/40 bg-surface-container-low shadow-2xs flex flex-col gap-5">
+                  <div className="flex items-center gap-5">
+                    {/* Sleek Minimalist Analog Clock */}
+                    <div className="relative w-28 h-28 rounded-full border border-outline-variant/50 bg-surface-container-lowest dark:bg-[#1f1915] flex items-center justify-center shrink-0 shadow-inner">
+                      {/* Minimalist 12, 3, 6, 9 Ticks */}
+                      <div className="absolute top-2 w-0.5 h-2 bg-outline-variant/60 rounded-full" />
+                      <div className="absolute bottom-2 w-0.5 h-2 bg-outline-variant/60 rounded-full" />
+                      <div className="absolute left-2 h-0.5 w-2 bg-outline-variant/60 rounded-full" />
+                      <div className="absolute right-2 h-0.5 w-2 bg-outline-variant/60 rounded-full" />
 
-                      {/* Hands */}
-                      <div className="hand hour-hand" style={{ transform: `translateX(-50%) rotate(${hourDeg}deg)` }}></div>
-                      <div className="hand minute-hand" style={{ transform: `translateX(-50%) rotate(${minuteDeg}deg)` }}></div>
-                      <div className="hand second-hand" style={{ transform: `translateX(-50%) rotate(${secondDeg}deg)` }}></div>
-                      <div className="clock-center"></div>
+                      {/* Hour Hand */}
+                      <div
+                        className="absolute bottom-1/2 left-1/2 w-1 h-8 bg-on-surface rounded-full origin-bottom transition-transform duration-200"
+                        style={{ transform: `translateX(-50%) rotate(${hourDeg}deg)` }}
+                      />
+
+                      {/* Minute Hand */}
+                      <div
+                        className="absolute bottom-1/2 left-1/2 w-0.5 h-11 bg-primary rounded-full origin-bottom transition-transform duration-200"
+                        style={{ transform: `translateX(-50%) rotate(${minuteDeg}deg)` }}
+                      />
+
+                      {/* Second Hand */}
+                      <div
+                        className="absolute bottom-1/2 left-1/2 w-[1px] h-12 bg-amber-500 rounded-full origin-bottom transition-transform duration-100"
+                        style={{ transform: `translateX(-50%) rotate(${secondDeg}deg)` }}
+                      />
+
+                      {/* Center Dot */}
+                      <div className="w-2.5 h-2.5 rounded-full bg-primary border-2 border-surface-container-lowest z-10" />
                     </div>
 
                     {/* Real Date Display */}
-                    <div className="text-left">
-                      <p className="font-mono text-xs uppercase tracking-widest text-primary-container font-bold">
+                    <div className="text-left min-w-0">
+                      <p className="font-mono text-[11px] uppercase tracking-widest text-primary font-bold">
                         {now.toLocaleDateString('en-US', { weekday: 'long' })}
                       </p>
-                      <p className="font-display font-bold text-xl text-on-surface mt-0.5">
+                      <p className="font-display font-bold text-xl text-on-surface mt-0.5 tracking-tight truncate">
                         {now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
                       </p>
-                      <p className="font-mono text-xs text-secondary mt-1">
+                      <p className="font-mono text-xs text-secondary mt-1 tracking-wide">
                         {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                       </p>
                     </div>
                   </div>
 
-                  {/* Quick Academic Summary */}
-                  <div className="w-full pt-4 border-t border-outline-variant/20 grid grid-cols-2 gap-3 text-center sm:text-left">
+                  {/* Real Dynamic Academic Summary */}
+                  <div className="w-full pt-4 border-t border-outline-variant/20 grid grid-cols-2 gap-3 text-center sm:text-left font-mono">
                     <div>
-                      <span className="text-[10px] font-mono uppercase text-secondary">Active Courses</span>
-                      <p className="font-display font-bold text-lg text-on-surface">{classes.length}</p>
+                      <span className="text-[10px] uppercase text-secondary font-bold">Active Courses</span>
+                      <p className="font-display font-bold text-xl text-on-surface mt-0.5">{classes.length}</p>
                     </div>
                     <div>
-                      <span className="text-[10px] font-mono uppercase text-secondary">Pending Tasks</span>
-                      <p className="font-display font-bold text-lg text-on-surface">
-                        {tasks.filter((t) => !t.completed).length}
+                      <span className="text-[10px] uppercase text-secondary font-bold">Pending Tasks</span>
+                      <p className="font-display font-bold text-xl text-on-surface mt-0.5">
+                        {tasks.filter((t) => t.status !== 'completed' && t.status !== 'submitted').length}
                       </p>
                     </div>
                   </div>

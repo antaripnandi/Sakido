@@ -47,16 +47,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [selectedCourse, setSelectedCourse] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState<number>(new Date().getDate());
 
-  // Derive Summary Strip Metrics
+  // Derive Summary Strip Metrics directly from REAL user data
   const now = new Date();
   const urgentTasks = tasks.filter(t => t.status !== 'completed' && t.status !== 'submitted');
-  const completedCount = tasks.filter(t => t.status === 'completed' || t.status === 'submitted').length;
   
-  // Categorize tasks for metrics
-  const overdueCount = tasks.filter(t => t.priority === 'urgent' && t.status !== 'completed').length;
-  const dueSoonCount = tasks.filter(t => (t.priority === 'high' || t.priority === 'urgent') && t.status !== 'completed').length;
+  // Categorize real tasks for metrics
+  const overdueCount = tasks.filter(t => t.priority === 'urgent' && t.status !== 'completed' && t.status !== 'submitted').length;
+  const dueSoonCount = tasks.filter(t => (t.priority === 'high' || t.priority === 'urgent') && t.status !== 'completed' && t.status !== 'submitted').length;
   
-  // Combine tasks & assessments into a single unified list
+  // Combine real tasks & schedule events into unified list
   const unifiedAcademicItems = useMemo(() => {
     const items: Array<{
       id: string;
@@ -94,7 +93,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       });
     });
 
-    // Add Exams & Key Lectures from Schedule
+    // Add Exams & Lectures from Schedule
     schedule.forEach(s => {
       items.push({
         id: `schedule-${s.id}`,
@@ -111,14 +110,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return items;
   }, [tasks, schedule]);
 
-  // Filtered Items for Main Unified View
+  // Filtered Items for Main View
   const filteredAcademicItems = useMemo(() => {
     return unifiedAcademicItems.filter(item => {
-      // Filter by Course
       if (selectedCourse !== 'all' && item.courseName !== selectedCourse && !item.title.includes(selectedCourse)) {
         return false;
       }
-      // Filter by Status
       if (statusFilter === 'all') return true;
       if (statusFilter === 'completed') return item.status === 'completed';
       if (statusFilter === 'overdue') return item.status === 'overdue';
@@ -128,19 +125,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     });
   }, [unifiedAcademicItems, statusFilter, selectedCourse]);
 
-  const progressPercent = Math.round((profile.completedMinutesToday / profile.dailyGoalMinutes) * 100);
+  const completedMinutesToday = profile?.completedMinutesToday || 0;
+  const dailyGoalMinutes = profile?.dailyGoalMinutes || 60;
+  const progressPercent = Math.min(100, Math.round((completedMinutesToday / dailyGoalMinutes) * 100));
+  const streakDays = profile?.streakDays || 0;
 
-  // Compact Calendar Days Generator (Current Month)
+  // DYNAMIC Compact Calendar Days Generator (Computed 100% from REAL user schedule & tasks)
   const currentMonthDays = useMemo(() => {
-    const totalDays = 31; // Days in current month representation
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    
+    // Set of real task due dates
+    const taskDays = new Set<number>();
+    tasks.forEach(t => {
+      if (t.dueDate) {
+        const d = new Date(t.dueDate);
+        if (!isNaN(d.getTime()) && d.getMonth() === month && d.getFullYear() === year) {
+          taskDays.add(d.getDate());
+        }
+      }
+    });
+
+    // Set of real exam dates
+    const examDays = new Set<number>();
+    schedule.forEach(s => {
+      if (s.date) {
+        const d = new Date(s.date);
+        if (!isNaN(d.getTime()) && d.getMonth() === month && d.getFullYear() === year && s.type === 'exam') {
+          examDays.add(d.getDate());
+        }
+      }
+    });
+
     const daysArr = [];
     for (let d = 1; d <= totalDays; d++) {
-      const hasTask = d % 4 === 0 || d === 15 || d === 22 || d === 28;
-      const hasExam = d === 12 || d === 25;
-      daysArr.push({ day: d, hasTask, hasExam });
+      daysArr.push({
+        day: d,
+        hasTask: taskDays.has(d),
+        hasExam: examDays.has(d),
+      });
     }
     return daysArr;
-  }, []);
+  }, [tasks, schedule]);
 
   return (
     <div className="p-4 sm:p-6 md:p-8 space-y-8 max-w-7xl mx-auto">
@@ -193,8 +221,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               Daily Focus Goal
             </span>
             <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-2xl font-bold text-on-surface">{profile.completedMinutesToday}</span>
-              <span className="text-xs text-secondary font-medium">/ {profile.dailyGoalMinutes} mins</span>
+              <span className="text-2xl font-bold text-on-surface">{completedMinutesToday}</span>
+              <span className="text-xs text-secondary font-medium">/ {dailyGoalMinutes} mins</span>
             </div>
             <p className="text-[11px] text-emerald-500 font-medium mt-1 flex items-center gap-1">
               <TrendingUp className="w-3 h-3" />
@@ -219,7 +247,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 stroke="currentColor"
                 strokeWidth="3.5"
                 strokeDasharray={2 * Math.PI * 17}
-                strokeDashoffset={2 * Math.PI * 17 * (1 - Math.min(100, progressPercent) / 100)}
+                strokeDashoffset={2 * Math.PI * 17 * (1 - progressPercent / 100)}
                 strokeLinecap="round"
                 className="text-primary transition-all duration-500"
                 fill="transparent"
@@ -236,12 +264,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               Study Streak
             </span>
             <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-2xl font-bold text-on-surface">{profile.streakDays}</span>
+              <span className="text-2xl font-bold text-on-surface">{streakDays}</span>
               <span className="text-xs text-secondary font-medium">days active</span>
             </div>
             <p className="text-[11px] text-amber-500 font-medium mt-1 flex items-center gap-1">
               <Flame className="w-3 h-3 fill-amber-500" />
-              Keep momentum going
+              {streakDays > 0 ? 'Keep momentum going' : 'Start your streak today'}
             </p>
           </div>
           <div className="w-11 h-11 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
@@ -456,7 +484,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
             </div>
 
-            {/* Calendar Days */}
+            {/* Dynamic Calendar Days */}
             <div className="grid grid-cols-7 gap-1">
               {currentMonthDays.map((d) => {
                 const isSelected = selectedDate === d.day;
@@ -467,7 +495,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     key={d.day}
                     onClick={() => {
                       setSelectedDate(d.day);
-                      onNavigate('calendar'); // Direct-to-task access
+                      onNavigate('calendar');
                     }}
                     className={`h-8 rounded-xl flex flex-col items-center justify-center relative text-xs font-medium transition-all cursor-pointer ${
                       isToday
@@ -478,7 +506,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     }`}
                   >
                     <span>{d.day}</span>
-                    {/* Dots for tasks / exams */}
+                    {/* Dots for REAL user tasks / exams */}
                     <div className="flex items-center gap-0.5 absolute bottom-1">
                       {d.hasExam && <span className="w-1 h-1 rounded-full bg-error" />}
                       {d.hasTask && <span className="w-1 h-1 rounded-full bg-amber-400" />}
