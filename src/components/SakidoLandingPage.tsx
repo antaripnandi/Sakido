@@ -5,6 +5,7 @@ import { FrameCanvas } from './FrameCanvas';
 import Lenis from 'lenis';
 import { AuthModal } from './auth/AuthModal';
 import { Footer } from './landing/Footer';
+import { SpecularButton } from './ui/SpecularButton';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import { User } from 'lucide-react';
 
@@ -266,13 +267,28 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           <p className="text-zinc-400 text-base sm:text-xl font-sans max-w-xl mx-auto font-normal leading-relaxed">
             Notes, calendar, tasks, saved links, and university chat — all unified in one essentialist academic platform.
           </p>
-          <div className="pt-4">
-            <button
+          <div className="pt-4 flex justify-center">
+            <SpecularButton
+              size="lg"
+              radius={24}
+              tint="#ffffff"
+              tintOpacity={0.08}
+              blur={10}
+              textColor="#ffffff"
+              lineColor="#ffffff"
+              baseColor="#525252"
+              intensity={1.2}
+              shineSize={12}
+              shineFade={40}
+              thickness={1.5}
+              speed={0.35}
+              followMouse
+              proximity={250}
+              autoAnimate={false}
               onClick={() => (currentUser && onOpenDashboard ? onOpenDashboard() : setIsAuthOpen(true))}
-              className="inline-block px-8 py-3.5 rounded-full bg-white hover:bg-zinc-200 text-black font-semibold text-sm transition-all hover:scale-105 active:scale-95 shadow-lg cursor-pointer"
             >
               {currentUser ? 'Open Dashboard' : 'Get Started'}
-            </button>
+            </SpecularButton>
           </div>
         </div>
       </section>
