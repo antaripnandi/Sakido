@@ -137,12 +137,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
               heroRef.current.style.transform = `translateY(${heroY}px)`;
             }
 
-            // Canvas overlay: subtle darkening vignette as hero exits (desktop only)
-            if (overlayRef.current && !isMobile) {
-              overlayRef.current.style.opacity = String(clamp(progress * 7, 0, 0.45));
-            }
-
-            // Feature callouts: each eases in from below, out above, linked to progress
+// Feature callouts: each eases in from below, out above, linked to progress
             const sectionWidth = 1 / (TOTAL_SECTIONS - 1);
             calloutRefs.current.forEach((el, i) => {
               if (!el) return;
