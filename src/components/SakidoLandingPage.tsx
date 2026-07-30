@@ -22,6 +22,8 @@ const FEATURE_CALLOUTS = [
   { id: 'dashboard', sectionIndex: 6, category: '06 / OVERVIEW', title: 'Dashboard', text: "Opens to today's classes and what's due next.", align: 'right' as const },
 ];
 
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
 interface SakidoLandingPageProps {
   onOpenDashboard?: () => void;
 }
@@ -33,9 +35,15 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
 
   const containerRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef<HTMLDivElement>(null);
-  const frameObjRef = useRef({ value: 0 }); // Target object for GSAP tweening
-  const frameRef = useRef<number>(0); // Driven by ScrollTrigger onUpdate, read by FrameCanvas
+  const frameObjRef = useRef({ value: 0 });
+  const frameRef = useRef<number>(0);
   const currentSectionRef = useRef(0);
+
+  // Refs for scroll-progress-driven DOM writes (no React re-renders on scroll)
+  const heroRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const calloutRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const ctaRef = useRef<HTMLElement>(null);
 
   // Sync Supabase Auth Session
   useEffect(() => {
@@ -69,9 +77,28 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     return () => subscription.unsubscribe();
   }, []);
 
-  // GSAP ScrollTrigger Architecture Setup
+  // GSAP ScrollTrigger + scroll-progress-driven animations
   useEffect(() => {
     if (!containerRef.current || !pinnedRef.current) return;
+
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const isMobile = window.innerWidth <= 768;
+
+    // Reduced-motion: skip all pinning/animation — page is a normal static scroll
+    if (prefersReducedMotion) {
+      // Make everything visible statically
+      if (heroRef.current) {
+        heroRef.current.style.opacity = '1';
+        heroRef.current.style.transform = 'translateY(0)';
+      }
+      calloutRefs.current.forEach((el) => {
+        if (el) {
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(-50%)';
+        }
+      });
+      return;
+    }
 
     const ctx = gsap.context(() => {
       gsap.to(frameObjRef.current, {
@@ -82,23 +109,59 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           pin: pinnedRef.current,
           start: 'top top',
           end: 'bottom bottom',
-          scrub: 1.0, // Smooth 1.0s catchup scrub for slow, steady playback on any scroll speed
+          // Snappier on mobile to keep animation from lagging behind touch
+          scrub: isMobile ? 0.5 : 1.0,
           onUpdate: (self) => {
+            const progress = self.progress;
+
+            // Drive canvas frame
             frameRef.current = frameObjRef.current.value;
+
+            // Update React section state only on boundary crossings (for aria-hidden)
             const newSection = Math.min(
               TOTAL_SECTIONS - 1,
-              Math.max(0, Math.round(self.progress * (TOTAL_SECTIONS - 1)))
+              Math.max(0, Math.round(progress * (TOTAL_SECTIONS - 1)))
             );
             if (newSection !== currentSectionRef.current) {
               currentSectionRef.current = newSection;
               setCurrentSection(newSection);
             }
+
+            // --- Direct DOM writes — no React re-renders ---
+
+            // Hero: fade + slide up as scroll leaves section 0
+            if (heroRef.current) {
+              const heroOpacity = clamp(1 - progress * 8, 0, 1);
+              const heroY = progress * -120;
+              heroRef.current.style.opacity = String(heroOpacity);
+              heroRef.current.style.transform = `translateY(${heroY}px)`;
+            }
+
+            // Canvas overlay: subtle darkening vignette as hero exits (desktop only)
+            if (overlayRef.current && !isMobile) {
+              overlayRef.current.style.opacity = String(clamp(progress * 7, 0, 0.45));
+            }
+
+            // Feature callouts: each eases in from below, out above, linked to progress
+            const sectionWidth = 1 / (TOTAL_SECTIONS - 1);
+            calloutRefs.current.forEach((el, i) => {
+              if (!el) return;
+              const sectionIndex = FEATURE_CALLOUTS[i].sectionIndex;
+              const center = sectionIndex * sectionWidth;
+              const t = (progress - center) / sectionWidth; // -1..0..1
+
+              const opacity = clamp(1 - Math.abs(t) * 2.5, 0, 1);
+              // On mobile: opacity-only (avoids composite-layer jank from translateY)
+              const translateY = isMobile ? -50 : -50 + t * -60;
+
+              el.style.opacity = String(opacity);
+              el.style.transform = `translateY(${translateY}%)`;
+            });
           },
         },
       });
     }, containerRef);
 
-    // Refresh ScrollTrigger after layout stabilizes
     const timer = setTimeout(() => {
       ScrollTrigger.refresh();
     }, 100);
@@ -109,13 +172,13 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     };
   }, []);
 
-  // Initialize Lenis smooth scroll with lerp damping & GSAP ticker sync
+  // Lenis smooth scroll — already guards prefers-reduced-motion
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) return;
 
     const lenis = new Lenis({
-      lerp: 0.09, // Damping lerp factor (0.09 for fluid, instant-catchup damping)
+      lerp: 0.09,
       smoothWheel: true,
     });
 
@@ -134,7 +197,26 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     };
   }, []);
 
-  // Hide side scrollbar on front landing page
+  // CTA section — IntersectionObserver fade-in
+  useEffect(() => {
+    const el = ctaRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.classList.add('in-view');
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.15 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Hide side scrollbar on landing page
   useEffect(() => {
     document.body.classList.add('landing-page-active');
     return () => {
@@ -188,16 +270,24 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
             <FrameCanvas frameRef={frameRef} totalFrames={240} className="w-full h-full" />
           </div>
 
+          {/* Canvas vignette overlay — darkens subtly as hero exits (scroll-driven) */}
+          <div
+            ref={overlayRef}
+            className="absolute inset-0 z-[15] bg-black pointer-events-none"
+            style={{ opacity: 0 }}
+            aria-hidden="true"
+          />
+
           {/* UI Content Overlays */}
           <div className="absolute inset-0 z-20 pointer-events-none" aria-live="polite">
             {/* Hero Section */}
             <div
+              ref={heroRef}
               aria-hidden={currentSection !== 0}
-              className={`absolute inset-0 flex flex-col justify-between items-center pt-24 sm:pt-32 pb-12 px-6 sm:px-12 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                currentSection === 0
-                  ? 'opacity-100 translate-y-0 pointer-events-auto'
-                  : 'opacity-0 -translate-y-24 pointer-events-none'
+              className={`absolute inset-0 flex flex-col justify-between items-center pt-24 sm:pt-32 pb-12 px-6 sm:px-12 landing-callout ${
+                currentSection === 0 ? 'pointer-events-auto' : 'pointer-events-none'
               }`}
+              style={{ opacity: 1, transform: 'translateY(0)' }}
             >
               <div className="text-center max-w-3xl">
                 <h1 className="font-display text-6xl sm:text-8xl md:text-9xl font-extrabold tracking-tight text-white drop-shadow-md">
@@ -213,34 +303,23 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
             </div>
 
             {/* Feature Callouts */}
-            {FEATURE_CALLOUTS.map((item) => {
+            {FEATURE_CALLOUTS.map((item, i) => {
               const isCurrent = currentSection === item.sectionIndex;
-              const isPassed = currentSection > item.sectionIndex;
               const isLeft = item.align === 'left';
-
-              let transformStyle = 'translateY(calc(-50% + 80px))';
-              let opacityStyle = 0;
-
-              if (isCurrent) {
-                transformStyle = 'translateY(-50%)';
-                opacityStyle = 1;
-              } else if (isPassed) {
-                transformStyle = 'translateY(calc(-50% - 80px))';
-                opacityStyle = 0;
-              }
 
               return (
                 <div
                   key={item.id}
+                  ref={(el) => { calloutRefs.current[i] = el; }}
                   aria-hidden={!isCurrent}
-                  className={`absolute top-1/2 p-5 sm:p-8 md:p-10 max-w-[calc(100vw-2.5rem)] sm:max-w-md lg:max-w-lg transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+                  className={`landing-callout absolute top-1/2 p-5 sm:p-8 md:p-10 max-w-[calc(100vw-2.5rem)] sm:max-w-md lg:max-w-lg ${
                     isCurrent ? 'pointer-events-auto' : 'pointer-events-none'
                   } ${
                     isLeft
                       ? 'left-5 sm:left-12 md:left-16 lg:left-24 text-left'
                       : 'right-5 sm:right-12 md:right-16 lg:right-24 text-left sm:text-right'
                   } bg-black/55 sm:bg-transparent backdrop-blur-lg sm:backdrop-blur-none rounded-2xl sm:rounded-none border border-white/15 sm:border-none shadow-2xl sm:shadow-none`}
-                  style={{ opacity: opacityStyle, transform: transformStyle }}
+                  style={{ opacity: 0, transform: 'translateY(calc(-50% + 80px))' }}
                 >
                   <span className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-white font-mono font-bold mb-1.5 block">
                     {item.category}
@@ -258,8 +337,11 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
         </div>
       </div>
 
-      {/* Separated Final CTA Section (Below 3D Frame Sequence) */}
-      <section className="relative z-30 min-h-screen bg-black flex flex-col items-center justify-center px-6 py-24 border-t border-zinc-900 text-center">
+      {/* Final CTA Section — fades in via IntersectionObserver */}
+      <section
+        ref={ctaRef}
+        className="cta-section relative z-30 min-h-screen bg-black flex flex-col items-center justify-center px-6 py-24 border-t border-zinc-900 text-center"
+      >
         <div className="max-w-3xl mx-auto space-y-8">
           <h2 className="font-display text-5xl sm:text-7xl md:text-8xl font-extrabold tracking-tight text-white leading-none">
             Everything school.<br className="hidden sm:inline" /> One app.

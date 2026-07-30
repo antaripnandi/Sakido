@@ -270,6 +270,27 @@ body.landing-page-active {
   scrollbar-width: none !important;
 }
 
+/* Landing page scroll animations */
+.cta-section {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.cta-section.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .cta-section {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  .landing-callout {
+    transition: none !important;
+  }
+}
+
 /* Focus Zone Custom Component Styles */
 .material-symbols-outlined {
   font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
