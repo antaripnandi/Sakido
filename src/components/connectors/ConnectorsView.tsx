@@ -76,18 +76,23 @@ export const ConnectorsView: React.FC<ConnectorsViewProps> = ({
   // Modal states for permission disclosure & disconnect confirmation
   const [permissionModalService, setPermissionModalService] = useState<typeof SERVICE_CONFIGS[0] | null>(null);
   const [disconnectConfirmService, setDisconnectConfirmService] = useState<typeof SERVICE_CONFIGS[0] | null>(null);
-  
-  // Test connection feedback per service
   const [testResults, setTestResults] = useState<Record<string, 'testing' | 'success' | 'failed'>>({});
+  
+  // Service-specific lightweight API test endpoints matching granted scope
+  const SERVICE_TEST_ENDPOINTS: Record<string, string> = {
+    googleCalendar: 'https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1',
+    googleDrive: 'https://www.googleapis.com/drive/v3/files?pageSize=1',
+    gmail: 'https://www.googleapis.com/gmail/v1/users/me/profile',
+  };
 
   const handleTestConnection = async (serviceKey: 'googleCalendar' | 'googleDrive' | 'gmail') => {
     if (!executeGoogleApi) return;
     setTestResults((prev) => ({ ...prev, [serviceKey]: 'testing' }));
 
     try {
-      // Zapier/Linear pattern: call lightweight endpoint GET /calendar/v3/users/me/calendarList?maxResults=1
+      const endpoint = SERVICE_TEST_ENDPOINTS[serviceKey] || SERVICE_TEST_ENDPOINTS.googleCalendar;
       const res = await executeGoogleApi((token) =>
-        fetch('https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1', {
+        fetch(endpoint, {
           headers: { Authorization: `Bearer ${token}` },
         })
       );
@@ -167,20 +172,29 @@ export const ConnectorsView: React.FC<ConnectorsViewProps> = ({
                   
                   {/* Notion/Zapier metadata labels */}
                   {isConnected && (
-                    <div className="flex items-center gap-3 mt-2 text-[11px] text-secondary font-mono flex-wrap">
-                      <span>Connected as <strong className="text-on-surface">{connectors.accountEmail || 'Google Account'}</strong></span>
-                      {lastSynced && <span>• Last synced {lastSynced}</span>}
+                    <div className="flex flex-col gap-1 mt-2">
+                      <div className="flex items-center gap-3 text-[11px] text-secondary font-mono flex-wrap">
+                        <span>Connected as <strong className="text-on-surface">{connectors.accountEmail || 'Google Account'}</strong></span>
+                        {lastSynced && <span>• Last synced {lastSynced}</span>}
+                      </div>
+                      {testStatus === 'failed' && (
+                        <p className="text-[11px] text-amber-500 dark:text-amber-400 font-mono flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          OAuth token expired — click Re-connect to refresh access.
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+              <div className="flex items-center gap-2 self-end sm:self-center shrink-0 flex-wrap">
                 {isConnected && (
                   <button
                     onClick={() => handleTestConnection(service.key)}
                     disabled={testStatus === 'testing'}
+                    title={testStatus === 'failed' ? 'Token expired or scope missing. Click Re-connect below to refresh authorization.' : 'Test live Google OAuth API connection'}
                     className="px-3 py-1.5 rounded-xl border border-outline-variant/50 text-xs font-medium text-on-surface hover:bg-surface-container-high flex items-center gap-1.5 cursor-pointer"
                   >
                     <Zap className="w-3.5 h-3.5 text-amber-500" />
@@ -189,13 +203,22 @@ export const ConnectorsView: React.FC<ConnectorsViewProps> = ({
                 )}
 
                 {isConnected ? (
-                  <button
-                    onClick={() => setDisconnectConfirmService(service)}
-                    className="px-4 py-2 rounded-xl text-xs font-semibold border border-outline-variant text-on-surface hover:bg-surface-container-high flex items-center gap-1.5 cursor-pointer"
-                  >
-                    <LogOut className="w-3.5 h-3.5 text-secondary" />
-                    Disconnect
-                  </button>
+                  <>
+                    <button
+                      onClick={() => setPermissionModalService(service)}
+                      disabled={isConnecting}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-primary/40 text-primary hover:bg-primary/10 flex items-center gap-1 cursor-pointer"
+                    >
+                      Re-connect
+                    </button>
+                    <button
+                      onClick={() => setDisconnectConfirmService(service)}
+                      className="px-3 py-1.5 rounded-xl text-xs font-semibold border border-outline-variant text-on-surface hover:bg-surface-container-high flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <LogOut className="w-3.5 h-3.5 text-secondary" />
+                      Disconnect
+                    </button>
+                  </>
                 ) : (
                   <button
                     onClick={() => setPermissionModalService(service)}
