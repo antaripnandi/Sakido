@@ -54,6 +54,13 @@
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/terms", "destination": "/terms.html" },
+    { "source": "/terms-of-service", "destination": "/terms.html" },
+    { "source": "/cookie-policy", "destination": "/cookie-policy.html" },
+    { "source": "/cookies", "destination": "/cookie-policy.html" },
+    { "source": "/contact", "destination": "/contact.html" },
+    { "source": "/legal", "destination": "/privacy.html" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "crons": [

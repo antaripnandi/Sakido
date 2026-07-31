@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Shield, FileText, Cookie, Mail, ArrowLeft, ExternalLink, CheckCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 
 type LegalTab = 'terms' | 'privacy' | 'cookies' | 'contact';
 
@@ -9,16 +9,16 @@ interface LegalPageProps {
 }
 
 export const LegalPage: React.FC<LegalPageProps> = ({ initialTab = 'privacy' }) => {
-  const navigate = useNavigate();
+  // Real <Link>s (not <button>s) so crawlers see actual <a href> between legal
+  // pages in the server-rendered HTML (SEO: fixes 'no outgoing links' + orphans).
   const [activeTab, setActiveTab] = useState<LegalTab>(initialTab);
 
-  const handleTabChange = (tab: LegalTab) => {
-    setActiveTab(tab);
-    if (tab === 'terms') navigate('/terms');
-    else if (tab === 'privacy') navigate('/privacy');
-    else if (tab === 'cookies') navigate('/cookie-policy');
-    else if (tab === 'contact') navigate('/contact');
-  };
+  const tabLinks: { tab: LegalTab; to: string; label: string; icon: React.ReactNode }[] = [
+    { tab: 'privacy', to: '/privacy', label: 'Privacy Policy', icon: <Shield className="w-4 h-4 shrink-0" /> },
+    { tab: 'terms', to: '/terms', label: 'Terms of Service', icon: <FileText className="w-4 h-4 shrink-0" /> },
+    { tab: 'cookies', to: '/cookie-policy', label: 'Cookie Policy', icon: <Cookie className="w-4 h-4 shrink-0" /> },
+    { tab: 'contact', to: '/contact', label: 'Contact & Support', icon: <Mail className="w-4 h-4 shrink-0" /> },
+  ];
 
   const lastUpdated = 'July 29, 2026';
   const domainUrl = 'https://sakidoapp.vercel.app';
@@ -30,13 +30,13 @@ export const LegalPage: React.FC<LegalPageProps> = ({ initialTab = 'privacy' }) 
       <header className="border-b border-[#2c241f] bg-[#131313]/90 backdrop-blur-md sticky top-0 z-50 px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate('/')}
+            <Link
+              to="/"
               className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#1c1613] border border-[#2c241f] text-[#c4c7c8] hover:text-white hover:bg-[#2c241f] transition-all text-xs font-mono font-medium cursor-pointer shadow-xs"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
               Back to Sakido
-            </button>
+            </Link>
             <div className="h-4 w-px bg-[#2c241f] hidden sm:block" />
             <span className="font-syne font-bold text-sm text-[#e2e2e2] tracking-wide hidden sm:inline">
               Legal & Compliance Center
@@ -64,53 +64,21 @@ export const LegalPage: React.FC<LegalPageProps> = ({ initialTab = 'privacy' }) 
           </div>
 
           <nav className="space-y-1.5">
-            <button
-              onClick={() => handleTabChange('privacy')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left ${
-                activeTab === 'privacy'
-                  ? 'bg-[#f4bb92] text-[#1c1613] shadow-md font-bold'
-                  : 'text-[#c4c7c8] hover:text-white hover:bg-[#1c1613]'
-              }`}
-            >
-              <Shield className="w-4 h-4 shrink-0" />
-              <span className="font-syne tracking-wide">Privacy Policy</span>
-            </button>
-
-            <button
-              onClick={() => handleTabChange('terms')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left ${
-                activeTab === 'terms'
-                  ? 'bg-[#f4bb92] text-[#1c1613] shadow-md font-bold'
-                  : 'text-[#c4c7c8] hover:text-white hover:bg-[#1c1613]'
-              }`}
-            >
-              <FileText className="w-4 h-4 shrink-0" />
-              <span className="font-syne tracking-wide">Terms of Service</span>
-            </button>
-
-            <button
-              onClick={() => handleTabChange('cookies')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left ${
-                activeTab === 'cookies'
-                  ? 'bg-[#f4bb92] text-[#1c1613] shadow-md font-bold'
-                  : 'text-[#c4c7c8] hover:text-white hover:bg-[#1c1613]'
-              }`}
-            >
-              <Cookie className="w-4 h-4 shrink-0" />
-              <span className="font-syne tracking-wide">Cookie Policy</span>
-            </button>
-
-            <button
-              onClick={() => handleTabChange('contact')}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left ${
-                activeTab === 'contact'
-                  ? 'bg-[#f4bb92] text-[#1c1613] shadow-md font-bold'
-                  : 'text-[#c4c7c8] hover:text-white hover:bg-[#1c1613]'
-              }`}
-            >
-              <Mail className="w-4 h-4 shrink-0" />
-              <span className="font-syne tracking-wide">Contact & Support</span>
-            </button>
+            {tabLinks.map(({ tab, to, label, icon }) => (
+              <Link
+                key={tab}
+                to={to}
+                onClick={() => setActiveTab(tab)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-xs font-semibold transition-all cursor-pointer text-left ${
+                  activeTab === tab
+                    ? 'bg-[#f4bb92] text-[#1c1613] shadow-md font-bold'
+                    : 'text-[#c4c7c8] hover:text-white hover:bg-[#1c1613]'
+                }`}
+              >
+                {icon}
+                <span className="font-syne tracking-wide">{label}</span>
+              </Link>
+            ))}
           </nav>
 
           <div className="pt-6 border-t border-[#2c241f] text-[11px] text-[#8e9192] font-mono space-y-1">
