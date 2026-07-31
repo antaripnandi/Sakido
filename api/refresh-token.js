@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { getTokenCol, getFlagCol, exchangeGoogleToken } from './lib/googleToken.js';
 
 // --- Rate limiting (in-memory, best-effort on warm instances) ---
 const rateMap = new Map();
@@ -91,11 +92,8 @@ export default async function handler(req, res) {
 
   // Extract service param from body to read the correct token column
   const service = req.body?.service; // 'googleCalendar' | 'googleDrive' | 'gmail'
-  const tokenCol =
-    service === 'googleCalendar' ? 'calendar_refresh_token' :
-    service === 'googleDrive'    ? 'drive_refresh_token'    :
-    service === 'gmail'          ? 'gmail_refresh_token'    :
-    'calendar_refresh_token'; // fallback to calendar for backwards compat during migration
+  const tokenCol = getTokenCol(service);
+  const flagCol = getFlagCol(service);
 
   const { data: tokenRow, error: tokenError } = await supabaseAdmin
     .from('google_tokens')
@@ -110,27 +108,16 @@ export default async function handler(req, res) {
 
   // 6. Exchange refresh token for a new access token with Google
   try {
-    const response = await fetch('https://oauth2.googleapis.com/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        client_id: clientId,
-        client_secret: clientSecret,
-        refresh_token: storedToken,
-        grant_type: 'refresh_token',
-      }),
+    const { ok, status, data } = await exchangeGoogleToken({
+      clientId,
+      clientSecret,
+      refreshToken: storedToken,
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
+    if (!ok) {
       // On invalid_grant: clear the dead token and its service flag server-side.
       // Don't depend on the client to make a follow-up write — tab may close or network may drop.
       if (data.error === 'invalid_grant') {
-        const flagCol =
-          service === 'googleCalendar' ? 'google_calendar_connected' :
-          service === 'googleDrive'    ? 'google_drive_connected'    :
-          'gmail_connected';
         await supabaseAdmin.from('google_tokens')
           .update({
             [tokenCol]: null,
@@ -140,7 +127,7 @@ export default async function handler(req, res) {
           .eq('user_id', user.id);
         return res.status(401).json({ error: 'reconnect_required', message: 'Google authorization expired. Please reconnect.' });
       }
-      return res.status(response.status).json({
+      return res.status(status).json({
         error: data.error || 'google_token_refresh_failed',
       });
     }
