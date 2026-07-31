@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getProviderToken, setProviderToken, clearProviderToken } from '../../lib/googleTokenStore';
+import { getProviderToken, setProviderToken, clearProviderToken, getOrRefresh, getGeneration, GoogleService } from '../../lib/googleTokenStore';
 import {
   Sun,
   Moon,
@@ -390,9 +390,9 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
       let folderSearchRes = await searchFolder(token);
 
-      // Handle 401 token refresh
+      // Handle 401 token refresh — use getOrRefresh for Drive service
       if (folderSearchRes.status === 401) {
-        const freshToken = await refreshGoogleToken();
+        const freshToken = await getOrRefresh('googleDrive', () => refreshGoogleToken('googleDrive'));
         if (freshToken) {
           token = freshToken;
           folderSearchRes = await searchFolder(token);
@@ -501,7 +501,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   const debouncedSyncNotesToGoogleDrive = useCallback((updatedNotes: any[]) => {
     if (!connectors.googleDrive) return;
-    const token = getProviderToken();
+    const token = getProviderToken('googleDrive');
     if (!token) return;
 
     if (driveSyncTimeoutRef.current) {
@@ -531,19 +531,22 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
           // Only mark as connected if user returned with an active session containing valid provider token or Google identity
           if (session && (session.provider_token || session.user?.identities?.some(i => i.provider === 'google'))) {
+            const service = pending as GoogleService;
             if (session.provider_token) {
-              setProviderToken(session.provider_token);
+              setProviderToken(service, session.provider_token);
             }
             if ((session as any).provider_refresh_token) {
               const supabase = getSupabaseClient();
               const flagCol = pending === 'googleCalendar' ? 'google_calendar_connected'
                 : pending === 'googleDrive' ? 'google_drive_connected'
                 : 'gmail_connected';
-              // Single upsert — never split refresh_token and flag into separate calls
-              // because two upserts with onConflict can race and null out each other's fields
+              const tokenCol = pending === 'googleCalendar' ? 'calendar_refresh_token'
+                : pending === 'googleDrive' ? 'drive_refresh_token'
+                : 'gmail_refresh_token';
+              // Single upsert — write to the correct per-service token column
               supabase?.from('google_tokens').upsert({
                 user_id: session.user.id,
-                refresh_token: (session as any).provider_refresh_token,
+                [tokenCol]: (session as any).provider_refresh_token,
                 [flagCol]: true,
                 updated_at: new Date().toISOString(),
               }, { onConflict: 'user_id' }).then(({ error }) => {
@@ -601,16 +604,25 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   // Single shared helper — gets a fresh Google access token via server JWT validation.
   // The server reads the refresh token from DB; the client never touches it.
-  const refreshGoogleToken = useCallback(async (): Promise<string | null> => {
+  // Now accepts a service param to fetch the correct per-service token.
+  const refreshGoogleToken = useCallback(async (service: GoogleService): Promise<string | null> => {
     const supabase = getSupabaseClient();
     if (!supabase) return null;
     const { data: { session } } = await supabase.auth.getSession();
     if (!session?.access_token) return null;
 
+    // Generation snapshot: if the user signs out while this refresh is in-flight,
+    // invalidateGeneration() bumps the counter and this write must be discarded.
+    const gen = getGeneration();
+
     try {
       const res = await fetch('/api/refresh-token', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${session.access_token}` },
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ service }),
       });
 
       if (!res.ok) {
@@ -619,15 +631,16 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         // Transient errors (500, 429, network blip) must NOT wipe connector state.
         const hardFail = body.error === 'reconnect_required' || body.error === 'invalid_grant';
         if (hardFail) {
-          setConnectors((prev) => ({ ...prev, googleCalendar: false, googleDrive: false, gmail: false }));
-          clearProviderToken();
+          // Clear only this service, not all three — server already cleared DB
+          setConnectors((prev) => ({ ...prev, [service]: false }));
+          clearProviderToken(service);
         }
         return null;
       }
 
       const data = await res.json();
-      if (data.access_token) {
-        setProviderToken(data.access_token);
+      if (data.access_token && gen === getGeneration()) {
+        setProviderToken(service, data.access_token, data.expires_in);
         return data.access_token;
       }
       return null;
@@ -637,24 +650,24 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     }
   }, []);
 
-  // Generic helper for authenticated Google API requests with automatic 401 token refresh
+  // Generic helper for authenticated Google API requests with automatic 401 token refresh.
+  // service param routes to the correct token column — defaults to 'googleCalendar' since
+  // most callers are Calendar; Drive callers pass 'googleDrive' explicitly.
   const executeGoogleApi = useCallback(async (
-    apiCall: (accessToken: string) => Promise<Response>
+    apiCall: (accessToken: string) => Promise<Response>,
+    service: GoogleService = 'googleCalendar'
   ): Promise<Response | null> => {
-    let token = getProviderToken();
-
-    // No token cached — try a silent refresh before the first call
-    if (!token) {
-      token = await refreshGoogleToken();
-      if (!token) return null;
-    }
+    // getOrRefresh coalesces concurrent callers for the same service into one network request
+    let token = await getOrRefresh(service, () => refreshGoogleToken(service));
+    if (!token) return null;
 
     try {
       let res = await apiCall(token);
 
-      // Token expired mid-session — refresh once and retry
+      // Token expired mid-session — clear cache and refresh once, then retry
       if (res.status === 401) {
-        token = await refreshGoogleToken();
+        clearProviderToken(service);
+        token = await getOrRefresh(service, () => refreshGoogleToken(service));
         if (!token) return null;
         res = await apiCall(token);
       }
@@ -753,7 +766,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     if (!connectors.googleDrive) return;
 
     const fetchGoogleNotes = async () => {
-      let token = getProviderToken();
+      let token = getProviderToken('googleDrive');
       if (!token) return;
 
       try {
@@ -763,7 +776,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         );
 
         if (folderRes.status === 401) {
-          const freshToken = await refreshGoogleToken();
+          const freshToken = await getOrRefresh('googleDrive', () => refreshGoogleToken('googleDrive'));
           if (freshToken) {
             token = freshToken;
           }
@@ -1373,7 +1386,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       const allOff = !Object.values({ ...connectors, [serviceKey]: false }).some(Boolean);
 
       // Optimistic local state update (synchronous, before async DB work)
-      clearProviderToken();
+      // Per-service tokens: only clear this service's cached token
+      clearProviderToken(serviceKey);
       setConnectors((prev) => ({ ...prev, [serviceKey]: false }));
       setConnectorNotice(`Disconnected ${serviceNames[serviceKey]}.`);
       setConnectingService(null);
@@ -1384,8 +1398,11 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         const uid = data.session.user.id;
 
         if (!allOff) {
-          // Some other service is still connected — just clear this flag
-          supabase.from('google_tokens').update({ [flagCol]: false, updated_at: new Date().toISOString() })
+          // Some other service is still connected — clear this flag AND this service's token column
+          const tokenCol = serviceKey === 'googleCalendar' ? 'calendar_refresh_token'
+            : serviceKey === 'googleDrive' ? 'drive_refresh_token'
+            : 'gmail_refresh_token';
+          supabase.from('google_tokens').update({ [flagCol]: false, [tokenCol]: null, updated_at: new Date().toISOString() })
             .eq('user_id', uid)
             .then(({ error }) => { if (error) console.warn('[connectors] flag clear failed:', error.message); });
         } else {
@@ -1411,8 +1428,11 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                     if (delError) console.warn('[connectors] row delete failed:', delError.message);
                   });
               } else {
-                // Another tab reconnected in the meantime — just clear this one flag
-                supabase.from('google_tokens').update({ [flagCol]: false, updated_at: new Date().toISOString() })
+                // Another tab reconnected in the meantime — clear this flag AND this service's token column
+                const tokenCol = serviceKey === 'googleCalendar' ? 'calendar_refresh_token'
+                  : serviceKey === 'googleDrive' ? 'drive_refresh_token'
+                  : 'gmail_refresh_token';
+                supabase.from('google_tokens').update({ [flagCol]: false, [tokenCol]: null, updated_at: new Date().toISOString() })
                   .eq('user_id', uid)
                   .then(({ error: updError }) => {
                     if (updError) console.warn('[connectors] flag clear failed:', updError.message);

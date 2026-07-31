@@ -89,14 +89,23 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Session validation failed.' });
   }
 
+  // Extract service param from body to read the correct token column
+  const service = req.body?.service; // 'googleCalendar' | 'googleDrive' | 'gmail'
+  const tokenCol =
+    service === 'googleCalendar' ? 'calendar_refresh_token' :
+    service === 'googleDrive'    ? 'drive_refresh_token'    :
+    service === 'gmail'          ? 'gmail_refresh_token'    :
+    'calendar_refresh_token'; // fallback to calendar for backwards compat during migration
+
   const { data: tokenRow, error: tokenError } = await supabaseAdmin
     .from('google_tokens')
-    .select('refresh_token')
+    .select(tokenCol)
     .eq('user_id', user.id)
     .single();
 
-  if (tokenError || !tokenRow?.refresh_token) {
-    return res.status(400).json({ error: 'reconnect_required', message: 'No Google refresh token on file.' });
+  const storedToken = tokenRow?.[tokenCol];
+  if (tokenError || !storedToken) {
+    return res.status(400).json({ error: 'reconnect_required', message: 'No refresh token for this service.' });
   }
 
   // 6. Exchange refresh token for a new access token with Google
@@ -107,7 +116,7 @@ export default async function handler(req, res) {
       body: new URLSearchParams({
         client_id: clientId,
         client_secret: clientSecret,
-        refresh_token: tokenRow.refresh_token,
+        refresh_token: storedToken,
         grant_type: 'refresh_token',
       }),
     });
@@ -115,18 +124,33 @@ export default async function handler(req, res) {
     const data = await response.json();
 
     if (!response.ok) {
+      // On invalid_grant: clear the dead token and its service flag server-side.
+      // Don't depend on the client to make a follow-up write — tab may close or network may drop.
+      if (data.error === 'invalid_grant') {
+        const flagCol =
+          service === 'googleCalendar' ? 'google_calendar_connected' :
+          service === 'googleDrive'    ? 'google_drive_connected'    :
+          'gmail_connected';
+        await supabaseAdmin.from('google_tokens')
+          .update({
+            [tokenCol]: null,
+            [flagCol]: false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id);
+        return res.status(401).json({ error: 'reconnect_required', message: 'Google authorization expired. Please reconnect.' });
+      }
       return res.status(response.status).json({
         error: data.error || 'google_token_refresh_failed',
       });
     }
 
-    // Handle token rotation — Google may issue a new refresh token
+    // Handle token rotation — Google may issue a new refresh token for this service
     if (data.refresh_token) {
-      await supabaseAdmin.from('google_tokens').upsert({
-        user_id: user.id,
-        refresh_token: data.refresh_token,
+      await supabaseAdmin.from('google_tokens').update({
+        [tokenCol]: data.refresh_token,
         updated_at: new Date().toISOString(),
-      });
+      }).eq('user_id', user.id);
     }
 
     // Return only the short-lived access token — refresh token never leaves the server

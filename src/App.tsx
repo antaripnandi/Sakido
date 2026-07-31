@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import { SakidoLandingPage } from './components/SakidoLandingPage';
 import { LegalPage } from './components/legal/LegalPage';
 import { getSupabaseClient } from './lib/supabaseClient';
+import { clearProviderToken, invalidateGeneration } from './lib/googleTokenStore';
 import { Analytics } from '@vercel/analytics/react';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 
@@ -58,31 +59,36 @@ function AppContent() {
       // Capture provider_refresh_token at the ONLY moment Supabase exposes it —
       // the SIGNED_IN event fired immediately after the OAuth redirect lands.
       // getSession() called anywhere later will return null for this field.
-      // Guard: only write when it's actually present (won't overwrite on normal session restores).
-      // Also reads and preserves existing flag columns so a first-time INSERT never defaults
-      // connector flags to false alongside a valid refresh_token (defense-in-depth).
+      // Routes to the correct per-service token column based on sakido_pending_connector.
       if (event === 'SIGNED_IN' && session?.provider_refresh_token) {
-        // Read existing flag state first (if any) to preserve on upsert
-        supabase.from('google_tokens')
-          .select('google_calendar_connected, google_drive_connected, gmail_connected')
-          .eq('user_id', session.user.id)
-          .maybeSingle()
-          .then(({ data, error }) => {
-            if (error) console.warn('[auth] google_tokens read failed:', error.message);
-            supabase.from('google_tokens').upsert({
-              user_id: session.user.id,
-              refresh_token: session.provider_refresh_token,
-              google_calendar_connected: data?.google_calendar_connected ?? false,
-              google_drive_connected: data?.google_drive_connected ?? false,
-              gmail_connected: data?.gmail_connected ?? false,
-              updated_at: new Date().toISOString(),
-            }, { onConflict: 'user_id' }).then(({ error: upsertError }) => {
-              if (upsertError) console.warn('[auth] google_tokens upsert failed:', upsertError.message);
-              else console.log('[auth] provider_refresh_token + flags saved for user', session.user.id);
-            });
-          });
+        const pending = localStorage.getItem('sakido_pending_connector');
+
+        // Map pending service to token column
+        const tokenCol =
+          pending === 'googleCalendar' ? 'calendar_refresh_token' :
+          pending === 'googleDrive'    ? 'drive_refresh_token'    :
+          pending === 'gmail'          ? 'gmail_refresh_token'    :
+          null;
+
+        if (!tokenCol) {
+          // Normal sign-in (not a connector flow) — don't touch token columns
+          console.log('[auth] SIGNED_IN without pending connector, skipping token write');
+          return;
+        }
+
+        // Write only the token column — omit flag columns entirely. Postgres
+        // upsert only touches columns in the payload, so existing flags are
+        // preserved on update, and the migration's NOT NULL DEFAULT false
+        // makes a first INSERT safe. verifyOAuthCallback owns the flags.
+        supabase.from('google_tokens').upsert({
+          user_id: session.user.id,
+          [tokenCol]: session.provider_refresh_token, // write only this service's column
+          updated_at: new Date().toISOString(),
+        }, { onConflict: 'user_id' }).then(({ error: upsertError }) => {
+          if (upsertError) console.warn('[auth] token upsert failed:', upsertError.message);
+          else console.log('[auth] token saved to', tokenCol, 'for user', session.user.id);
+        });
       } else if (event === 'SIGNED_IN' && !session?.provider_refresh_token) {
-        // Log when SIGNED_IN fires without a refresh token — signals regression or missing prompt:consent
         console.log('[auth] SIGNED_IN fired without provider_refresh_token — normal session restore or missing access_type:offline');
       }
     });
@@ -110,6 +116,11 @@ function AppContent() {
     if (supabase) {
       await supabase.auth.signOut();
     }
+    // Purge cached Google access tokens + bump the generation guard so a
+    // different user on the same tab can never hit the previous user's cached
+    // token (or an in-flight refresh resolving after this sign-out)
+    clearProviderToken();
+    invalidateGeneration();
     setCurrentUser(null);
     navigate('/');
   };

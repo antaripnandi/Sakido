@@ -10,6 +10,7 @@ import {
   ExternalLink,
   Zap
 } from 'lucide-react';
+import { GoogleService } from '../../lib/googleTokenStore';
 
 export interface ConnectorsState {
   googleCalendar: boolean;
@@ -26,7 +27,7 @@ interface ConnectorsViewProps {
   onConnect: (serviceKey: 'googleCalendar' | 'googleDrive' | 'gmail') => void;
   onDisconnect: (serviceKey: 'googleCalendar' | 'googleDrive' | 'gmail') => void;
   onDismissNotice: () => void;
-  executeGoogleApi?: <T>(apiCall: (token: string) => Promise<Response>) => Promise<Response | null>;
+  executeGoogleApi?: <T>(apiCall: (token: string) => Promise<Response>, service?: GoogleService) => Promise<Response | null>;
 }
 
 const SERVICE_CONFIGS = [
@@ -94,7 +95,8 @@ export const ConnectorsView: React.FC<ConnectorsViewProps> = ({
       const res = await executeGoogleApi((token) =>
         fetch(endpoint, {
           headers: { Authorization: `Bearer ${token}` },
-        })
+        }),
+        serviceKey
       );
 
       if (res && res.ok) {
