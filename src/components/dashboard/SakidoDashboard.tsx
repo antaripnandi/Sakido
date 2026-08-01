@@ -851,6 +851,34 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     fetchGoogleNotes();
   }, [connectors.googleDrive]);
 
+  const prefersReducedMotion = React.useMemo(
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    []
+  );
+
+  // Reset drag states when leaving Calendar tab
+  useEffect(() => {
+    if (activeTab !== 'Calendar') {
+      setDraggingNew(null);
+      setResizingEvent(null);
+      setMovingEvent(null);
+      setEditingEventId(null);
+    }
+  }, [activeTab]);
+
+  // Auto-scroll to current time in timetable view
+  useEffect(() => {
+    if (activeTab === 'Calendar' && calendarViewMode === 'timetable' && timetableRef.current) {
+      const currentHour = now.getHours();
+      if (currentHour >= 7 && currentHour <= 22) {
+        const scrollPosition = ((currentHour - 7) * 52) - 150; // Center the current time
+        setTimeout(() => {
+          timetableRef.current?.scrollTo({ top: Math.max(0, scrollPosition), behavior: 'smooth' });
+        }, 100);
+      }
+    }
+  }, [activeTab, calendarViewMode]);
+
   // Time conversion helpers for drag interactions
   const parseTime = (time: string): number => {
     const [h, m] = time.split(':').map(Number);
@@ -872,6 +900,58 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     return minutesToTime(Math.max(7 * 60, Math.min(22 * 60, snappedMinutes)));
   };
 
+  const syncEventToGoogleCalendar = async (event: any, newStartTime?: string, newEndTime?: string) => {
+    if (!connectors.googleCalendar) return;
+
+    const startTime = newStartTime || event.startTime;
+    const endTime = newEndTime || event.endTime;
+    const title = event.title || 'Untitled Event';
+    const date = event.date;
+
+    try {
+      const token = await getOrRefresh('googleCalendar');
+      if (!token) return;
+
+      // Search for existing event by title
+      const searchRes = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/primary/events?q=${encodeURIComponent(`[Sakido] ${title}`)}&timeMin=${date}T00:00:00Z&timeMax=${date}T23:59:59Z`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const searchData = await searchRes.json();
+      const existingEvent = searchData.items?.[0];
+
+      const eventBody = {
+        summary: `[Sakido] ${title}`,
+        start: { dateTime: `${date}T${startTime}:00`, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+        end: { dateTime: `${date}T${endTime}:00`, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+      };
+
+      if (existingEvent) {
+        // Update existing event
+        await fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/primary/events/${existingEvent.id}`,
+          {
+            method: 'PATCH',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(eventBody),
+          }
+        );
+      } else {
+        // Create new event
+        await fetch(
+          'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+          {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(eventBody),
+          }
+        );
+      }
+    } catch (err) {
+      console.warn('Google Calendar sync error:', err);
+    }
+  };
+
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEventTitle.trim()) return;
@@ -889,6 +969,15 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
     const startTime = newEventStartTime.trim() || '09:00';
     const endTime = newEventEndTime.trim() || '10:00';
+
+    // Validate: end time must be after start time (no midnight crossing)
+    const startMin = parseTime(startTime);
+    const endMin = parseTime(endTime);
+    if (endMin <= startMin) {
+      setConnectorNotice('⚠️ End time must be after start time. Multi-day events are not supported.');
+      return;
+    }
+
     const type = newEventType;
     const recurrence = newEventRecurrence;
 
@@ -1960,10 +2049,11 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
               <div
                 ref={timetableRef}
-                className="relative border border-outline-variant/30 rounded-xl overflow-hidden bg-surface-container-low/30"
+                className="relative border border-outline-variant/30 rounded-xl overflow-y-auto bg-surface-container-low/30 touch-none select-none max-h-[600px]"
                 onPointerDown={(e) => {
                   const target = e.target as HTMLElement;
                   if (target.closest('.event-body') || !timetableRef.current) return;
+                  e.preventDefault();
                   const rect = timetableRef.current.getBoundingClientRect();
                   const startTime = clientYToTime(e.clientY, rect.top);
                   const todayISO = now.toISOString().split('T')[0];
@@ -1985,11 +2075,11 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                     const newMinutes = parseTime(currentTime);
                     if (resizingEvent.edge === 'top') {
                       const endMinutes = parseTime(resizingEvent.originalEndTime);
-                      const startMinutes = Math.min(newMinutes, endMinutes - 15);
+                      const startMinutes = Math.max(7 * 60, Math.min(newMinutes, endMinutes - 15));
                       setResizingEvent({ ...resizingEvent, originalStartTime: minutesToTime(startMinutes) });
                     } else {
                       const startMinutes = parseTime(resizingEvent.originalStartTime);
-                      const endMinutes = Math.max(newMinutes, startMinutes + 15);
+                      const endMinutes = Math.min(22 * 60, Math.max(newMinutes, startMinutes + 15));
                       setResizingEvent({ ...resizingEvent, originalEndTime: minutesToTime(endMinutes) });
                     }
                   } else if (movingEvent) {
@@ -2019,33 +2109,56 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                     setEditingTitle('');
                     setDraggingNew(null);
                   } else if (resizingEvent) {
-                    setEvents(prev => prev.map(ev =>
-                      ev.id === resizingEvent.id
-                        ? {
-                            ...ev,
-                            startTime: resizingEvent.originalStartTime,
-                            endTime: resizingEvent.originalEndTime,
-                            time: `${resizingEvent.originalStartTime} - ${resizingEvent.originalEndTime}`
-                          }
-                        : ev
-                    ));
+                    const finalDuration = parseTime(resizingEvent.originalEndTime) - parseTime(resizingEvent.originalStartTime);
+                    if (finalDuration >= 15) {
+                      setEvents(prev => prev.map(ev =>
+                        ev.id === resizingEvent.id
+                          ? {
+                              ...ev,
+                              startTime: resizingEvent.originalStartTime,
+                              endTime: resizingEvent.originalEndTime,
+                              time: `${resizingEvent.originalStartTime} - ${resizingEvent.originalEndTime}`
+                            }
+                          : ev
+                      ));
+                      syncEventToGoogleCalendar(events.find(e => e.id === resizingEvent.id)!, resizingEvent.originalStartTime, resizingEvent.originalEndTime);
+                    }
                     setResizingEvent(null);
                   } else if (movingEvent) {
-                    const duration = parseTime(movingEvent.originalEndTime) - parseTime(events.find(e => e.id === movingEvent.id)!.startTime);
-                    const newStartMinutes = parseTime(movingEvent.originalStartTime);
-                    const newEndMinutes = newStartMinutes + duration;
-                    setEvents(prev => prev.map(ev =>
-                      ev.id === movingEvent.id
-                        ? {
-                            ...ev,
-                            startTime: minutesToTime(newStartMinutes),
-                            endTime: minutesToTime(newEndMinutes),
-                            time: `${minutesToTime(newStartMinutes)} - ${minutesToTime(newEndMinutes)}`
-                          }
-                        : ev
-                    ));
+                    const originalEvent = events.find(e => e.id === movingEvent.id);
+                    if (originalEvent) {
+                      const duration = parseTime(movingEvent.originalEndTime) - parseTime(originalEvent.startTime);
+                      const newStartMinutes = parseTime(movingEvent.originalStartTime);
+                      const newEndMinutes = Math.min(22 * 60, newStartMinutes + duration);
+                      const finalStartMinutes = Math.max(7 * 60, Math.min(22 * 60 - 15, newStartMinutes));
+
+                      setEvents(prev => prev.map(ev =>
+                        ev.id === movingEvent.id
+                          ? {
+                              ...ev,
+                              startTime: minutesToTime(finalStartMinutes),
+                              endTime: minutesToTime(newEndMinutes),
+                              time: `${minutesToTime(finalStartMinutes)} - ${minutesToTime(newEndMinutes)}`
+                            }
+                          : ev
+                      ));
+                      syncEventToGoogleCalendar(originalEvent, minutesToTime(finalStartMinutes), minutesToTime(newEndMinutes));
+                    }
                     setMovingEvent(null);
                   }
+                }}
+                onPointerLeave={(e) => {
+                  setDraggingNew(null);
+                  setResizingEvent(null);
+                  setMovingEvent(null);
+                  try {
+                    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+                  } catch {}
+                }}
+                onPointerCancel={() => {
+                  setDraggingNew(null);
+                  setResizingEvent(null);
+                  setMovingEvent(null);
                 }}
               >
                 {/* Red Live Time Line */}
@@ -2127,14 +2240,17 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                         const target = e.target as HTMLElement;
                         if (target.closest('.resize-handle-top')) {
                           e.stopPropagation();
+                          if (editingEventId || movingEvent || resizingEvent) return;
                           setResizingEvent({ id: ev.id, edge: 'top', originalStartTime: ev.startTime, originalEndTime: ev.endTime });
                           (e.currentTarget.parentElement as HTMLElement)?.setPointerCapture(e.pointerId);
                         } else if (target.closest('.resize-handle-bottom')) {
                           e.stopPropagation();
+                          if (editingEventId || movingEvent || resizingEvent) return;
                           setResizingEvent({ id: ev.id, edge: 'bottom', originalStartTime: ev.startTime, originalEndTime: ev.endTime });
                           (e.currentTarget.parentElement as HTMLElement)?.setPointerCapture(e.pointerId);
                         } else if (!isEditing) {
                           e.stopPropagation();
+                          if (resizingEvent || movingEvent || draggingNew) return;
                           const rect = e.currentTarget.getBoundingClientRect();
                           const offsetY = e.clientY - rect.top;
                           setMovingEvent({ id: ev.id, offsetY, originalStartTime: ev.startTime, originalEndTime: ev.endTime });
@@ -2143,10 +2259,10 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                       }}
                     >
                       {/* Resize handles */}
-                      <div className="resize-handle-top absolute top-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="resize-handle-top absolute top-0 left-0 right-0 h-3 sm:h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="h-0.5 bg-current mx-2 rounded-full"></div>
                       </div>
-                      <div className="resize-handle-bottom absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="resize-handle-bottom absolute bottom-0 left-0 right-0 h-3 sm:h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="h-0.5 bg-current mx-2 rounded-full"></div>
                       </div>
 
@@ -2161,6 +2277,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                             if (e.key === 'Enter') {
                               const title = editingTitle.trim() || 'New Event';
                               setEvents(prev => prev.map(event => event.id === ev.id ? { ...event, title } : event));
+                              syncEventToGoogleCalendar({ ...ev, title });
                               setEditingEventId(null);
                             } else if (e.key === 'Escape') {
                               setEditingEventId(null);
@@ -2169,6 +2286,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                           onBlur={() => {
                             const title = editingTitle.trim() || 'New Event';
                             setEvents(prev => prev.map(event => event.id === ev.id ? { ...event, title } : event));
+                            syncEventToGoogleCalendar({ ...ev, title });
                             setEditingEventId(null);
                           }}
                           className="w-full bg-transparent border-none outline-none text-[13px] font-medium text-current placeholder:text-current placeholder:opacity-50"
@@ -2178,6 +2296,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                         <div
                           className="text-[13px] font-medium text-current cursor-text"
                           onClick={() => {
+                            if (movingEvent || resizingEvent || draggingNew) return;
                             setEditingEventId(ev.id);
                             setEditingTitle(ev.title);
                           }}

@@ -33,6 +33,7 @@
     "dotenv": "^17.2.3",
     "esbuild": "^0.25.0",
     "express": "^4.21.2",
+    "playwright": "^1.62.1",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
