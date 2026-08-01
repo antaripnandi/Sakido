@@ -83,6 +83,56 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     [tasks, todayStr]
   );
 
+  // Next upcoming event with time remaining
+  const nextUpcoming = useMemo(() => {
+    const upcoming = [...tasks, ...schedule]
+      .filter(item => {
+        if ('completed' in item && item.completed) return false;
+        if ('status' in item && (item.status === 'completed' || item.status === 'submitted')) return false;
+        return true;
+      })
+      .map(item => {
+        const isTask = 'dueDate' in item;
+        const dateStr = isTask ? item.dueDate : (item as any).date;
+        if (!dateStr || dateStr === 'Upcoming') return null;
+
+        const itemDate = new Date(dateStr);
+        if (isNaN(itemDate.getTime())) return null;
+
+        const timeStr = isTask ? '' : ((item as any).startTime || '09:00');
+        if (timeStr && !isTask) {
+          const [h, m] = timeStr.split(':').map(Number);
+          itemDate.setHours(h, m, 0, 0);
+        }
+
+        const msUntil = itemDate.getTime() - now.getTime();
+        if (msUntil < 0) return null;
+
+        return {
+          title: isTask ? (item as Task).title : ((item as any).title || (item as any).courseName),
+          type: isTask ? 'task' : ((item as any).type === 'exam' ? 'exam' : 'lecture'),
+          courseName: isTask ? (item as Task).courseName : ((item as any).courseCode || 'Event'),
+          dateTime: itemDate,
+          msUntil,
+        };
+      })
+      .filter((x): x is NonNullable<typeof x> => x !== null)
+      .sort((a, b) => a.msUntil - b.msUntil)[0];
+
+    return upcoming;
+  }, [tasks, schedule, now]);
+
+  const formatTimeRemaining = (ms: number) => {
+    const minutes = Math.floor(ms / 60000);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
+
+    if (days > 0) return `in ${days} day${days > 1 ? 's' : ''}`;
+    if (hours > 0) return `in ${hours} hour${hours > 1 ? 's' : ''}`;
+    if (minutes > 0) return `in ${minutes} min`;
+    return 'now';
+  };
+
   // Combine real tasks & schedule events into unified list
   const unifiedAcademicItems = useMemo(() => {
     const items: Array<{
@@ -310,6 +360,49 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Next Upcoming Event - Prominent Display */}
+      {nextUpcoming && (
+        <div className="p-6 rounded-2xl bg-gradient-to-br from-[#8b5e3c]/5 to-[#8b5e3c]/10 border-2 border-[#8b5e3c]/30 shadow-md">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs font-bold uppercase tracking-wider text-[#8b5e3c] dark:text-amber-400">
+                  Next Up
+                </span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                  nextUpcoming.type === 'exam'
+                    ? 'bg-red-500/20 text-red-600 dark:text-red-400'
+                    : nextUpcoming.type === 'task'
+                    ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400'
+                    : 'bg-slate-500/20 text-slate-600 dark:text-slate-400'
+                }`}>
+                  {nextUpcoming.type}
+                </span>
+              </div>
+              <h2 className="text-2xl font-bold text-on-surface mb-1">
+                {nextUpcoming.title}
+              </h2>
+              <p className="text-sm text-secondary font-medium">
+                {nextUpcoming.courseName}
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-3xl font-bold text-[#8b5e3c] dark:text-amber-400 font-mono">
+                {formatTimeRemaining(nextUpcoming.msUntil)}
+              </div>
+              <div className="text-xs text-secondary mt-1 font-mono">
+                {nextUpcoming.dateTime.toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit'
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 2. Main Overview Grid: Filterable Unified Hub + Compact Calendar */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
