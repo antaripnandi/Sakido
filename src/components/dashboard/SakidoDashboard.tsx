@@ -602,6 +602,18 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     date: string;
     startY: number;
   } | null>(null);
+  const [resizingEvent, setResizingEvent] = useState<{
+    id: string;
+    edge: 'top' | 'bottom';
+    originalStartTime: string;
+    originalEndTime: string;
+  } | null>(null);
+  const [movingEvent, setMovingEvent] = useState<{
+    id: string;
+    offsetY: number;
+    originalStartTime: string;
+    originalEndTime: string;
+  } | null>(null);
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState('');
   const timetableRef = React.useRef<HTMLDivElement>(null);
@@ -1959,31 +1971,81 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
                 }}
                 onPointerMove={(e) => {
-                  if (!draggingNew || !timetableRef.current) return;
+                  if (!timetableRef.current) return;
                   const rect = timetableRef.current.getBoundingClientRect();
-                  const currentTime = clientYToTime(e.clientY, rect.top);
-                  const newEndMinutes = parseTime(currentTime);
-                  const startMinutes = parseTime(draggingNew.startTime);
-                  const endMinutes = Math.max(startMinutes + 15, newEndMinutes);
-                  setDraggingNew({ ...draggingNew, endTime: minutesToTime(endMinutes) });
+
+                  if (draggingNew) {
+                    const currentTime = clientYToTime(e.clientY, rect.top);
+                    const newEndMinutes = parseTime(currentTime);
+                    const startMinutes = parseTime(draggingNew.startTime);
+                    const endMinutes = Math.max(startMinutes + 15, newEndMinutes);
+                    setDraggingNew({ ...draggingNew, endTime: minutesToTime(endMinutes) });
+                  } else if (resizingEvent) {
+                    const currentTime = clientYToTime(e.clientY, rect.top);
+                    const newMinutes = parseTime(currentTime);
+                    if (resizingEvent.edge === 'top') {
+                      const endMinutes = parseTime(resizingEvent.originalEndTime);
+                      const startMinutes = Math.min(newMinutes, endMinutes - 15);
+                      setResizingEvent({ ...resizingEvent, originalStartTime: minutesToTime(startMinutes) });
+                    } else {
+                      const startMinutes = parseTime(resizingEvent.originalStartTime);
+                      const endMinutes = Math.max(newMinutes, startMinutes + 15);
+                      setResizingEvent({ ...resizingEvent, originalEndTime: minutesToTime(endMinutes) });
+                    }
+                  } else if (movingEvent) {
+                    const offsetPx = e.clientY - rect.top - movingEvent.offsetY;
+                    const minutesFromTop = (offsetPx / 52) * 60;
+                    const snappedMinutes = snapToQuarter(minutesFromTop + 7 * 60);
+                    const clampedMinutes = Math.max(7 * 60, Math.min(22 * 60, snappedMinutes));
+                    setMovingEvent({ ...movingEvent, originalStartTime: minutesToTime(clampedMinutes) });
+                  }
                 }}
                 onPointerUp={(e) => {
-                  if (!draggingNew) return;
                   (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-                  const newEvent = {
-                    id: Date.now().toString(),
-                    title: 'New Event',
-                    date: draggingNew.date,
-                    startTime: draggingNew.startTime,
-                    endTime: draggingNew.endTime,
-                    time: `${draggingNew.startTime} - ${draggingNew.endTime}`,
-                    type: 'Event',
-                    recurrence: 'none',
-                  };
-                  setEvents((prev) => [...prev, newEvent]);
-                  setEditingEventId(newEvent.id);
-                  setEditingTitle('');
-                  setDraggingNew(null);
+
+                  if (draggingNew) {
+                    const newEvent = {
+                      id: Date.now().toString(),
+                      title: 'New Event',
+                      date: draggingNew.date,
+                      startTime: draggingNew.startTime,
+                      endTime: draggingNew.endTime,
+                      time: `${draggingNew.startTime} - ${draggingNew.endTime}`,
+                      type: 'Event',
+                      recurrence: 'none',
+                    };
+                    setEvents((prev) => [...prev, newEvent]);
+                    setEditingEventId(newEvent.id);
+                    setEditingTitle('');
+                    setDraggingNew(null);
+                  } else if (resizingEvent) {
+                    setEvents(prev => prev.map(ev =>
+                      ev.id === resizingEvent.id
+                        ? {
+                            ...ev,
+                            startTime: resizingEvent.originalStartTime,
+                            endTime: resizingEvent.originalEndTime,
+                            time: `${resizingEvent.originalStartTime} - ${resizingEvent.originalEndTime}`
+                          }
+                        : ev
+                    ));
+                    setResizingEvent(null);
+                  } else if (movingEvent) {
+                    const duration = parseTime(movingEvent.originalEndTime) - parseTime(events.find(e => e.id === movingEvent.id)!.startTime);
+                    const newStartMinutes = parseTime(movingEvent.originalStartTime);
+                    const newEndMinutes = newStartMinutes + duration;
+                    setEvents(prev => prev.map(ev =>
+                      ev.id === movingEvent.id
+                        ? {
+                            ...ev,
+                            startTime: minutesToTime(newStartMinutes),
+                            endTime: minutesToTime(newEndMinutes),
+                            time: `${minutesToTime(newStartMinutes)} - ${minutesToTime(newEndMinutes)}`
+                          }
+                        : ev
+                    ));
+                    setMovingEvent(null);
+                  }
                 }}
               >
                 {/* Red Live Time Line */}
@@ -2033,15 +2095,61 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   };
                   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
                   const isEditing = editingEventId === ev.id;
+                  const isResizing = resizingEvent?.id === ev.id;
+                  const isMoving = movingEvent?.id === ev.id;
+
+                  let displayTop = top;
+                  let displayHeight = height;
+
+                  if (isResizing && timetableRef.current) {
+                    const newStartTime = resizingEvent.edge === 'top'
+                      ? parseTime(resizingEvent.originalStartTime)
+                      : parseTime(ev.startTime);
+                    const newEndTime = resizingEvent.edge === 'bottom'
+                      ? parseTime(resizingEvent.originalEndTime)
+                      : parseTime(ev.endTime);
+                    displayTop = ((newStartTime - 7 * 60) / 60) * 52;
+                    displayHeight = ((newEndTime - newStartTime) / 60) * 52;
+                  } else if (isMoving) {
+                    const newStartMinutes = parseTime(movingEvent.originalStartTime);
+                    const duration = parseTime(ev.endTime) - parseTime(ev.startTime);
+                    displayTop = ((newStartMinutes - 7 * 60) / 60) * 52;
+                  }
 
                   return (
                     <div
                       key={ev.id}
-                      className={`absolute left-24 right-4 rounded-lg border ${colorMap[ev.type] || colorMap.Event} ${
+                      className={`absolute left-24 right-4 rounded-lg border event-body ${colorMap[ev.type] || colorMap.Event} ${
                         reduceMotion ? '' : 'transition-all duration-150 ease-out'
-                      }`}
-                      style={{ top: `${top}px`, height: `${height}px`, padding: '6px 8px' }}
+                      } ${isMoving ? 'cursor-move opacity-70' : 'cursor-pointer'} group`}
+                      style={{ top: `${displayTop}px`, height: `${displayHeight}px`, padding: '6px 8px' }}
+                      onPointerDown={(e) => {
+                        const target = e.target as HTMLElement;
+                        if (target.closest('.resize-handle-top')) {
+                          e.stopPropagation();
+                          setResizingEvent({ id: ev.id, edge: 'top', originalStartTime: ev.startTime, originalEndTime: ev.endTime });
+                          (e.currentTarget.parentElement as HTMLElement)?.setPointerCapture(e.pointerId);
+                        } else if (target.closest('.resize-handle-bottom')) {
+                          e.stopPropagation();
+                          setResizingEvent({ id: ev.id, edge: 'bottom', originalStartTime: ev.startTime, originalEndTime: ev.endTime });
+                          (e.currentTarget.parentElement as HTMLElement)?.setPointerCapture(e.pointerId);
+                        } else if (!isEditing) {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          const offsetY = e.clientY - rect.top;
+                          setMovingEvent({ id: ev.id, offsetY, originalStartTime: ev.startTime, originalEndTime: ev.endTime });
+                          (e.currentTarget.parentElement as HTMLElement)?.setPointerCapture(e.pointerId);
+                        }
+                      }}
                     >
+                      {/* Resize handles */}
+                      <div className="resize-handle-top absolute top-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="h-0.5 bg-current mx-2 rounded-full"></div>
+                      </div>
+                      <div className="resize-handle-bottom absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="h-0.5 bg-current mx-2 rounded-full"></div>
+                      </div>
+
                       <div className="text-[11px] font-mono text-current opacity-70">{ev.startTime} - {ev.endTime}</div>
                       {isEditing ? (
                         <input
@@ -2067,7 +2175,15 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                           placeholder="Event title..."
                         />
                       ) : (
-                        <div className="text-[13px] font-medium text-current">{ev.title}</div>
+                        <div
+                          className="text-[13px] font-medium text-current cursor-text"
+                          onClick={() => {
+                            setEditingEventId(ev.id);
+                            setEditingTitle(ev.title);
+                          }}
+                        >
+                          {ev.title}
+                        </div>
                       )}
                     </div>
                   );
