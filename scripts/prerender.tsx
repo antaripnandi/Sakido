@@ -9,7 +9,7 @@
 
 import './prerender-shim'; // MUST be first — SSR-safe browser stubs
 
-import { renderToStaticMarkup } from 'react-dom/server';
+import { renderToString } from 'react-dom/server';
 import { MemoryRouter } from 'react-router-dom';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -74,7 +74,7 @@ const routes: RouteDef[] = [
 
 for (const route of routes) {
   // MemoryRouter supplies Router context so Link/useNavigate work during SSR.
-  const markup = renderToStaticMarkup(
+  const markup = renderToString(
     <MemoryRouter initialEntries={[route.path]}>{route.element}</MemoryRouter>
   );
 
