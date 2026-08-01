@@ -16,6 +16,7 @@ export default defineConfig(() => {
       minify: 'esbuild',
       cssCodeSplit: true,
       chunkSizeWarningLimit: 1000,
+      sourcemap: true,
       rollupOptions: {
         output: {
           manualChunks(id) {

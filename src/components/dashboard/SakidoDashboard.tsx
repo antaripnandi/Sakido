@@ -623,6 +623,9 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   // Calendar Month State
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
 
+  // Calendar View Mode ('month' | 'timetable') - must be declared before useEffect that references it
+  const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'timetable'>('month');
+
   // In-App Video Player Modal state
   const [activeVideo, setActiveVideo] = useState<{
     id: string;
@@ -1193,8 +1196,6 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const [noteTabFilter, setNoteTabFilter] = useState<'active' | 'archived'>('active');
   const [selectedNoteTag, setSelectedNoteTag] = useState<string>('all');
 
-  // Calendar View Mode ('month' | 'timetable')
-  const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'timetable'>('month');
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [activeDayInspector, setActiveDayInspector] = useState<{
     dateStr: string;
