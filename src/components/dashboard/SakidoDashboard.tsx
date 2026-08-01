@@ -1037,6 +1037,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskGrade, setNewTaskGrade] = useState('');
   const [newTaskCourse, setNewTaskCourse] = useState('');
+  const [newTaskCourseId, setNewTaskCourseId] = useState(''); // Step 1: courseId reference
+  const [newTaskDueDate, setNewTaskDueDate] = useState(''); // Step 1: due date
 
   const [newWatchTitle, setNewWatchTitle] = useState('');
   const [newWatchUrl, setNewWatchUrl] = useState('');
@@ -1045,6 +1047,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const [newNoteTitle, setNewNoteTitle] = useState('');
   const [newNoteContent, setNewNoteContent] = useState('');
   const [newNoteCourse, setNewNoteCourse] = useState('');
+  const [newNoteCourseId, setNewNoteCourseId] = useState(''); // Step 1: courseId reference
   const [newNoteColor, setNewNoteColor] = useState<string>('default');
   const [newNoteIsChecklist, setNewNoteIsChecklist] = useState<boolean>(false);
   const [newNoteChecklistRaw, setNewNoteChecklistRaw] = useState<string>('');
@@ -1197,21 +1200,29 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
+
+    // Step 1: Use courseId reference instead of freeform text
+    const selectedCourse = classes.find(c => c.id === newTaskCourseId);
+
     setTasks((prev) => [
       ...prev,
       {
         id: Date.now().toString(),
         title: newTaskTitle.trim(),
         grade: newTaskGrade.trim(),
-        course: newTaskCourse.trim() || 'General',
+        courseId: newTaskCourseId || null,
+        courseName: selectedCourse?.name || 'General',
+        courseColor: selectedCourse?.color || '#6f4627',
+        course: selectedCourse?.code || 'General', // Legacy field for existing code
         status: 'todo',
         completed: false,
-        dueDate: 'Upcoming',
+        dueDate: newTaskDueDate || null, // Step 1: ISO date string
       },
     ]);
     setNewTaskTitle('');
     setNewTaskGrade('');
-    setNewTaskCourse('');
+    setNewTaskCourseId('');
+    setNewTaskDueDate('');
   };
 
   const handleToggleTask = (id: string) => {
@@ -1286,11 +1297,17 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         }));
     }
 
+    // Step 1: Use courseId reference instead of freeform text
+    const selectedCourse = classes.find(c => c.id === newNoteCourseId);
+
     const newNote = {
       id: Date.now().toString(),
       title: newNoteTitle.trim(),
       content: newNoteContent.trim() || (newNoteIsChecklist ? '' : 'No additional details provided.'),
-      course: newNoteCourse.trim() || 'General',
+      courseId: newNoteCourseId || null,
+      courseName: selectedCourse?.name || 'General',
+      courseColor: selectedCourse?.color || '#6f4627',
+      course: selectedCourse?.code || 'General', // Legacy field for existing code
       date: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
       color: newNoteColor || 'default',
       pinned: false,
@@ -1307,7 +1324,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
     setNewNoteTitle('');
     setNewNoteContent('');
-    setNewNoteCourse('');
+    setNewNoteCourseId('');
     setNewNoteColor('default');
     setNewNoteIsChecklist(false);
     setNewNoteChecklistRaw('');
@@ -2024,12 +2041,23 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               />
             </div>
             <div className="flex gap-3 justify-between items-center">
+              <select
+                value={newTaskCourseId}
+                onChange={(e) => setNewTaskCourseId(e.target.value)}
+                className="flex-1 border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest text-on-surface focus:outline-hidden focus:border-primary-container"
+              >
+                <option value="">Select Course (Optional)</option>
+                {classes.map((cls) => (
+                  <option key={cls.id} value={cls.id}>
+                    {cls.code} - {cls.name}
+                  </option>
+                ))}
+              </select>
               <input
-                type="text"
-                value={newTaskCourse}
-                onChange={(e) => setNewTaskCourse(e.target.value)}
-                placeholder="Course Tag (e.g. CS 301)"
-                className="w-1/2 border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container"
+                type="date"
+                value={newTaskDueDate}
+                onChange={(e) => setNewTaskDueDate(e.target.value)}
+                className="border border-outline-variant/50 rounded-lg p-2.5 text-sm bg-surface-container-lowest text-on-surface focus:outline-hidden focus:border-primary-container"
               />
               <button
                 type="submit"
@@ -2375,13 +2403,18 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 required
                 className="border border-outline-variant/50 rounded-xl p-3 text-sm bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container font-medium"
               />
-              <input
-                type="text"
-                value={newNoteCourse}
-                onChange={(e) => setNewNoteCourse(e.target.value)}
-                placeholder="Course / Tag (e.g. CS301)"
-                className="border border-outline-variant/50 rounded-xl p-3 text-sm bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface placeholder:text-secondary/60 focus:outline-hidden focus:border-primary-container"
-              />
+              <select
+                value={newNoteCourseId}
+                onChange={(e) => setNewNoteCourseId(e.target.value)}
+                className="border border-outline-variant/50 rounded-xl p-3 text-sm bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-hidden focus:border-primary-container"
+              >
+                <option value="">Select Course (Optional)</option>
+                {classes.map((cls) => (
+                  <option key={cls.id} value={cls.id}>
+                    {cls.code} - {cls.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {newNoteIsChecklist ? (
