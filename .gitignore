@@ -14,3 +14,6 @@ agent.md
 .agents/
 
 .env*
+
+# Secrets / MCP config (contains API keys)
+.mcp.json

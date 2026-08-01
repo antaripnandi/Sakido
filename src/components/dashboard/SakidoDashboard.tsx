@@ -1948,14 +1948,15 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
               <div
                 ref={timetableRef}
-                className="relative border border-outline-variant/30 rounded-xl overflow-hidden bg-surface-container-low/30 cursor-crosshair"
+                className="relative border border-outline-variant/30 rounded-xl overflow-hidden bg-surface-container-low/30"
                 onPointerDown={(e) => {
-                  if (!timetableRef.current || e.target !== e.currentTarget) return;
+                  const target = e.target as HTMLElement;
+                  if (target.closest('.event-body') || !timetableRef.current) return;
                   const rect = timetableRef.current.getBoundingClientRect();
                   const startTime = clientYToTime(e.clientY, rect.top);
                   const todayISO = now.toISOString().split('T')[0];
                   setDraggingNew({ startTime, endTime: startTime, date: todayISO, startY: e.clientY });
-                  e.currentTarget.setPointerCapture(e.pointerId);
+                  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
                 }}
                 onPointerMove={(e) => {
                   if (!draggingNew || !timetableRef.current) return;
@@ -1968,7 +1969,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 }}
                 onPointerUp={(e) => {
                   if (!draggingNew) return;
-                  e.currentTarget.releasePointerCapture(e.pointerId);
+                  (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
                   const newEvent = {
                     id: Date.now().toString(),
                     title: 'New Event',
@@ -2079,18 +2080,11 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                     '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM',
                     '7:00 PM', '8:00 PM', '9:00 PM', '10:00 PM'
                   ].map((timeSlot, idx) => (
-                    <div key={timeSlot} className="flex h-13 group hover:bg-surface-container-high/40 transition-colors">
-                      <div className="w-20 sm:w-24 border-r border-outline-variant/30 p-2 font-mono text-xs text-secondary font-medium shrink-0 flex items-center justify-end pr-3">
+                    <div key={timeSlot} className="flex h-13 group hover:bg-surface-container-high/40 transition-colors cursor-crosshair">
+                      <div className="w-20 sm:w-24 border-r border-outline-variant/30 p-2 font-mono text-xs text-secondary font-medium shrink-0 flex items-center justify-end pr-3 cursor-default">
                         {timeSlot}
                       </div>
-                      <div className="flex-1 p-2 flex items-center gap-2 overflow-x-auto min-w-0">
-                        {classes.filter((_, i) => (idx === 3 && i === 0) || (idx === 7 && i === 1)).slice(0, 1).map((c, i) => (
-                          <div key={i} className="px-3 py-1 rounded-lg bg-primary-container/15 text-primary border border-primary-container/30 text-xs font-semibold flex items-center gap-2 shrink-0">
-                            <span>{c.code}: {c.name}</span>
-                            <span className="text-[10px] font-mono text-secondary">({c.professor})</span>
-                          </div>
-                        ))}
-                      </div>
+                      <div className="flex-1 p-2"></div>
                     </div>
                   ))}
                 </div>
