@@ -61,7 +61,7 @@
     { "source": "/cookies", "destination": "/cookie-policy.html" },
     { "source": "/contact", "destination": "/contact.html" },
     { "source": "/legal", "destination": "/privacy.html" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!assets|logos|frames|api).*)", "destination": "/index.html" }
   ],
   "crons": [
     { "path": "/api/refresh-tokens-cron", "schedule": "0 3 * * *" }
