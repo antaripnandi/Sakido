@@ -38,7 +38,10 @@ import {
   LayoutDashboard,
   PanelLeftClose,
   PanelLeftOpen,
-  Tag
+  Tag,
+  AlertCircle,
+  MapPin,
+  Save
 } from 'lucide-react';
 import { getSupabaseClient } from '../../lib/supabaseClient';
 import { normalizeToISODate, safeCreateDateTime } from '../../lib/dateUtils';
@@ -48,6 +51,7 @@ import { Flashcard } from '../../types';
 import { useLocalStorageState } from '../../hooks/useLocalStorageState';
 import { FocusTimer } from '../focus/FocusTimer';
 import { FocusTimerView, FocusSessionConfig } from '../focus/FocusTimerView';
+import { TaskDetailModal, NoteDetailModal, CourseDetailModal } from './DetailModals';
 import { DashboardView } from './DashboardView';
 import { ConnectorsView } from '../connectors/ConnectorsView';
 
@@ -1069,6 +1073,13 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   // Notes Search & Modal State
   const [notesSearchQuery, setNotesSearchQuery] = useState('');
 
+  // Detail Modal States
+  const [selectedTask, setSelectedTask] = useState<any | null>(null);
+  const [selectedNote, setSelectedNote] = useState<any | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<any | null>(null);
+  const [isEditingTask, setIsEditingTask] = useState(false);
+  const [isEditingNote, setIsEditingNote] = useState(false);
+
   const [connectingService, setConnectingService] = useState<string | null>(null);
   const [connectorNotice, setConnectorNotice] = useState<string | null>(null);
 
@@ -1241,6 +1252,43 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   const handleDeleteTask = (id: string) => {
     setTasks((prev) => prev.filter((t) => t.id !== id));
+    if (selectedTask?.id === id) setSelectedTask(null);
+  };
+
+  const handleUpdateTask = (updatedTask: any) => {
+    setTasks((prev) => prev.map((t) => t.id === updatedTask.id ? updatedTask : t));
+    setSelectedTask(null);
+  };
+
+  const handleAddSubtask = (taskId: string, subtaskTitle: string) => {
+    setTasks((prev) => prev.map((t) => {
+      if (t.id === taskId) {
+        const newSubtask = { id: Date.now().toString(), title: subtaskTitle, completed: false };
+        return { ...t, subtasks: [...(t.subtasks || []), newSubtask] };
+      }
+      return t;
+    }));
+  };
+
+  const handleToggleSubtask = (taskId: string, subtaskId: string) => {
+    setTasks((prev) => prev.map((t) => {
+      if (t.id === taskId) {
+        const updatedSubtasks = (t.subtasks || []).map((st: any) =>
+          st.id === subtaskId ? { ...st, completed: !st.completed } : st
+        );
+        return { ...t, subtasks: updatedSubtasks };
+      }
+      return t;
+    }));
+  };
+
+  const handleDeleteSubtask = (taskId: string, subtaskId: string) => {
+    setTasks((prev) => prev.map((t) => {
+      if (t.id === taskId) {
+        return { ...t, subtasks: (t.subtasks || []).filter((st: any) => st.id !== subtaskId) };
+      }
+      return t;
+    }));
   };
 
   // Average Grade Calculation
@@ -1338,6 +1386,17 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       return updated;
     });
     setConnectorNotice('🟢 Note deleted.');
+    if (selectedNote?.id === id) setSelectedNote(null);
+  };
+
+  const handleUpdateNote = (updatedNote: any) => {
+    setNotes((prev) => {
+      const updated = prev.map((n) => n.id === updatedNote.id ? updatedNote : n);
+      debouncedSyncNotesToGoogleDrive(updated);
+      return updated;
+    });
+    setSelectedNote(null);
+    setConnectorNotice('🟢 Note updated!');
   };
 
   const handleTogglePinNote = (id: string) => {
@@ -1605,37 +1664,51 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
           {/* Classes Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {classes.map((c) => (
-              <div
-                key={c.id}
-                className="p-5 border border-outline-variant/40 rounded-xl bg-surface-container-low dark:bg-[#251e19] shadow-xs flex flex-col justify-between relative group hover:border-primary-container/60 transition-all"
-              >
-                <button
-                  onClick={() => handleDeleteClass(c.id)}
-                  className="absolute top-4 right-4 text-secondary/60 hover:text-error transition-colors p-1"
-                  title="Remove course"
+            {classes.map((c) => {
+              const courseTasks = tasks.filter(t => t.courseId === c.id);
+              const activeTasks = courseTasks.filter(t => !t.completed);
+
+              return (
+                <div
+                  key={c.id}
+                  onClick={() => setSelectedCourse(c)}
+                  className="p-5 border border-outline-variant/40 rounded-xl bg-surface-container-low dark:bg-[#251e19] shadow-xs flex flex-col justify-between relative group hover:border-primary-container/60 hover:shadow-md transition-all cursor-pointer"
                 >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-                <div>
-                  <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-surface-container-high dark:bg-[#342a23] text-primary dark:text-primary-fixed-dim inline-block mb-2">
-                    {c.code}
-                  </span>
-                  <h4 className="font-display font-bold text-lg text-on-surface leading-snug">
-                    {c.name}
-                  </h4>
-                  <p className="text-xs text-secondary dark:text-secondary-fixed-dim mt-1">
-                    {c.professor}
-                  </p>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDeleteClass(c.id); }}
+                    className="absolute top-4 right-4 text-secondary/60 hover:text-error transition-colors p-1"
+                    title="Remove course"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: c.color }}></div>
+                      <span className="text-xs font-mono font-bold px-2.5 py-1 rounded-md bg-surface-container-high dark:bg-[#342a23] text-primary dark:text-primary-fixed-dim">
+                        {c.code}
+                      </span>
+                      {activeTasks.length > 0 && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 font-mono font-bold">
+                          {activeTasks.length} active
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="font-display font-bold text-lg text-on-surface leading-snug pr-8">
+                      {c.name}
+                    </h4>
+                    <p className="text-xs text-secondary dark:text-secondary-fixed-dim mt-1">
+                      {c.professor || c.instructor || 'No instructor'}
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-outline-variant/20 flex items-center justify-between text-xs text-secondary">
+                    <span className="flex items-center gap-1.5 font-mono">
+                      <Clock className="w-3.5 h-3.5" /> {c.time || c.schedule || 'No schedule'}
+                    </span>
+                    <span className="font-medium text-on-surface-variant">{c.room || 'TBD'}</span>
+                  </div>
                 </div>
-                <div className="mt-4 pt-3 border-t border-outline-variant/20 flex items-center justify-between text-xs text-secondary">
-                  <span className="flex items-center gap-1.5 font-mono">
-                    <Clock className="w-3.5 h-3.5" /> {c.time}
-                  </span>
-                  <span className="font-medium text-on-surface-variant">{c.room}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {classes.length === 0 && (
@@ -2091,48 +2164,106 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
           {/* Task List */}
           <div className="flex flex-col gap-2.5">
-            {filteredTasks.map((t) => (
-              <div
-                key={t.id}
-                className="flex items-center justify-between p-3.5 border border-outline-variant/40 rounded-xl bg-surface-container-low hover:border-outline-variant transition-all"
-              >
-                <div className="flex items-center gap-3.5 flex-1 min-w-0 pr-3">
-                  <input
-                    type="checkbox"
-                    checked={t.completed}
-                    onChange={() => handleToggleTask(t.id)}
-                    className="w-5 h-5 accent-[#8b5e3c] cursor-pointer rounded shrink-0"
-                  />
-                  <div className="flex flex-col min-w-0">
-                    <span
-                      className={`text-sm font-medium text-on-surface truncate ${
-                        t.completed ? 'line-through text-secondary/70' : ''
-                      }`}
+            {filteredTasks.map((t) => {
+              // Format due date nicely
+              const formatDueDate = (dateStr: string | null) => {
+                if (!dateStr) return 'No due date';
+                const date = new Date(dateStr);
+                const today = new Date();
+                const tomorrow = new Date(today);
+                tomorrow.setDate(tomorrow.getDate() + 1);
+
+                if (dateStr === today.toISOString().split('T')[0]) return 'Today';
+                if (dateStr === tomorrow.toISOString().split('T')[0]) return 'Tomorrow';
+                if (date < today) return <span className="text-error font-bold">Overdue</span>;
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+              };
+
+              // Priority colors
+              const priorityColors = {
+                urgent: 'text-error',
+                high: 'text-orange-500',
+                medium: 'text-yellow-600',
+                low: 'text-green-600'
+              };
+
+              const statusColors = {
+                todo: 'bg-gray-100 text-gray-700',
+                in_progress: 'bg-blue-100 text-blue-700',
+                submitted: 'bg-purple-100 text-purple-700',
+                completed: 'bg-green-100 text-green-700'
+              };
+
+              return (
+                <div
+                  key={t.id}
+                  className="flex items-center justify-between p-3.5 border border-outline-variant/40 rounded-xl bg-surface-container-low hover:border-outline-variant hover:shadow-sm transition-all cursor-pointer"
+                  onClick={() => setSelectedTask(t)}
+                >
+                  <div className="flex items-center gap-3.5 flex-1 min-w-0 pr-3">
+                    <input
+                      type="checkbox"
+                      checked={t.completed}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        handleToggleTask(t.id);
+                      }}
+                      className="w-5 h-5 accent-[#8b5e3c] cursor-pointer rounded shrink-0"
+                    />
+                    {t.courseColor && (
+                      <div className="w-1 h-8 rounded-full shrink-0" style={{ backgroundColor: t.courseColor }}></div>
+                    )}
+                    <div className="flex flex-col min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        {t.priority && t.priority !== 'medium' && (
+                          <AlertCircle className={`w-3.5 h-3.5 ${priorityColors[t.priority as keyof typeof priorityColors]} shrink-0`} />
+                        )}
+                        <span
+                          className={`text-sm font-medium text-on-surface truncate ${
+                            t.completed ? 'line-through text-secondary/70' : ''
+                          }`}
+                        >
+                          {t.title}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-secondary font-mono">
+                          {t.courseName || t.course || 'General'}
+                        </span>
+                        <span className="text-xs text-secondary">•</span>
+                        <span className="text-xs text-secondary">{formatDueDate(t.dueDate)}</span>
+                        {t.status && t.status !== 'todo' && (
+                          <>
+                            <span className="text-xs text-secondary">•</span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${statusColors[t.status as keyof typeof statusColors]}`}>
+                              {t.status.replace('_', ' ')}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0">
+                    {t.grade && (
+                      <span className="px-2.5 py-1 rounded-md bg-surface-container-high font-mono text-xs font-bold text-primary">
+                        {t.grade}%
+                      </span>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteTask(t.id);
+                      }}
+                      className="text-secondary/50 hover:text-error transition-colors p-1"
+                      title="Delete task"
                     >
-                      {t.title}
-                    </span>
-                    <span className="text-xs text-secondary font-mono">
-                      {t.course} • {t.dueDate}
-                    </span>
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-3 shrink-0">
-                  {t.grade && (
-                    <span className="px-2.5 py-1 rounded-md bg-surface-container-high font-mono text-xs font-bold text-primary">
-                      {t.grade}%
-                    </span>
-                  )}
-                  <button
-                    onClick={() => handleDeleteTask(t.id)}
-                    className="text-secondary/50 hover:text-error transition-colors p-1"
-                    title="Delete task"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
 
             {filteredTasks.length === 0 && (
               <div className="w-full h-36 border border-outline-variant/50 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 text-secondary p-6">
@@ -2516,25 +2647,26 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   return (
                     <div
                       key={n.id}
-                      className={`p-5 border ${style.border} ${style.bg} rounded-2xl shadow-xs flex flex-col justify-between relative group hover:shadow-md transition-all`}
+                      onClick={() => setSelectedNote(n)}
+                      className={`p-5 border ${style.border} ${style.bg} rounded-2xl shadow-xs flex flex-col justify-between relative group hover:shadow-md transition-all cursor-pointer`}
                     >
                       <div className="flex items-center gap-1 absolute top-4 right-4">
                         <button
-                          onClick={() => handleTogglePinNote(n.id)}
+                          onClick={(e) => { e.stopPropagation(); handleTogglePinNote(n.id); }}
                           className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors cursor-pointer"
                           title="Unpin note"
                         >
                           <Pin className="w-4 h-4 fill-current rotate-45" />
                         </button>
                         <button
-                          onClick={() => handleToggleArchiveNote(n.id)}
+                          onClick={(e) => { e.stopPropagation(); handleToggleArchiveNote(n.id); }}
                           className="p-1.5 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
                           title={n.archived ? 'Unarchive note' : 'Archive note'}
                         >
                           <Archive className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleDeleteNote(n.id)}
+                          onClick={(e) => { e.stopPropagation(); handleDeleteNote(n.id); }}
                           className="p-1.5 rounded-lg text-secondary/60 hover:text-error transition-colors cursor-pointer"
                           title="Delete note"
                         >
@@ -2545,7 +2677,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                       <div>
                         <div className="flex items-center gap-2 mb-2 pr-24">
                           <span className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded-md ${style.badge}`}>
-                            {n.course}
+                            {n.courseName || n.course}
                           </span>
                           <span className="text-[10px] text-secondary font-mono">{n.date}</span>
                         </div>
@@ -2559,6 +2691,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                             {n.checklistItems.map((item: any) => (
                               <label
                                 key={item.id}
+                                onClick={(e) => e.stopPropagation()}
                                 className="flex items-center gap-2 text-xs text-on-surface cursor-pointer select-none"
                               >
                                 <input
@@ -2600,25 +2733,26 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 return (
                   <div
                     key={n.id}
-                    className={`p-5 border ${style.border} ${style.bg} rounded-2xl shadow-xs flex flex-col justify-between relative group hover:shadow-md transition-all`}
+                    onClick={() => setSelectedNote(n)}
+                    className={`p-5 border ${style.border} ${style.bg} rounded-2xl shadow-xs flex flex-col justify-between relative group hover:shadow-md transition-all cursor-pointer`}
                   >
                     <div className="flex items-center gap-1 absolute top-4 right-4">
                       <button
-                        onClick={() => handleTogglePinNote(n.id)}
+                        onClick={(e) => { e.stopPropagation(); handleTogglePinNote(n.id); }}
                         className="p-1.5 rounded-lg text-secondary/60 hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
                         title="Pin note to top"
                       >
                         <Pin className="w-4 h-4 rotate-45" />
                       </button>
                       <button
-                        onClick={() => handleToggleArchiveNote(n.id)}
+                        onClick={(e) => { e.stopPropagation(); handleToggleArchiveNote(n.id); }}
                         className="p-1.5 rounded-lg text-secondary/60 hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
                         title={n.archived ? 'Unarchive note' : 'Archive note'}
                       >
                         <Archive className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={() => handleDeleteNote(n.id)}
+                        onClick={(e) => { e.stopPropagation(); handleDeleteNote(n.id); }}
                         className="p-1.5 rounded-lg text-secondary/60 hover:text-error transition-colors cursor-pointer"
                         title="Delete note"
                       >
@@ -2629,7 +2763,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                     <div>
                       <div className="flex items-center gap-2 mb-2 pr-24">
                         <span className={`text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded-md ${style.badge}`}>
-                          {n.course}
+                          {n.courseName || n.course}
                         </span>
                         <span className="text-[10px] text-secondary font-mono">{n.date}</span>
                       </div>
@@ -2643,6 +2777,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                           {n.checklistItems.map((item: any) => (
                             <label
                               key={item.id}
+                              onClick={(e) => e.stopPropagation()}
                               className="flex items-center gap-2 text-xs text-on-surface cursor-pointer select-none"
                             >
                               <input
@@ -3688,6 +3823,44 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           config={focusConfig}
           onClose={() => setIsFocusTimerOpen(false)}
           onComplete={handleFocusComplete}
+        />
+      )}
+
+      {/* Detail Modals */}
+      {selectedTask && (
+        <TaskDetailModal
+          task={selectedTask}
+          courses={classes}
+          onClose={() => setSelectedTask(null)}
+          onSave={handleUpdateTask}
+          onDelete={handleDeleteTask}
+          onAddSubtask={handleAddSubtask}
+          onToggleSubtask={handleToggleSubtask}
+          onDeleteSubtask={handleDeleteSubtask}
+        />
+      )}
+
+      {selectedNote && (
+        <NoteDetailModal
+          note={selectedNote}
+          courses={classes}
+          onClose={() => setSelectedNote(null)}
+          onSave={handleUpdateNote}
+          onDelete={handleDeleteNote}
+          onTogglePin={handleTogglePinNote}
+          onToggleArchive={handleToggleArchiveNote}
+          onToggleChecklistItem={handleToggleChecklistItem}
+        />
+      )}
+
+      {selectedCourse && (
+        <CourseDetailModal
+          course={selectedCourse}
+          tasks={tasks}
+          notes={notes}
+          onClose={() => setSelectedCourse(null)}
+          onSelectTask={(task) => setSelectedTask(task)}
+          onSelectNote={(note) => setSelectedNote(note)}
         />
       )}
     </div>
