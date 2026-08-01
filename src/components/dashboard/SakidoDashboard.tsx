@@ -595,6 +595,19 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const [newEventType, setNewEventType] = useState('Exam');
   const [newEventRecurrence, setNewEventRecurrence] = useState<string>('none');
 
+  // Drag-to-create state
+  const [draggingNew, setDraggingNew] = useState<{
+    startTime: string;
+    endTime: string;
+    date: string;
+    startY: number;
+  } | null>(null);
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState('');
+  const timetableRef = React.useRef<HTMLDivElement>(null);
+  const lastSnapTimeRef = React.useRef<number>(0);
+  const snapPulseTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // Calendar Month State
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
 
@@ -825,6 +838,27 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
     fetchGoogleNotes();
   }, [connectors.googleDrive]);
+
+  // Time conversion helpers for drag interactions
+  const parseTime = (time: string): number => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+  };
+
+  const minutesToTime = (min: number): string => {
+    const h = Math.floor(min / 60);
+    const m = min % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  };
+
+  const snapToQuarter = (min: number): number => Math.round(min / 15) * 15;
+
+  const clientYToTime = (clientY: number, containerTop: number): string => {
+    const offsetPx = clientY - containerTop;
+    const minutesFromTop = (offsetPx / 52) * 60;
+    const snappedMinutes = snapToQuarter(minutesFromTop + 7 * 60);
+    return minutesToTime(Math.max(7 * 60, Math.min(22 * 60, snappedMinutes)));
+  };
 
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1912,7 +1946,45 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 </span>
               </div>
 
-              <div className="relative border border-outline-variant/30 rounded-xl overflow-hidden bg-surface-container-low/30">
+              <div
+                ref={timetableRef}
+                className="relative border border-outline-variant/30 rounded-xl overflow-hidden bg-surface-container-low/30 cursor-crosshair"
+                onPointerDown={(e) => {
+                  if (!timetableRef.current || e.target !== e.currentTarget) return;
+                  const rect = timetableRef.current.getBoundingClientRect();
+                  const startTime = clientYToTime(e.clientY, rect.top);
+                  const todayISO = now.toISOString().split('T')[0];
+                  setDraggingNew({ startTime, endTime: startTime, date: todayISO, startY: e.clientY });
+                  e.currentTarget.setPointerCapture(e.pointerId);
+                }}
+                onPointerMove={(e) => {
+                  if (!draggingNew || !timetableRef.current) return;
+                  const rect = timetableRef.current.getBoundingClientRect();
+                  const currentTime = clientYToTime(e.clientY, rect.top);
+                  const newEndMinutes = parseTime(currentTime);
+                  const startMinutes = parseTime(draggingNew.startTime);
+                  const endMinutes = Math.max(startMinutes + 15, newEndMinutes);
+                  setDraggingNew({ ...draggingNew, endTime: minutesToTime(endMinutes) });
+                }}
+                onPointerUp={(e) => {
+                  if (!draggingNew) return;
+                  e.currentTarget.releasePointerCapture(e.pointerId);
+                  const newEvent = {
+                    id: Date.now().toString(),
+                    title: 'New Event',
+                    date: draggingNew.date,
+                    startTime: draggingNew.startTime,
+                    endTime: draggingNew.endTime,
+                    time: `${draggingNew.startTime} - ${draggingNew.endTime}`,
+                    type: 'Event',
+                    recurrence: 'none',
+                  };
+                  setEvents((prev) => [...prev, newEvent]);
+                  setEditingEventId(newEvent.id);
+                  setEditingTitle('');
+                  setDraggingNew(null);
+                }}
+              >
                 {/* Red Live Time Line */}
                 {(() => {
                   const currentHour = now.getHours();
@@ -1931,6 +2003,74 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   }
                   return null;
                 })()}
+
+                {/* Drag preview */}
+                {draggingNew && (() => {
+                  const top = ((parseTime(draggingNew.startTime) - 7 * 60) / 60) * 52;
+                  const height = ((parseTime(draggingNew.endTime) - parseTime(draggingNew.startTime)) / 60) * 52;
+                  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                  return (
+                    <div
+                      className="absolute left-24 right-4 z-10 rounded-lg border-2 border-[#8b5e3c] bg-[#8b5e3c]/40 pointer-events-none flex flex-col justify-between"
+                      style={{ top: `${top}px`, height: `${height}px`, padding: '6px 8px' }}
+                    >
+                      <span className="text-[11px] font-mono text-[#8b5e3c] dark:text-amber-200 font-medium">{draggingNew.startTime}</span>
+                      <span className="text-[11px] font-mono text-[#8b5e3c] dark:text-amber-200 font-medium">{draggingNew.endTime}</span>
+                    </div>
+                  );
+                })()}
+
+                {/* Existing events */}
+                {events.filter(ev => ev.date === now.toISOString().split('T')[0]).map((ev) => {
+                  const top = ((parseTime(ev.startTime) - 7 * 60) / 60) * 52;
+                  const height = ((parseTime(ev.endTime) - parseTime(ev.startTime)) / 60) * 52;
+                  const colorMap: Record<string, string> = {
+                    Exam: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
+                    Lecture: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+                    Deadline: 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800',
+                    Event: 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-400 border-slate-200 dark:border-slate-700',
+                  };
+                  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+                  const isEditing = editingEventId === ev.id;
+
+                  return (
+                    <div
+                      key={ev.id}
+                      className={`absolute left-24 right-4 rounded-lg border ${colorMap[ev.type] || colorMap.Event} ${
+                        reduceMotion ? '' : 'transition-all duration-150 ease-out'
+                      }`}
+                      style={{ top: `${top}px`, height: `${height}px`, padding: '6px 8px' }}
+                    >
+                      <div className="text-[11px] font-mono text-current opacity-70">{ev.startTime} - {ev.endTime}</div>
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          autoFocus
+                          value={editingTitle}
+                          onChange={(e) => setEditingTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              const title = editingTitle.trim() || 'New Event';
+                              setEvents(prev => prev.map(event => event.id === ev.id ? { ...event, title } : event));
+                              setEditingEventId(null);
+                            } else if (e.key === 'Escape') {
+                              setEditingEventId(null);
+                            }
+                          }}
+                          onBlur={() => {
+                            const title = editingTitle.trim() || 'New Event';
+                            setEvents(prev => prev.map(event => event.id === ev.id ? { ...event, title } : event));
+                            setEditingEventId(null);
+                          }}
+                          className="w-full bg-transparent border-none outline-none text-[13px] font-medium text-current placeholder:text-current placeholder:opacity-50"
+                          placeholder="Event title..."
+                        />
+                      ) : (
+                        <div className="text-[13px] font-medium text-current">{ev.title}</div>
+                      )}
+                    </div>
+                  );
+                })}
 
                 {/* 16 Hourly Rows from 7 AM to 10 PM */}
                 <div className="flex flex-col divide-y divide-outline-variant/20">
