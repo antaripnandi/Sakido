@@ -121,13 +121,15 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
   }, [editingEventId, editingTitle, editingType, editingCalendarId, editingIsAllDay, events, onEventUpdate, setEditingEventId, setLastUsedCalendarId]);
 
   const handleCancelEdit = useCallback(() => {
-    const event = events.find(e => e.id === editingEventId);
-    if (event?.isPending) {
-      // ponytail: delete draft on cancel
-      setEvents(prev => prev.filter(e => e.id !== editingEventId));
-    }
+    setEvents(prev => {
+      const event = prev.find(e => e.id === editingEventId);
+      if (event?.isPending) {
+        return prev.filter(e => e.id !== editingEventId);
+      }
+      return prev;
+    });
     setEditingEventId(null);
-  }, [setEditingEventId, editingEventId, events, setEvents]);
+  }, [setEditingEventId, editingEventId, setEvents]);
 
   const handleEditClick = useCallback((id: string, title: string, type: string, calendarId: string, isAllDay: boolean) => {
     setEditingEventId(id);

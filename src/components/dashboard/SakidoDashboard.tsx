@@ -1020,6 +1020,12 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         );
         if (!patchRes || !patchRes.ok) {
           setConnectorNotice(`⚠️ Sync update failed: ${patchRes?.status || 'network error'}`);
+          return;
+        }
+        // Store gcalId if missing (ponytail: fix PATCH path)
+        const patchData = await patchRes.json();
+        if (patchData.id && !event.gcalId) {
+          setEvents(prev => prev.map(e => e.id === event.id ? { ...e, gcalId: patchData.id } : e));
         }
       } else {
         const postRes = await executeGoogleApi((accessToken) =>
@@ -1294,7 +1300,10 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     setCalendars(prev => [...prev, newCal]);
   };
 
-  const visibleCalendars = [...calendars.filter(c => c.visible).map(c => c.id), 'google-calendar'];
+  const visibleCalendars = [
+    ...calendars.filter(c => c.visible).map(c => c.id),
+    ...(connectors.googleCalendar ? ['google-calendar'] : [])
+  ];
 
   // Form states
   const [newClassName, setNewClassName] = useState('');
