@@ -85,10 +85,11 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     return `${hour.toString().padStart(2, '0')}:00`;
   });
 
-  // Filter events by visible calendars and current week
+  // Filter events by visible calendars and current week (hide pending events)
   const weekStartStr = formatDate(selectedWeekStart);
   const weekEndStr = formatDate(addDays(selectedWeekStart, 6));
   const weekEvents = events.filter(e => {
+    if (e.isPending) return false; // ponytail: hide until Save clicked
     if (!visibleCalendars.includes(e.calendarId)) return false;
     // Compare the event range against the week range so multi-day events that
     // start before (or end after) the week are still shown, matching AllDayRow.
@@ -112,6 +113,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
       startTime: editingIsAllDay ? undefined : event.startTime,
       endTime: editingIsAllDay ? undefined : event.endTime,
       time: editingIsAllDay ? undefined : event.time,
+      isPending: false, // ponytail: confirm creation
     };
     onEventUpdate(updatedEvent);
     setEditingEventId(null);
@@ -119,8 +121,13 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
   }, [editingEventId, editingTitle, editingType, editingCalendarId, editingIsAllDay, events, onEventUpdate, setEditingEventId, setLastUsedCalendarId]);
 
   const handleCancelEdit = useCallback(() => {
+    const event = events.find(e => e.id === editingEventId);
+    if (event?.isPending) {
+      // ponytail: delete draft on cancel
+      setEvents(prev => prev.filter(e => e.id !== editingEventId));
+    }
     setEditingEventId(null);
-  }, [setEditingEventId]);
+  }, [setEditingEventId, editingEventId, events, setEvents]);
 
   const handleEditClick = useCallback((id: string, title: string, type: string, calendarId: string, isAllDay: boolean) => {
     setEditingEventId(id);
@@ -198,18 +205,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
 
         {/* Removed inline editor - now rendered outside column loop */}
 
-        {/* Current time line (today only) */}
-        {isToday && now.getHours() >= START_HOUR && now.getHours() < END_HOUR && (
-          <div
-            className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
-            style={{
-              top: `${HEADER_H + (((now.getHours() - START_HOUR) * 60 + now.getMinutes()) / 60) * SLOT_H}px`
-            }}
-          >
-            <div className="w-2 h-2 rounded-full bg-red-500 -ml-1" />
-            <div className="flex-1 h-0.5 bg-red-500" />
-          </div>
-        )}
+        {/* Removed current time line - now rendered outside column loop */}
       </div>
     );
   };
@@ -338,6 +334,33 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
                   <button onClick={handleCancelEdit} className="text-xs px-3 py-1">Cancel</button>
                   <button onClick={handleSaveEdit} className="text-xs px-3 py-1 bg-primary text-white rounded">Save</button>
                 </div>
+              </div>
+            );
+          })()}
+
+          {/* Current time line (today only) */}
+          {(() => {
+            const todayIndex = [0, 1, 2, 3, 4, 5, 6].findIndex(offset =>
+              isSameDay(addDays(selectedWeekStart, offset), now)
+            );
+            if (todayIndex === -1 || now.getHours() < START_HOUR || now.getHours() >= END_HOUR) {
+              return null;
+            }
+            const rect = slotsRef.current?.getBoundingClientRect();
+            const columnWidth = rect ? (rect.width - TIME_LABEL_WIDTH) / 7 : 0;
+            const topPos = HEADER_H + (((now.getHours() - START_HOUR) * 60 + now.getMinutes()) / 60) * SLOT_H;
+
+            return (
+              <div
+                className="absolute z-20 flex items-center pointer-events-none"
+                style={{
+                  left: `${TIME_LABEL_WIDTH + todayIndex * columnWidth}px`,
+                  width: `${columnWidth}px`,
+                  top: `${topPos}px`
+                }}
+              >
+                <div className="w-2 h-2 rounded-full bg-red-500 -ml-1" />
+                <div className="flex-1 h-0.5 bg-red-500" />
               </div>
             );
           })()}

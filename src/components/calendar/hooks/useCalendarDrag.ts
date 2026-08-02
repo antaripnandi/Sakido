@@ -253,6 +253,7 @@ export const useCalendarDrag = (
         calendarId: targetCalendarId,
         recurrence: 'none',
         isAllDay: editingIsAllDay,
+        isPending: true, // ponytail: hide until user clicks Save
       };
 
       onEventCreate(newEvent);
