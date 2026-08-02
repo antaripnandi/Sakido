@@ -198,8 +198,8 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
 
         {/* Removed inline editor - now rendered outside column loop */}
 
-        {/* Current time line (today only) - fixed hour boundary */}
-        {isToday && now.getHours() >= START_HOUR && now.getHours() <= END_HOUR && (
+        {/* Current time line (today only) */}
+        {isToday && now.getHours() >= START_HOUR && now.getHours() < END_HOUR && (
           <div
             className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
             style={{

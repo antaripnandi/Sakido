@@ -18,8 +18,8 @@ export const snapToQuarter = (min: number): number => Math.round(min / 15) * 15;
 export const clientYToTime = (clientY: number, containerTop: number): string => {
   const offsetPx = clientY - containerTop;
   const minutesFromTop = (offsetPx / 52) * 60;
-  const snappedMinutes = snapToQuarter(minutesFromTop + 7 * 60);
-  return minutesToTime(Math.max(7 * 60, Math.min(22 * 60, snappedMinutes)));
+  const snappedMinutes = snapToQuarter(minutesFromTop);
+  return minutesToTime(Math.max(0, Math.min(1440, snappedMinutes)));
 };
 
 export const addDays = (date: Date, days: number): Date => {

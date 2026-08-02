@@ -1065,9 +1065,13 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     const startTime = newEventStartTime.trim() || '09:00';
     const endTime = newEventEndTime.trim() || '10:00';
 
-    // Validate: end time must be after start time (no midnight crossing)
+    // Validate: time range must be 00:00-24:00
     const startMin = parseTime(startTime);
     const endMin = parseTime(endTime);
+    if (startMin < 0 || startMin >= 1440 || endMin <= 0 || endMin > 1440) {
+      setConnectorNotice('⚠️ Event times must be between 00:00 and 24:00.');
+      return;
+    }
     if (endMin <= startMin) {
       setConnectorNotice('⚠️ End time must be after start time. Multi-day events are not supported.');
       return;
@@ -2000,7 +2004,12 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         googleCalendarEvents.map((ge) => `${ge.title.replace(/^\[Sakido\]\s*/, '')}_${ge.date}`)
       );
 
+      // Deduplication: exclude local events that match Google events by title+date
+      // Skip dedup for freshly created events (within last 5 seconds) to prevent disappearing
+      const nowTimestamp = Date.now();
       const filteredLocalEvents = events.filter((ev) => {
+        const eventAge = nowTimestamp - parseInt(ev.id.split('-')[1] || '0');
+        if (eventAge < 5000) return true; // Keep recent events
         const key = `${ev.title.replace(/^\[Sakido\]\s*/, '')}_${ev.date}`;
         return !gcalTitlesAndDates.has(key);
       });

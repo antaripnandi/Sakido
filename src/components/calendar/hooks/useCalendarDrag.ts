@@ -61,7 +61,8 @@ export const useCalendarDrag = (
   const [editingType, setEditingType] = useState('Event');
   const [editingCalendarId, setEditingCalendarId] = useState<string>(lastUsedCalendarId);
   const [editingIsAllDay, setEditingIsAllDay] = useState<boolean>(false);
-  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null); // NEW: for all-day checkbox
+  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [capturedElement, setCapturedElement] = useState<Element | null>(null);
 
   useEffect(() => {
     setEditingCalendarId(lastUsedCalendarId);
@@ -205,6 +206,20 @@ export const useCalendarDrag = (
   }, [draggingNew, resizingEvent, movingEvent, events, getGridRect, getColumnWidth, clientYToGridTime, clientXToDayIndex, selectedWeekStart]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
+    // Clear on cancel
+    if (e.type === 'pointercancel') {
+      setDraggingNew(null);
+      setResizingEvent(null);
+      setMovingEvent(null);
+      setDragStartPos(null);
+      if (capturedElement) {
+        capturedElement.releasePointerCapture(e.pointerId);
+        setCapturedElement(null);
+      }
+      e.currentTarget.releasePointerCapture(e.pointerId);
+      return;
+    }
+
     if (draggingNew) {
       // Check if this was a click (movement < 5px) vs actual drag
       const movedDistance = dragStartPos
@@ -299,8 +314,12 @@ export const useCalendarDrag = (
       setMovingEvent(null);
     }
     setDragStartPos(null);
+    if (capturedElement) {
+      capturedElement.releasePointerCapture(e.pointerId);
+      setCapturedElement(null);
+    }
     e.currentTarget.releasePointerCapture(e.pointerId);
-  }, [draggingNew, resizingEvent, movingEvent, events, onEventCreate, onEventUpdate, selectedWeekStart, calendars, editingTitle, editingType, editingCalendarId, editingIsAllDay, setLastUsedCalendarId, setEditingEventId, setEditingTitle, setEditingType, setEditingCalendarId, getGridRect, getColumnWidth, clientXToDayIndex, clientYToGridTime]);
+  }, [draggingNew, resizingEvent, movingEvent, events, onEventCreate, onEventUpdate, selectedWeekStart, calendars, editingTitle, editingType, editingCalendarId, editingIsAllDay, setLastUsedCalendarId, setEditingEventId, setEditingTitle, setEditingType, setEditingCalendarId, getGridRect, getColumnWidth, clientXToDayIndex, clientYToGridTime, capturedElement, dragStartPos]);
 
   const handleEventPointerDown = useCallback((e: React.PointerEvent, event: any) => {
     e.preventDefault();
@@ -334,6 +353,7 @@ export const useCalendarDrag = (
         originalEndTime: event.endTime,
       });
     }
+    setCapturedElement(block);
   }, [setResizingEvent, setMovingEvent]);
 
   return {
