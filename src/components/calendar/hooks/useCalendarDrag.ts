@@ -3,8 +3,8 @@ import { parseTime, minutesToTime, snapToQuarter, addDays, formatDate, parseDate
 
 const SLOT_H = 52; // Height of each hourly slot (52px/hour)
 const HEADER_H = 52; // Height of the day header above the first hour slot
-const START_HOUR = 7; // Start hour of the grid (7 AM)
-const END_HOUR = 22; // End hour of the grid (10 PM)
+const START_HOUR = 0; // Start hour of the grid (midnight)
+const END_HOUR = 24; // End hour of the grid (midnight next day)
 const TIME_LABEL_WIDTH = 80; // Width of the time label column
 
 interface DraggingNewState {

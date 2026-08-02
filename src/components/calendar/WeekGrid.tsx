@@ -6,8 +6,8 @@ import { AllDayRow } from './AllDayRow';
 
 const HEADER_H = 52; // Height of the day header
 const SLOT_H = 52; // Height of each hourly slot (52px/hour)
-const START_HOUR = 7; // Start hour of the grid (7 AM)
-const END_HOUR = 22; // End hour of the grid (10 PM)
+const START_HOUR = 0; // Start hour of the grid (midnight)
+const END_HOUR = 24; // End hour of the grid (midnight next day)
 const TIME_LABEL_WIDTH = 80; // Width of the time label column
 
 export interface WeekGridProps {
@@ -230,115 +230,117 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
       />
       {/* Scrollable time slots container */}
       <div className="overflow-y-auto max-h-[calc(100vh-400px)]">
-        <div
-          ref={slotsRef}
-          className="grid grid-cols-[80px_repeat(7,_1fr)]"
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-        >
-        {/* Time labels column */}
-        <div className="border-r border-outline-variant/30 bg-surface sticky left-0 z-20">
-          <div className="h-[52px] border-b border-outline-variant/30 flex items-center justify-end pr-2 text-sm font-mono text-secondary"></div> {/* Header spacer */}
-          {timeSlots.map((slot, i) => (
-            <div
-              key={i}
-              className="h-[52px] border-b border-outline-variant/10 flex items-start justify-end pr-2 pt-1 text-xs font-mono text-secondary"
-            >
-              {slot}
-            </div>
-          ))}
-        </div>
+        <div className="relative">
+          <div
+            ref={slotsRef}
+            className="grid grid-cols-[80px_repeat(7,_1fr)]"
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            onPointerCancel={handlePointerUp}
+          >
+          {/* Time labels column */}
+          <div className="border-r border-outline-variant/30 bg-surface sticky left-0 z-20">
+            <div className="h-[52px] border-b border-outline-variant/30 flex items-center justify-end pr-2 text-sm font-mono text-secondary"></div> {/* Header spacer */}
+            {timeSlots.map((slot, i) => (
+              <div
+                key={i}
+                className="h-[52px] border-b border-outline-variant/10 flex items-start justify-end pr-2 pt-1 text-xs font-mono text-secondary"
+              >
+                {slot}
+              </div>
+            ))}
+          </div>
 
-        {/* 7 day columns */}
-        {[0, 1, 2, 3, 4, 5, 6].map(renderDayColumn)}
+          {/* 7 day columns */}
+          {[0, 1, 2, 3, 4, 5, 6].map(renderDayColumn)}
+          </div>
 
-        {/* Multi-day drag preview overlay */}
-        {draggingNew && (() => {
-          const rect = slotsRef.current?.getBoundingClientRect();
-          const columnWidth = rect ? (rect.width - TIME_LABEL_WIDTH) / 7 : 0;
-          return (
-            <div
-              className="absolute rounded px-2 py-1 text-xs border bg-blue-500/20 border-blue-500 text-blue-800"
-              style={{
-                left: `${TIME_LABEL_WIDTH + (draggingNew.startDay * columnWidth)}px`,
-                width: `${(draggingNew.endDay - draggingNew.startDay + 1) * columnWidth - 8}px`,
-                top: `${HEADER_H + ((parseTime(draggingNew.startTime) - START_HOUR * 60) / 60) * SLOT_H}px`,
-                height: `${Math.max(26, ((parseTime(draggingNew.endTime) - parseTime(draggingNew.startTime)) / 60) * SLOT_H)}px`,
-                zIndex: 100,
-                pointerEvents: 'none'
-              }}
-            >
-              <div className="font-medium truncate">New Event</div>
-            </div>
-          );
-        })()}
+          {/* Multi-day drag preview overlay */}
+          {draggingNew && (() => {
+            const rect = slotsRef.current?.getBoundingClientRect();
+            const columnWidth = rect ? (rect.width - TIME_LABEL_WIDTH) / 7 : 0;
+            return (
+              <div
+                className="absolute rounded px-2 py-1 text-xs border bg-blue-500/20 border-blue-500 text-blue-800"
+                style={{
+                  left: `${TIME_LABEL_WIDTH + (draggingNew.startDay * columnWidth)}px`,
+                  width: `${(draggingNew.endDay - draggingNew.startDay + 1) * columnWidth - 8}px`,
+                  top: `${HEADER_H + ((parseTime(draggingNew.startTime) - START_HOUR * 60) / 60) * SLOT_H}px`,
+                  height: `${Math.max(26, ((parseTime(draggingNew.endTime) - parseTime(draggingNew.startTime)) / 60) * SLOT_H)}px`,
+                  zIndex: 100,
+                  pointerEvents: 'none'
+                }}
+              >
+                <div className="font-medium truncate">New Event</div>
+              </div>
+            );
+          })()}
 
-        {/* Popover inline editor */}
-        {editingEventId && (() => {
-          const editingEvent = events.find(e => e.id === editingEventId);
-          if (!editingEvent) return null;
-          const editorTop = HEADER_H + ((parseTime(editingEvent.startTime || '09:00') - START_HOUR * 60) / 60) * SLOT_H;
-          return (
-            <div
-              className="absolute left-2 bg-surface-container p-3 rounded-lg shadow-xl border border-outline-variant/30 z-50 flex flex-col gap-2"
-              style={{
-                top: `${editorTop}px`,
-                width: '280px',
-                maxHeight: '400px'
-              }}
-            >
-              <input
-                type="text"
-                value={editingTitle}
-                onChange={(e) => setEditingTitle(e.target.value)}
-                placeholder="Add title"
-                className="text-sm font-medium bg-transparent border-b focus:outline-none"
-                autoFocus
-              />
-              <div className="flex flex-col gap-2 mt-2">
-                <div className="flex gap-2">
-                  <select
-                    value={editingType}
-                    onChange={(e) => setEditingType(e.target.value)}
-                    className="text-xs px-2 py-1 rounded bg-surface-container-high"
-                  >
-                    <option value="Event">Event</option>
-                    <option value="Exam">Exam</option>
-                    <option value="Lecture">Lecture</option>
-                    <option value="Deadline">Deadline</option>
-                  </select>
-                  <select
-                    value={editingCalendarId}
-                    onChange={(e) => setEditingCalendarId(e.target.value)}
-                    className="text-xs px-2 py-1 rounded bg-surface-container-high flex-1"
-                  >
-                    {calendars.filter(c => visibleCalendars.includes(c.id)).map(cal => (
-                      <option key={cal.id} value={cal.id}>
-                        {cal.name}
-                      </option>
-                    ))}
-                  </select>
+          {/* Popover inline editor */}
+          {editingEventId && (() => {
+            const editingEvent = events.find(e => e.id === editingEventId);
+            if (!editingEvent) return null;
+            const editorTop = HEADER_H + ((parseTime(editingEvent.startTime || '09:00') - START_HOUR * 60) / 60) * SLOT_H;
+            return (
+              <div
+                className="absolute left-2 bg-surface-container p-3 rounded-lg shadow-xl border border-outline-variant/30 z-50 flex flex-col gap-2"
+                style={{
+                  top: `${editorTop}px`,
+                  width: '280px',
+                  maxHeight: '400px'
+                }}
+              >
+                <input
+                  type="text"
+                  value={editingTitle}
+                  onChange={(e) => setEditingTitle(e.target.value)}
+                  placeholder="Add title"
+                  className="text-sm font-medium bg-transparent border-b focus:outline-none"
+                  autoFocus
+                />
+                <div className="flex flex-col gap-2 mt-2">
+                  <div className="flex gap-2">
+                    <select
+                      value={editingType}
+                      onChange={(e) => setEditingType(e.target.value)}
+                      className="text-xs px-2 py-1 rounded bg-surface-container-high"
+                    >
+                      <option value="Event">Event</option>
+                      <option value="Exam">Exam</option>
+                      <option value="Lecture">Lecture</option>
+                      <option value="Deadline">Deadline</option>
+                    </select>
+                    <select
+                      value={editingCalendarId}
+                      onChange={(e) => setEditingCalendarId(e.target.value)}
+                      className="text-xs px-2 py-1 rounded bg-surface-container-high flex-1"
+                    >
+                      {calendars.filter(c => visibleCalendars.includes(c.id)).map(cal => (
+                        <option key={cal.id} value={cal.id}>
+                          {cal.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <input
+                      type="checkbox"
+                      id={`isAllDayEvent-${editingEventId}`}
+                      checked={editingIsAllDay}
+                      onChange={(e) => setEditingIsAllDay(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <label htmlFor={`isAllDayEvent-${editingEventId}`} className="text-sm text-on-surface">All day</label>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <input
-                    type="checkbox"
-                    id={`isAllDayEvent-${editingEventId}`}
-                    checked={editingIsAllDay}
-                    onChange={(e) => setEditingIsAllDay(e.target.checked)}
-                    className="w-4 h-4"
-                  />
-                  <label htmlFor={`isAllDayEvent-${editingEventId}`} className="text-sm text-on-surface">All day</label>
+                <div className="flex gap-2 justify-end mt-auto">
+                  <button onClick={handleCancelEdit} className="text-xs px-3 py-1">Cancel</button>
+                  <button onClick={handleSaveEdit} className="text-xs px-3 py-1 bg-primary text-white rounded">Save</button>
                 </div>
               </div>
-              <div className="flex gap-2 justify-end mt-auto">
-                <button onClick={handleCancelEdit} className="text-xs px-3 py-1">Cancel</button>
-                <button onClick={handleSaveEdit} className="text-xs px-3 py-1 bg-primary text-white rounded">Save</button>
-              </div>
-            </div>
-          );
-        })()}
+            );
+          })()}
         </div>
       </div>
     </div>
