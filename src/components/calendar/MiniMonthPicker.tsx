@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface MiniMonthPickerProps {
@@ -14,7 +14,15 @@ export const MiniMonthPicker: React.FC<MiniMonthPickerProps> = ({
   events,
   visibleCalendars
 }) => {
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const selectedYear = selectedWeekStart.getFullYear();
+  const selectedMonth = selectedWeekStart.getMonth();
+  // Start on the week's month and follow it — otherwise the picker can show a
+  // stale month (and no selected-week highlight) when the grid moves elsewhere.
+  const [currentMonth, setCurrentMonth] = useState(() => new Date(selectedYear, selectedMonth, 1));
+
+  useEffect(() => {
+    setCurrentMonth(new Date(selectedYear, selectedMonth, 1));
+  }, [selectedYear, selectedMonth]);
 
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
@@ -92,6 +100,7 @@ export const MiniMonthPicker: React.FC<MiniMonthPickerProps> = ({
           return (
             <button
               key={day}
+              type="button"
               onClick={() => handleDayClick(day)}
               className={`h-8 rounded text-xs font-medium relative transition-all ${
                 isToday

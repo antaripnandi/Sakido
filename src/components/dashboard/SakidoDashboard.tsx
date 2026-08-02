@@ -918,14 +918,25 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     const date = event.date;
 
     try {
-      const token = await getOrRefresh('googleCalendar', () => refreshGoogleToken('googleCalendar'));
-      if (!token) return;
+      // Local-time day bounds — the previous `${date}T00:00:00Z` window was a UTC
+      // instant, so events near the day boundary fell outside it and every edit
+      // created a duplicate in Google Calendar.
+      const dayStart = safeCreateDateTime(date, '00:00');
+      const dayEnd = safeCreateDateTime(date, '23:59');
+      if (!dayStart || !dayEnd) return;
 
-      // Search for existing event by title
-      const searchRes = await fetch(
-        `https://www.googleapis.com/calendar/v3/calendars/primary/events?q=${encodeURIComponent(`[Sakido] ${title}`)}&timeMin=${date}T00:00:00Z&timeMax=${date}T23:59:59Z`,
-        { headers: { Authorization: `Bearer ${token}` } }
+      // Search for existing event by title. Route through executeGoogleApi so
+      // we get the shared 401 auto-refresh like every other Calendar call.
+      const searchRes = await executeGoogleApi((accessToken) =>
+        fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/primary/events?q=${encodeURIComponent(`[Sakido] ${title}`)}&timeMin=${encodeURIComponent(dayStart.toISOString())}&timeMax=${encodeURIComponent(dayEnd.toISOString())}`,
+          { headers: { Authorization: `Bearer ${accessToken}` } }
+        )
       );
+      if (!searchRes || !searchRes.ok) {
+        console.warn('Google Calendar search failed:', searchRes?.status);
+        return;
+      }
       const searchData = await searchRes.json();
       const existingEvent = searchData.items?.[0];
 
@@ -937,24 +948,30 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
       if (existingEvent) {
         // Update existing event
-        await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/primary/events/${existingEvent.id}`,
-          {
-            method: 'PATCH',
-            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(eventBody),
-          }
+        const patchRes = await executeGoogleApi((accessToken) =>
+          fetch(
+            `https://www.googleapis.com/calendar/v3/calendars/primary/events/${existingEvent.id}`,
+            {
+              method: 'PATCH',
+              headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify(eventBody),
+            }
+          )
         );
+        if (!patchRes || !patchRes.ok) console.warn('Google Calendar PATCH failed:', patchRes?.status);
       } else {
         // Create new event
-        await fetch(
-          'https://www.googleapis.com/calendar/v3/calendars/primary/events',
-          {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(eventBody),
-          }
+        const postRes = await executeGoogleApi((accessToken) =>
+          fetch(
+            'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+            {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify(eventBody),
+            }
+          )
         );
+        if (!postRes || !postRes.ok) console.warn('Google Calendar POST failed:', postRes?.status);
       }
     } catch (err) {
       console.warn('Google Calendar sync error:', err);
@@ -2117,7 +2134,6 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 syncEventToGoogleCalendar(event);
               }}
               setEvents={setEvents}
-              syncEventToGoogleCalendar={syncEventToGoogleCalendar}
               lastUsedCalendarId={lastUsedCalendarId}
               setLastUsedCalendarId={setLastUsedCalendarId}
             />
@@ -2370,10 +2386,11 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                     <input
                       type="checkbox"
                       checked={t.completed}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        handleToggleTask(t.id);
-                      }}
+                      // stopPropagation must live on click, not onChange — the
+                      // click still bubbles to the parent and opens the detail
+                      // modal on every toggle otherwise.
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => handleToggleTask(t.id)}
                       className="w-5 h-5 accent-[#8b5e3c] cursor-pointer rounded shrink-0"
                     />
                     {t.courseColor && (

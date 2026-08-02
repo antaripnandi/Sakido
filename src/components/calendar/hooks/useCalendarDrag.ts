@@ -1,7 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { parseTime, minutesToTime, snapToQuarter, clientYToTime, addDays, formatDate } from '../utils/calendarUtils';
+import { parseTime, minutesToTime, snapToQuarter, addDays, formatDate, parseDate, diffInDays } from '../utils/calendarUtils';
 
 const SLOT_H = 52; // Height of each hourly slot (52px/hour)
+const HEADER_H = 52; // Height of the day header above the first hour slot
 const START_HOUR = 7; // Start hour of the grid (7 AM)
 const END_HOUR = 22; // End hour of the grid (10 PM)
 const TIME_LABEL_WIDTH = 80; // Width of the time label column
@@ -33,10 +34,15 @@ interface MovingEventState {
   originalDate: string;
   originalStartTime: string;
   originalEndTime: string;
+  previewDate?: string;
+  previewStartTime?: string;
+  previewEndTime?: string;
+  previewDayIndex?: number;
 }
 
 export const useCalendarDrag = (
   gridRef: React.RefObject<HTMLDivElement | null>,
+  slotsRef: React.RefObject<HTMLDivElement | null>,
   selectedWeekStart: Date,
   events: any[],
   setEvents: React.Dispatch<React.SetStateAction<any[]>>,
@@ -46,7 +52,6 @@ export const useCalendarDrag = (
   lastUsedCalendarId: string,
   calendars: any[],
   setLastUsedCalendarId: React.Dispatch<React.SetStateAction<string>>,
-  syncEventToGoogleCalendar: (event: any) => void // Add this parameter
 ) => {
   const [draggingNew, setDraggingNew] = useState<DraggingNewState | null>(null);
   const [resizingEvent, setResizingEvent] = useState<ResizingEventState | null>(null);
@@ -80,14 +85,17 @@ export const useCalendarDrag = (
   }, [getGridRect, getColumnWidth]);
 
   const clientYToGridTime = useCallback((clientY: number) => {
-    const rect = getGridRect();
+    // Measure from the hour-slot grid (below the all-day row), then subtract
+    // the day header so the pointer maps to the slot under it — not one hour
+    // later as when measuring from the outer container's top.
+    const rect = slotsRef.current?.getBoundingClientRect();
     if (!rect) return minutesToTime(START_HOUR * 60);
 
-    const offsetPx = clientY - rect.top;
+    const offsetPx = clientY - rect.top - HEADER_H;
     const minutesFromTop = (offsetPx / SLOT_H) * 60;
     const snappedMinutes = snapToQuarter(minutesFromTop + START_HOUR * 60);
     return minutesToTime(Math.max(START_HOUR * 60, Math.min(END_HOUR * 60, snappedMinutes)));
-  }, [getGridRect]);
+  }, [slotsRef]);
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     const target = e.target as HTMLElement;
@@ -144,13 +152,15 @@ export const useCalendarDrag = (
       const currentTime = clientYToGridTime(e.clientY);
       setResizingEvent(prev => {
         if (!prev) return null;
-        const event = events.find(ev => ev.id === prev.id);
-        if (!event) return null;
-
+        // Clamp so start always stays before end (min one snap step).
         if (prev.edge === 'top') {
-          return { ...prev, originalStartTime: currentTime };
+          const maxStart = parseTime(prev.originalEndTime) - 15;
+          const clamped = Math.min(parseTime(currentTime), maxStart);
+          return { ...prev, originalStartTime: minutesToTime(clamped) };
         } else {
-          return { ...prev, originalEndTime: currentTime };
+          const minEnd = parseTime(prev.originalStartTime) + 15;
+          const clamped = Math.max(parseTime(currentTime), minEnd);
+          return { ...prev, originalEndTime: minutesToTime(clamped) };
         }
       });
     } else if (movingEvent) {
@@ -165,8 +175,9 @@ export const useCalendarDrag = (
       // Preview update - actual update on pointerUp
       const eventToMove = events.find(ev => ev.id === movingEvent.id);
       if (eventToMove) {
-        // Calculate day change
-        const originalDayIndex = Math.floor((new Date(eventToMove.date).getTime() - selectedWeekStart.getTime()) / (1000 * 60 * 60 * 24));
+        // Calculate day change (parse the date-only string in local time —
+        // new Date("YYYY-MM-DD") parses as UTC and shifts the index west of UTC)
+        const originalDayIndex = diffInDays(parseDate(eventToMove.date), selectedWeekStart);
         const dayChange = newDayIndex - originalDayIndex;
 
         // Calculate time change
@@ -175,7 +186,7 @@ export const useCalendarDrag = (
         const timeChange = newStartMinutes - originalStartMinutes;
 
         // Apply changes for preview
-        const previewDate = formatDate(addDays(new Date(eventToMove.date), dayChange));
+        const previewDate = formatDate(addDays(parseDate(eventToMove.date), dayChange));
         const previewStartTime = minutesToTime(parseTime(eventToMove.startTime) + timeChange);
         const previewEndTime = minutesToTime(parseTime(eventToMove.endTime) + timeChange);
 
@@ -199,14 +210,21 @@ export const useCalendarDrag = (
       const defaultCalendar = calendars.find(c => c.isDefault) || calendars[0];
       const targetCalendarId = editingCalendarId || defaultCalendar?.id;
 
+      // Enforce a minimum duration so a click-without-drag doesn't create a
+      // zero-height, unselectable event.
+      const startMinutes = parseTime(draggingNew.startTime);
+      const endMinutes = Math.max(parseTime(draggingNew.endTime), startMinutes + 30);
+      const startTime = minutesToTime(startMinutes);
+      const endTime = minutesToTime(Math.min(END_HOUR * 60, endMinutes));
+
       const newEvent = {
         id: `evt-${Date.now()}`,
-        title: editingTitle.trim() || 'New Event',
+        title: 'New Event', // don't inherit the previously-edited event's title
         date: formatDate(startDate),
         endDate: draggingNew.endDay > draggingNew.startDay ? formatDate(endDate) : undefined,
-        startTime: editingIsAllDay ? undefined : draggingNew.startTime,
-        endTime: editingIsAllDay ? undefined : draggingNew.endTime,
-        time: editingIsAllDay ? undefined : `${draggingNew.startTime} - ${draggingNew.endTime}`,
+        startTime: editingIsAllDay ? undefined : startTime,
+        endTime: editingIsAllDay ? undefined : endTime,
+        time: editingIsAllDay ? undefined : `${startTime} - ${endTime}`,
         type: editingType,
         calendarId: targetCalendarId,
         recurrence: 'none',
@@ -247,8 +265,8 @@ export const useCalendarDrag = (
         const finalDayIndex = clientXToDayIndex(e.clientX - movingEvent.offsetX);
         const finalTime = clientYToGridTime(e.clientY - movingEvent.offsetY);
 
-        const originalEventDate = new Date(event.originalDate || event.date);
-        const originalDayIndex = Math.floor((originalEventDate.getTime() - selectedWeekStart.getTime()) / (1000 * 60 * 60 * 24));
+        const originalEventDate = parseDate(event.originalDate || event.date);
+        const originalDayIndex = diffInDays(originalEventDate, selectedWeekStart);
         const dayChange = finalDayIndex - originalDayIndex;
 
         const originalStartMinutes = parseTime(event.originalStartTime || event.startTime);
@@ -271,14 +289,17 @@ export const useCalendarDrag = (
       setMovingEvent(null);
     }
     e.currentTarget.releasePointerCapture(e.pointerId);
-  }, [draggingNew, resizingEvent, movingEvent, events, onEventCreate, onEventUpdate, selectedWeekStart, calendars, editingTitle, editingType, editingCalendarId, setLastUsedCalendarId, setEditingEventId, setEditingTitle, setEditingType, setEditingCalendarId, getGridRect, getColumnWidth, clientXToDayIndex, clientYToGridTime, syncEventToGoogleCalendar]);
+  }, [draggingNew, resizingEvent, movingEvent, events, onEventCreate, onEventUpdate, selectedWeekStart, calendars, editingTitle, editingType, editingCalendarId, editingIsAllDay, setLastUsedCalendarId, setEditingEventId, setEditingTitle, setEditingType, setEditingCalendarId, getGridRect, getColumnWidth, clientXToDayIndex, clientYToGridTime]);
 
   const handleEventPointerDown = useCallback((e: React.PointerEvent, event: any) => {
-    const target = e.target as HTMLElement;
     e.preventDefault();
-    e.currentTarget.setPointerCapture(e.pointerId);
+    // Measure from the block root (e.currentTarget), not the deepest child
+    // (e.target) — a pointer down on the title/time/resize-handle would
+    // otherwise measure a child box and misdetect edges / misplace the move.
+    const block = e.currentTarget as HTMLElement;
+    block.setPointerCapture(e.pointerId);
 
-    const rect = target.getBoundingClientRect();
+    const rect = block.getBoundingClientRect();
     const offsetY = e.clientY - rect.top;
 
     const isTopEdge = offsetY < 8;

@@ -1,5 +1,5 @@
 import React from 'react';
-import { addDays, formatDate } from './utils/calendarUtils';
+import { addDays, formatDate, parseDate, diffInDays } from './utils/calendarUtils';
 
 interface AllDayRowProps {
   events: any[]; // All-day or multi-day events
@@ -9,6 +9,8 @@ interface AllDayRowProps {
   onEventUpdate: (event: any) => void;
   onEditClick: (eventId: string, title: string, type: string, calendarId: string, isAllDay: boolean) => void;
 }
+
+const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
 
 export const AllDayRow: React.FC<AllDayRowProps> = ({
   events,
@@ -33,9 +35,12 @@ export const AllDayRow: React.FC<AllDayRowProps> = ({
   });
 
   const [collapsed, setCollapsed] = React.useState(allDayEvents.length === 0);
+  // Don't let the auto-expand/collapse effect override a manual toggle.
+  const userToggled = React.useRef(false);
 
-  // Auto-expand/collapse based on content
+  // Auto-expand/collapse based on content (only before the first manual change)
   React.useEffect(() => {
+    if (userToggled.current) return;
     setCollapsed(allDayEvents.length === 0);
   }, [allDayEvents.length]);
 
@@ -49,7 +54,10 @@ export const AllDayRow: React.FC<AllDayRowProps> = ({
   return (
     <div className="border-b border-outline-variant/30">
       <button
-        onClick={() => setCollapsed(!collapsed)}
+        onClick={() => {
+          userToggled.current = true;
+          setCollapsed(!collapsed);
+        }}
         className="flex items-center gap-2 px-4 py-2 text-sm text-secondary hover:bg-surface-container-high/50 w-full transition-colors"
         aria-label={collapsed ? "Expand all-day events" : "Collapse all-day events"}
       >
@@ -66,56 +74,44 @@ export const AllDayRow: React.FC<AllDayRowProps> = ({
       </button>
 
       {!collapsed && (
-        <div className="relative grid grid-cols-[80px_repeat(7,_1fr)] min-h-[40px] max-h-[120px] overflow-y-auto" style={{ maxHeight: allDayEvents.length > 0 ? '120px' : '40px' }}>
+        <div className="grid grid-cols-[80px_repeat(7,_1fr)] min-h-[40px] max-h-[120px] overflow-y-auto">
           <div className="w-20 border-r border-outline-variant/30" /> {/* Empty space for time labels column */}
+          {/* Events render in a single overlay that starts AFTER the time-label
+              column, so left/width percentages are measured against the 7
+              columns — not the full grid width (which would shift them left by
+              one column). */}
+          <div className="col-span-7 relative min-h-[40px]">
+            {allDayEvents.map(event => {
+              const color = getCalendarColor(event.calendarId);
+              // Local-time day math (parseDate, not new Date(date-only string)
+              // which is UTC and shifts the index west of UTC), clamped to 0-6.
+              const startIndex = clamp(diffInDays(parseDate(event.date), selectedWeekStart), 0, 6);
+              const endIndex = clamp(
+                diffInDays(parseDate(event.endDate || event.date), selectedWeekStart),
+                0, 6
+              );
+              const span = endIndex - startIndex + 1;
 
-          {[0, 1, 2, 3, 4, 5, 6].map(dayOffset => {
-            const columnDate = addDays(selectedWeekStart, dayOffset);
-            const dateStr = formatDate(columnDate);
-            const dayEvents = allDayEvents.filter(event => {
-              const eventStartDate = event.date;
-              const eventEndDate = event.endDate || event.date;
-              // Event spans this column date
-              return eventStartDate <= dateStr && eventEndDate >= dateStr;
-            });
-
-            return (
-              <div key={dayOffset} className="border-r border-outline-variant/20 last:border-r-0 px-1 py-1 min-h-[40px]">
-                {dayEvents.map(event => {
-                  const color = getCalendarColor(event.calendarId);
-                  // Calculate span for the event within the week
-                  const eventStartDayIndex = Math.floor((new Date(event.date).getTime() - selectedWeekStart.getTime()) / (1000 * 60 * 60 * 24));
-                  const eventEndDayIndex = event.endDate ? Math.floor((new Date(event.endDate).getTime() - selectedWeekStart.getTime()) / (1000 * 60 * 60 * 24)) : eventStartDayIndex;
-
-                  const currentColumnIndex = dayOffset;
-
-                  // Only render the event block once, in its starting column
-                  if (currentColumnIndex !== eventStartDayIndex) return null;
-
-                  const spanLength = eventEndDayIndex - eventStartDayIndex + 1;
-                  const widthPercentage = Math.min(spanLength, 7 - eventStartDayIndex) / 7 * 100;
-
-                  return (
-                    <div
-                      key={event.id}
-                      className="absolute px-2 py-1 rounded text-xs font-medium truncate mb-1 cursor-pointer hover:shadow-sm transition-shadow"
-                      style={{
-                        backgroundColor: `${color}`,
-                        color: '#fff',
-                        left: `${(eventStartDayIndex / 7) * 100}%`,
-                        width: `${widthPercentage}%`,
-                        zIndex: 1
-                      }}
-                      title={event.title}
-                      onClick={() => onEditClick(event.id, event.title, event.type, event.calendarId, event.isAllDay)}
-                    >
-                      {event.title}
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
+              return (
+                <div
+                  key={event.id}
+                  className="absolute px-2 py-1 rounded text-xs font-medium truncate cursor-pointer hover:shadow-sm transition-shadow"
+                  style={{
+                    backgroundColor: color,
+                    color: '#fff',
+                    left: `${(startIndex / 7) * 100}%`,
+                    width: `${(span / 7) * 100}%`,
+                    top: 4,
+                    zIndex: 1
+                  }}
+                  title={event.title}
+                  onClick={() => onEditClick(event.id, event.title, event.type, event.calendarId, event.isAllDay)}
+                >
+                  {event.title}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

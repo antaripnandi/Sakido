@@ -18,7 +18,6 @@ export interface WeekGridProps {
   onEventUpdate: (event: any) => void;
   onEventCreate: (event: any) => void;
   setEvents: React.Dispatch<React.SetStateAction<any[]>>; // Pass setEvents to useCalendarDrag
-  syncEventToGoogleCalendar: (event: any) => void;
   lastUsedCalendarId: string;
   setLastUsedCalendarId: React.Dispatch<React.SetStateAction<string>>; // Add setLastUsedCalendarId
 }
@@ -31,12 +30,12 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
   onEventUpdate,
   onEventCreate,
   setEvents,
-  syncEventToGoogleCalendar,
   lastUsedCalendarId,
   setLastUsedCalendarId
 }) => {
   const [now, setNow] = useState(new Date());
   const gridRef = useRef<HTMLDivElement>(null);
+  const slotsRef = useRef<HTMLDivElement>(null);
 
   const getCalendarColor = useCallback((calendarId: string): string => {
     const calendar = calendars.find(c => c.id === calendarId);
@@ -63,6 +62,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     handleEventPointerDown,
   } = useCalendarDrag(
     gridRef,
+    slotsRef,
     selectedWeekStart,
     events,
     setEvents,
@@ -71,8 +71,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     getCalendarColor,
     lastUsedCalendarId,
     calendars,
-    setLastUsedCalendarId,
-    syncEventToGoogleCalendar
+    setLastUsedCalendarId
   );
 
   // Update current time every minute
@@ -91,7 +90,11 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
   const weekEndStr = formatDate(addDays(selectedWeekStart, 6));
   const weekEvents = events.filter(e => {
     if (!visibleCalendars.includes(e.calendarId)) return false;
-    return e.date >= weekStartStr && e.date <= weekEndStr;
+    // Compare the event range against the week range so multi-day events that
+    // start before (or end after) the week are still shown, matching AllDayRow.
+    const start = e.date;
+    const end = e.endDate || e.date;
+    return start <= weekEndStr && end >= weekStartStr;
   });
 
   const handleSaveEdit = useCallback(() => {
@@ -103,11 +106,17 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
       title: editingTitle.trim() || 'New Event',
       type: editingType,
       calendarId: editingCalendarId,
+      isAllDay: editingIsAllDay,
+      // Clear time fields when the event becomes all-day so AllDayRow and the
+      // day-column filter (which excludes isAllDay) both interpret it correctly.
+      startTime: editingIsAllDay ? undefined : event.startTime,
+      endTime: editingIsAllDay ? undefined : event.endTime,
+      time: editingIsAllDay ? undefined : event.time,
     };
     onEventUpdate(updatedEvent);
     setEditingEventId(null);
     setLastUsedCalendarId(editingCalendarId); // Update last used calendar
-  }, [editingEventId, editingTitle, editingType, editingCalendarId, events, onEventUpdate, setEditingEventId, setLastUsedCalendarId]);
+  }, [editingEventId, editingTitle, editingType, editingCalendarId, editingIsAllDay, events, onEventUpdate, setEditingEventId, setLastUsedCalendarId]);
 
   const handleCancelEdit = useCallback(() => {
     setEditingEventId(null);
@@ -199,8 +208,10 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
           </div>
         )}
 
-        {/* Inline Event Editor */}
-        {editingEventId && (
+        {/* Inline Event Editor — render only in the column that holds the
+            edited event, not once per column (which duplicated the DOM id and
+            raced autoFocus). */}
+        {editingEventId && events.some(e => e.id === editingEventId && e.date === dateStr) && (
           <div className="absolute inset-0 bg-surface-container p-3 rounded-lg shadow-lg z-30 flex flex-col gap-2">
             <input
               type="text"
@@ -227,7 +238,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
                   onChange={(e) => setEditingCalendarId(e.target.value)}
                   className="text-xs px-2 py-1 rounded bg-surface-container-high flex-1"
                 >
-                  {calendars.filter(c => c.visible).map(cal => (
+                  {calendars.filter(c => visibleCalendars.includes(c.id)).map(cal => (
                     <option key={cal.id} value={cal.id}>
                       {cal.name}
                     </option>
@@ -237,12 +248,12 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
               <div className="flex items-center gap-2 mt-2">
                 <input
                   type="checkbox"
-                  id="isAllDayEvent"
+                  id={`isAllDayEvent-${editingEventId}`}
                   checked={editingIsAllDay}
                   onChange={(e) => setEditingIsAllDay(e.target.checked)}
                   className="w-4 h-4"
                 />
-                <label htmlFor="isAllDayEvent" className="text-sm text-on-surface">All day</label>
+                <label htmlFor={`isAllDayEvent-${editingEventId}`} className="text-sm text-on-surface">All day</label>
               </div>
             </div>
             <div className="flex gap-2 justify-end mt-auto">
@@ -272,10 +283,6 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     <div
       ref={gridRef}
       className="border border-outline-variant/40 rounded-xl bg-surface-container-lowest overflow-hidden"
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp} // Handle cases where pointer leaves document
     >
       {/* All-day row */}
       <AllDayRow
@@ -286,7 +293,17 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
         onEventUpdate={onEventUpdate}
         onEditClick={handleEditClick} // Pass handleEditClick for all-day events
       />
-      <div className="grid grid-cols-[80px_repeat(7,_1fr)]">
+      {/* Pointer handlers live on the hour-slot grid (below the all-day row)
+          so a press on an empty all-day cell doesn't start a timed-event drag,
+          and slotsRef gives the hook the geometry of the slot area. */}
+      <div
+        ref={slotsRef}
+        className="grid grid-cols-[80px_repeat(7,_1fr)]"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp} // Handle cases where pointer leaves document
+      >
         {/* Time labels column */}
         <div className="border-r border-outline-variant/30 bg-surface sticky left-0 z-20">
           <div className="h-[52px] border-b border-outline-variant/30 flex items-center justify-end pr-2 text-sm font-mono text-secondary"></div> {/* Header spacer */}

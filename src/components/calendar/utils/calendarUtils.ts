@@ -45,3 +45,18 @@ export const isSameDay = (date1: Date, date2: Date): boolean => {
 export const formatDate = (date: Date): string => {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 };
+
+/**
+ * Parse a date-only string ("YYYY-MM-DD") in local time.
+ * `new Date("YYYY-MM-DD")` is parsed as UTC midnight, which shifts the day
+ * index for users west of UTC (and across DST) when diffing against local
+ * dates. Always use this helper for formatDate() output.
+ */
+export const parseDate = (value: string): Date => {
+  const [y, m, d] = value.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+
+/** Whole-day difference between two local dates, DST-safe (rounds). */
+export const diffInDays = (a: Date, b: Date): number =>
+  Math.round((a.getTime() - b.getTime()) / 86400000);
