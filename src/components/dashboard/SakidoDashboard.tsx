@@ -5,6 +5,7 @@ import { useMigrateToCalendars } from '../../hooks/useMigrateToCalendars';
 import { MiniMonthPicker } from '../calendar/MiniMonthPicker';
 import { CalendarList } from '../calendar/CalendarList';
 import { WeekGrid } from '../calendar/WeekGrid';
+import { addDays, formatDate, startOfWeek } from '../calendar/utils/calendarUtils';
 import {
   Sun,
   Moon,
@@ -837,6 +838,28 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
     return () => clearInterval(interval);
   }, [connectors.googleCalendar, calendarMonth, fetchGoogleEvents]);
+
+  // Keyboard shortcuts for week navigation (j/k/t or arrow keys)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (calendarViewMode !== 'week') return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.key === 'ArrowLeft' || e.key === 'j') {
+        e.preventDefault();
+        setSelectedWeekStart(prev => addDays(prev, -7));
+      } else if (e.key === 'ArrowRight' || e.key === 'k') {
+        e.preventDefault();
+        setSelectedWeekStart(prev => addDays(prev, 7));
+      } else if (e.key === 't') {
+        e.preventDefault();
+        setSelectedWeekStart(startOfWeek(new Date()));
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [calendarViewMode]);
 
   // Live Google Drive "Sakido Notes" folder auto-fetch & sync
   useEffect(() => {
@@ -2136,23 +2159,56 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
           {calendarViewMode === 'week' ? (
             /* Week Grid View */
-            <WeekGrid
-              selectedWeekStart={selectedWeekStart}
-              events={allEvents}
-              calendars={calendars}
-              visibleCalendars={visibleCalendars}
-              onEventUpdate={(event) => {
-                setEvents(prev => prev.map(e => e.id === event.id ? event : e));
-                syncEventToGoogleCalendar(event);
-              }}
-              onEventCreate={(event) => {
-                setEvents(prev => [...prev, event]);
-                syncEventToGoogleCalendar(event);
-              }}
-              setEvents={setEvents}
-              lastUsedCalendarId={lastUsedCalendarId}
-              setLastUsedCalendarId={setLastUsedCalendarId}
-            />
+            <>
+              {/* Week Navigation Header */}
+              <div className="flex items-center justify-between mb-4 px-2">
+                <button
+                  onClick={() => setSelectedWeekStart(prev => addDays(prev, -7))}
+                  className="p-2 hover:bg-surface-container-high rounded-lg transition-colors"
+                  aria-label="Previous week"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+
+                <div className="flex flex-col items-center gap-1">
+                  <div className="text-base font-semibold text-on-surface">
+                    {formatDate(selectedWeekStart)} - {formatDate(addDays(selectedWeekStart, 6))}
+                  </div>
+                  <button
+                    onClick={() => setSelectedWeekStart(startOfWeek(new Date()))}
+                    className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
+                  >
+                    Today
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setSelectedWeekStart(prev => addDays(prev, 7))}
+                  className="p-2 hover:bg-surface-container-high rounded-lg transition-colors"
+                  aria-label="Next week"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+
+              <WeekGrid
+                selectedWeekStart={selectedWeekStart}
+                events={allEvents}
+                calendars={calendars}
+                visibleCalendars={visibleCalendars}
+                onEventUpdate={(event) => {
+                  setEvents(prev => prev.map(e => e.id === event.id ? event : e));
+                  syncEventToGoogleCalendar(event);
+                }}
+                onEventCreate={(event) => {
+                  setEvents(prev => [...prev, event]);
+                  syncEventToGoogleCalendar(event);
+                }}
+                setEvents={setEvents}
+                lastUsedCalendarId={lastUsedCalendarId}
+                setLastUsedCalendarId={setLastUsedCalendarId}
+              />
+            </>
           ) : (
             /* Month Grid */
             <div className="border border-outline-variant/40 rounded-xl bg-surface-container-lowest p-4 shadow-xs">
