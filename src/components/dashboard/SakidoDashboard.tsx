@@ -1213,7 +1213,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                       ...e,
                       gcalId: recurrence === 'none' ? created.id : undefined,
                       gcalRecurringEventId: recurrence !== 'none' ? created.id : undefined,
-                      syncStatus: 'pending' as const
+                      syncStatus: 'synced' as const // Mark as synced immediately after POST
                     }
                   : e
               ));

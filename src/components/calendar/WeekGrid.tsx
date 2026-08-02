@@ -40,6 +40,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
   const [now, setNow] = useState(new Date());
   const gridRef = useRef<HTMLDivElement>(null);
   const slotsRef = useRef<HTMLDivElement>(null);
+  const editorInputRef = useRef<HTMLInputElement>(null);
 
   const getCalendarColor = useCallback((calendarId: string): string => {
     const calendar = calendars.find(c => c.id === calendarId);
@@ -144,6 +145,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     setEditingType(type);
     setEditingCalendarId(calendarId);
     setEditingIsAllDay(isAllDay);
+    setTimeout(() => editorInputRef.current?.select(), 0);
   }, [setEditingEventId, setEditingTitle, setEditingType, setEditingCalendarId, setEditingIsAllDay, onEditingStart]);
 
   const renderDayColumn = (dayOffset: number) => {
@@ -155,21 +157,6 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
 
     return (
       <div key={dayOffset} className="relative border-r border-outline-variant/20 last:border-r-0">
-        {/* Day header */}
-        <div
-          className={`sticky top-0 z-10 text-center border-b border-outline-variant/30 flex flex-col justify-center ${
-            isToday ? 'bg-primary/5' : 'bg-surface'
-          }`}
-          style={{ height: `${HEADER_H}px` }}
-        >
-          <div className="text-xs text-secondary uppercase font-mono">
-            {columnDate.toLocaleDateString('en-US', { weekday: 'short' })}
-          </div>
-          <div className={`text-2xl font-bold ${isToday ? 'text-primary' : 'text-on-surface'}`}>
-            {columnDate.getDate()}
-          </div>
-        </div>
-
         {/* Hour grid lines */}
         {timeSlots.map((_, i) => (
           <div
@@ -224,6 +211,32 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
       ref={gridRef}
       className="border border-outline-variant/40 rounded-xl bg-surface-container-lowest overflow-hidden"
     >
+      {/* Day headers row */}
+      <div className="grid grid-cols-[80px_repeat(7,_1fr)] border-b border-outline-variant/30">
+        {/* Time label column header spacer */}
+        <div className="h-[52px] border-r border-outline-variant/30 bg-surface"></div>
+        {/* Day headers */}
+        {[0, 1, 2, 3, 4, 5, 6].map(dayOffset => {
+          const columnDate = addDays(selectedWeekStart, dayOffset);
+          const isToday = isSameDay(columnDate, now);
+          return (
+            <div
+              key={dayOffset}
+              className={`h-[52px] text-center flex flex-col justify-center border-r border-outline-variant/20 last:border-r-0 ${
+                isToday ? 'bg-primary/5' : 'bg-surface'
+              }`}
+            >
+              <div className="text-xs text-secondary uppercase font-mono">
+                {columnDate.toLocaleDateString('en-US', { weekday: 'short' })}
+              </div>
+              <div className={`text-2xl font-bold ${isToday ? 'text-primary' : 'text-on-surface'}`}>
+                {columnDate.getDate()}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
       {/* All-day row */}
       <AllDayRow
         events={events}
@@ -233,6 +246,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
         onEventUpdate={onEventUpdate}
         onEditClick={handleEditClick}
       />
+
       {/* Scrollable time slots container */}
       <div className="overflow-y-auto max-h-[calc(100vh-400px)]">
         <div className="relative">
@@ -246,7 +260,6 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
           >
           {/* Time labels column */}
           <div className="border-r border-outline-variant/30 bg-surface sticky left-0 z-20">
-            <div className="h-[52px] border-b border-outline-variant/30 flex items-center justify-end pr-2 text-sm font-mono text-secondary"></div> {/* Header spacer */}
             {timeSlots.map((slot, i) => (
               <div
                 key={i}
@@ -297,6 +310,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
                 }}
               >
                 <input
+                  ref={editorInputRef}
                   type="text"
                   value={editingTitle}
                   onChange={(e) => setEditingTitle(e.target.value)}
