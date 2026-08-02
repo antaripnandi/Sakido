@@ -36,7 +36,7 @@ interface MovingEventState {
 }
 
 export const useCalendarDrag = (
-  gridRef: React.RefObject<HTMLDivElement>,
+  gridRef: React.RefObject<HTMLDivElement | null>,
   selectedWeekStart: Date,
   events: any[],
   setEvents: React.Dispatch<React.SetStateAction<any[]>>,

@@ -607,7 +607,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       return false;
     }
     try {
-      const token = await getOrRefresh('googleCalendar');
+      const token = await getOrRefresh('googleCalendar', () => refreshGoogleToken('googleCalendar'));
       if (!token) return false;
       const res = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`);
       if (!res.ok) return false;
@@ -633,31 +633,6 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   const [newEventEndTime, setNewEventEndTime] = useState('10:00');
   const [newEventType, setNewEventType] = useState('Exam');
   const [newEventRecurrence, setNewEventRecurrence] = useState<string>('none');
-
-  // Drag-to-create state
-  const [draggingNew, setDraggingNew] = useState<{
-    startTime: string;
-    endTime: string;
-    date: string;
-    startY: number;
-  } | null>(null);
-  const [resizingEvent, setResizingEvent] = useState<{
-    id: string;
-    edge: 'top' | 'bottom';
-    originalStartTime: string;
-    originalEndTime: string;
-  } | null>(null);
-  const [movingEvent, setMovingEvent] = useState<{
-    id: string;
-    offsetY: number;
-    originalStartTime: string;
-    originalEndTime: string;
-  } | null>(null);
-  const [editingEventId, setEditingEventId] = useState<string | null>(null);
-  const [editingTitle, setEditingTitle] = useState('');
-  const timetableRef = React.useRef<HTMLDivElement>(null);
-  const lastSnapTimeRef = React.useRef<number>(0);
-  const snapPulseTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Calendar Month State
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
@@ -910,29 +885,6 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     []
   );
 
-  // Reset drag states when leaving Calendar tab
-  useEffect(() => {
-    if (activeTab !== 'Calendar') {
-      setDraggingNew(null);
-      setResizingEvent(null);
-      setMovingEvent(null);
-      setEditingEventId(null);
-    }
-  }, [activeTab]);
-
-  // Auto-scroll to current time in timetable view
-  useEffect(() => {
-    if (activeTab === 'Calendar' && calendarViewMode === 'timetable' && timetableRef.current) {
-      const currentHour = now.getHours();
-      if (currentHour >= 7 && currentHour <= 22) {
-        const scrollPosition = ((currentHour - 7) * 52) - 150; // Center the current time
-        setTimeout(() => {
-          timetableRef.current?.scrollTo({ top: Math.max(0, scrollPosition), behavior: 'smooth' });
-        }, 100);
-      }
-    }
-  }, [activeTab, calendarViewMode]);
-
   // Time conversion helpers for drag interactions
   const parseTime = (time: string): number => {
     const [h, m] = time.split(':').map(Number);
@@ -963,7 +915,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     const date = event.date;
 
     try {
-      const token = await getOrRefresh('googleCalendar');
+      const token = await getOrRefresh('googleCalendar', () => refreshGoogleToken('googleCalendar'));
       if (!token) return;
 
       // Search for existing event by title
@@ -2146,7 +2098,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             </div>
           </form>
 
-          {calendarViewMode === 'timetable' ? (
+          {calendarViewMode === 'week' ? (
             /* Week Grid View */
             <WeekGrid
               selectedWeekStart={selectedWeekStart}
@@ -2166,302 +2118,6 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               lastUsedCalendarId={lastUsedCalendarId}
               setLastUsedCalendarId={setLastUsedCalendarId}
             />
-          ) : (
-            /* Apple-Style Hourly Timetable Grid */
-            <div className="border border-outline-variant/40 rounded-2xl bg-surface-container-lowest p-4 sm:p-6 shadow-xs flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="font-display font-bold text-lg text-on-surface">
-                    Today's Schedule • {now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-                  </h4>
-                  <p className="text-xs text-secondary font-mono mt-0.5">
-                    Live timeline view with current time indicator
-                  </p>
-                </div>
-                <span className="px-2.5 py-1 rounded-full bg-red-500/10 text-red-600 dark:text-red-400 font-mono text-xs font-bold flex items-center gap-1.5 border border-red-500/20">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-ping"></span> Live Line Indicator
-                </span>
-              </div>
-
-              <div
-                ref={timetableRef}
-                className="relative border border-outline-variant/30 rounded-xl overflow-y-auto bg-surface-container-low/30 touch-none select-none max-h-[600px]"
-                onPointerDown={(e) => {
-                  const target = e.target as HTMLElement;
-                  if (target.closest('.event-body') || !timetableRef.current) return;
-                  e.preventDefault();
-                  const rect = timetableRef.current.getBoundingClientRect();
-                  const startTime = clientYToTime(e.clientY, rect.top);
-                  const todayISO = now.toISOString().split('T')[0];
-                  setDraggingNew({ startTime, endTime: startTime, date: todayISO, startY: e.clientY });
-                  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-                }}
-                onPointerMove={(e) => {
-                  if (!timetableRef.current) return;
-                  const rect = timetableRef.current.getBoundingClientRect();
-
-                  if (draggingNew) {
-                    const currentTime = clientYToTime(e.clientY, rect.top);
-                    const newEndMinutes = parseTime(currentTime);
-                    const startMinutes = parseTime(draggingNew.startTime);
-                    const endMinutes = Math.max(startMinutes + 15, newEndMinutes);
-                    setDraggingNew({ ...draggingNew, endTime: minutesToTime(endMinutes) });
-                  } else if (resizingEvent) {
-                    const currentTime = clientYToTime(e.clientY, rect.top);
-                    const newMinutes = parseTime(currentTime);
-                    if (resizingEvent.edge === 'top') {
-                      const endMinutes = parseTime(resizingEvent.originalEndTime);
-                      const startMinutes = Math.max(7 * 60, Math.min(newMinutes, endMinutes - 15));
-                      setResizingEvent({ ...resizingEvent, originalStartTime: minutesToTime(startMinutes) });
-                    } else {
-                      const startMinutes = parseTime(resizingEvent.originalStartTime);
-                      const endMinutes = Math.min(22 * 60, Math.max(newMinutes, startMinutes + 15));
-                      setResizingEvent({ ...resizingEvent, originalEndTime: minutesToTime(endMinutes) });
-                    }
-                  } else if (movingEvent) {
-                    const offsetPx = e.clientY - rect.top - movingEvent.offsetY;
-                    const minutesFromTop = (offsetPx / 52) * 60;
-                    const snappedMinutes = snapToQuarter(minutesFromTop + 7 * 60);
-                    const clampedMinutes = Math.max(7 * 60, Math.min(22 * 60, snappedMinutes));
-                    setMovingEvent({ ...movingEvent, originalStartTime: minutesToTime(clampedMinutes) });
-                  }
-                }}
-                onPointerUp={(e) => {
-                  (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-
-                  if (draggingNew) {
-                    const newEvent = {
-                      id: Date.now().toString(),
-                      title: 'New Event',
-                      date: draggingNew.date,
-                      startTime: draggingNew.startTime,
-                      endTime: draggingNew.endTime,
-                      time: `${draggingNew.startTime} - ${draggingNew.endTime}`,
-                      type: 'Event',
-                      recurrence: 'none',
-                    };
-                    setEvents((prev) => [...prev, newEvent]);
-                    syncEventToGoogleCalendar(newEvent);
-                    setEditingEventId(newEvent.id);
-                    setEditingTitle('');
-                    setDraggingNew(null);
-                  } else if (resizingEvent) {
-                    const finalDuration = parseTime(resizingEvent.originalEndTime) - parseTime(resizingEvent.originalStartTime);
-                    if (finalDuration >= 15) {
-                      setEvents(prev => prev.map(ev =>
-                        ev.id === resizingEvent.id
-                          ? {
-                              ...ev,
-                              startTime: resizingEvent.originalStartTime,
-                              endTime: resizingEvent.originalEndTime,
-                              time: `${resizingEvent.originalStartTime} - ${resizingEvent.originalEndTime}`
-                            }
-                          : ev
-                      ));
-                      syncEventToGoogleCalendar(events.find(e => e.id === resizingEvent.id)!, resizingEvent.originalStartTime, resizingEvent.originalEndTime);
-                    }
-                    setResizingEvent(null);
-                  } else if (movingEvent) {
-                    const originalEvent = events.find(e => e.id === movingEvent.id);
-                    if (originalEvent) {
-                      const duration = parseTime(movingEvent.originalEndTime) - parseTime(originalEvent.startTime);
-                      const newStartMinutes = parseTime(movingEvent.originalStartTime);
-                      const newEndMinutes = Math.min(22 * 60, newStartMinutes + duration);
-                      const finalStartMinutes = Math.max(7 * 60, Math.min(22 * 60 - 15, newStartMinutes));
-
-                      setEvents(prev => prev.map(ev =>
-                        ev.id === movingEvent.id
-                          ? {
-                              ...ev,
-                              startTime: minutesToTime(finalStartMinutes),
-                              endTime: minutesToTime(newEndMinutes),
-                              time: `${minutesToTime(finalStartMinutes)} - ${minutesToTime(newEndMinutes)}`
-                            }
-                          : ev
-                      ));
-                      syncEventToGoogleCalendar(originalEvent, minutesToTime(finalStartMinutes), minutesToTime(newEndMinutes));
-                    }
-                    setMovingEvent(null);
-                  }
-                }}
-                onPointerLeave={(e) => {
-                  setDraggingNew(null);
-                  setResizingEvent(null);
-                  setMovingEvent(null);
-                  try {
-                    (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
-                  } catch {}
-                }}
-                onPointerCancel={() => {
-                  setDraggingNew(null);
-                  setResizingEvent(null);
-                  setMovingEvent(null);
-                }}
-              >
-                {/* Red Live Time Line */}
-                {(() => {
-                  const currentHour = now.getHours();
-                  const currentMin = now.getMinutes();
-                  if (currentHour >= 7 && currentHour <= 22) {
-                    const topPx = (currentHour - 7) * 52 + (currentMin / 60) * 52;
-                    return (
-                      <div
-                        className="absolute left-0 right-0 z-20 flex items-center pointer-events-none transition-all duration-300"
-                        style={{ top: `${topPx}px` }}
-                      >
-                        <div className="w-3 h-3 rounded-full bg-red-500 shadow-md -ml-1.5 shrink-0"></div>
-                        <div className="flex-1 h-0.5 bg-red-500 shadow-xs"></div>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-
-                {/* Drag preview */}
-                {draggingNew && (() => {
-                  const top = ((parseTime(draggingNew.startTime) - 7 * 60) / 60) * 52;
-                  const height = ((parseTime(draggingNew.endTime) - parseTime(draggingNew.startTime)) / 60) * 52;
-                  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                  return (
-                    <div
-                      className="absolute left-24 right-4 z-10 rounded-lg border-2 border-[#8b5e3c] bg-[#8b5e3c]/40 pointer-events-none flex flex-col justify-between"
-                      style={{ top: `${top}px`, height: `${height}px`, padding: '6px 8px' }}
-                    >
-                      <span className="text-[11px] font-mono text-[#8b5e3c] dark:text-amber-200 font-medium">{draggingNew.startTime}</span>
-                      <span className="text-[11px] font-mono text-[#8b5e3c] dark:text-amber-200 font-medium">{draggingNew.endTime}</span>
-                    </div>
-                  );
-                })()}
-
-                {/* Existing events */}
-                {events.filter(ev => ev.date === now.toISOString().split('T')[0]).map((ev) => {
-                  const top = ((parseTime(ev.startTime) - 7 * 60) / 60) * 52;
-                  const height = ((parseTime(ev.endTime) - parseTime(ev.startTime)) / 60) * 52;
-                  const colorMap: Record<string, string> = {
-                    Exam: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800',
-                    Lecture: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
-                    Deadline: 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-400 border-rose-200 dark:border-rose-800',
-                    Event: 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-400 border-slate-200 dark:border-slate-700',
-                  };
-                  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-                  const isEditing = editingEventId === ev.id;
-                  const isResizing = resizingEvent?.id === ev.id;
-                  const isMoving = movingEvent?.id === ev.id;
-
-                  let displayTop = top;
-                  let displayHeight = height;
-
-                  if (isResizing && timetableRef.current) {
-                    const newStartTime = resizingEvent.edge === 'top'
-                      ? parseTime(resizingEvent.originalStartTime)
-                      : parseTime(ev.startTime);
-                    const newEndTime = resizingEvent.edge === 'bottom'
-                      ? parseTime(resizingEvent.originalEndTime)
-                      : parseTime(ev.endTime);
-                    displayTop = ((newStartTime - 7 * 60) / 60) * 52;
-                    displayHeight = ((newEndTime - newStartTime) / 60) * 52;
-                  } else if (isMoving) {
-                    const newStartMinutes = parseTime(movingEvent.originalStartTime);
-                    const duration = parseTime(ev.endTime) - parseTime(ev.startTime);
-                    displayTop = ((newStartMinutes - 7 * 60) / 60) * 52;
-                  }
-
-                  return (
-                    <div
-                      key={ev.id}
-                      className={`absolute left-24 right-4 rounded-lg border event-body ${colorMap[ev.type] || colorMap.Event} ${
-                        reduceMotion ? '' : 'transition-all duration-150 ease-out'
-                      } ${isMoving ? 'cursor-move opacity-70' : 'cursor-pointer'} group`}
-                      style={{ top: `${displayTop}px`, height: `${displayHeight}px`, padding: '6px 8px' }}
-                      onPointerDown={(e) => {
-                        const target = e.target as HTMLElement;
-                        if (target.closest('.resize-handle-top')) {
-                          e.stopPropagation();
-                          if (editingEventId || movingEvent || resizingEvent) return;
-                          setResizingEvent({ id: ev.id, edge: 'top', originalStartTime: ev.startTime, originalEndTime: ev.endTime });
-                          (e.currentTarget.parentElement as HTMLElement)?.setPointerCapture(e.pointerId);
-                        } else if (target.closest('.resize-handle-bottom')) {
-                          e.stopPropagation();
-                          if (editingEventId || movingEvent || resizingEvent) return;
-                          setResizingEvent({ id: ev.id, edge: 'bottom', originalStartTime: ev.startTime, originalEndTime: ev.endTime });
-                          (e.currentTarget.parentElement as HTMLElement)?.setPointerCapture(e.pointerId);
-                        } else if (!isEditing) {
-                          e.stopPropagation();
-                          if (resizingEvent || movingEvent || draggingNew) return;
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          const offsetY = e.clientY - rect.top;
-                          setMovingEvent({ id: ev.id, offsetY, originalStartTime: ev.startTime, originalEndTime: ev.endTime });
-                          (e.currentTarget.parentElement as HTMLElement)?.setPointerCapture(e.pointerId);
-                        }
-                      }}
-                    >
-                      {/* Resize handles */}
-                      <div className="resize-handle-top absolute top-0 left-0 right-0 h-3 sm:h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="h-0.5 bg-current mx-2 rounded-full"></div>
-                      </div>
-                      <div className="resize-handle-bottom absolute bottom-0 left-0 right-0 h-3 sm:h-2 cursor-ns-resize opacity-0 group-hover:opacity-100 transition-opacity">
-                        <div className="h-0.5 bg-current mx-2 rounded-full"></div>
-                      </div>
-
-                      <div className="text-[11px] font-mono text-current opacity-70">{ev.startTime} - {ev.endTime}</div>
-                      {isEditing ? (
-                        <input
-                          type="text"
-                          autoFocus
-                          value={editingTitle}
-                          onChange={(e) => setEditingTitle(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              const title = editingTitle.trim() || 'New Event';
-                              setEvents(prev => prev.map(event => event.id === ev.id ? { ...event, title } : event));
-                              syncEventToGoogleCalendar({ ...ev, title });
-                              setEditingEventId(null);
-                            } else if (e.key === 'Escape') {
-                              setEditingEventId(null);
-                            }
-                          }}
-                          onBlur={() => {
-                            const title = editingTitle.trim() || 'New Event';
-                            setEvents(prev => prev.map(event => event.id === ev.id ? { ...event, title } : event));
-                            syncEventToGoogleCalendar({ ...ev, title });
-                            setEditingEventId(null);
-                          }}
-                          className="w-full bg-transparent border-none outline-none text-[13px] font-medium text-current placeholder:text-current placeholder:opacity-50"
-                          placeholder="Event title..."
-                        />
-                      ) : (
-                        <div
-                          className="text-[13px] font-medium text-current cursor-text"
-                          onClick={() => {
-                            if (movingEvent || resizingEvent || draggingNew) return;
-                            setEditingEventId(ev.id);
-                            setEditingTitle(ev.title);
-                          }}
-                        >
-                          {ev.title}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-
-                {/* 16 Hourly Rows from 7 AM to 10 PM */}
-                <div className="flex flex-col divide-y divide-outline-variant/20">
-                  {[
-                    '7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
-                    '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM',
-                    '7:00 PM', '8:00 PM', '9:00 PM', '10:00 PM'
-                  ].map((timeSlot, idx) => (
-                    <div key={timeSlot} className="flex h-13 group hover:bg-surface-container-high/40 transition-colors cursor-crosshair">
-                      <div className="w-20 sm:w-24 border-r border-outline-variant/30 p-2 font-mono text-xs text-secondary font-medium shrink-0 flex items-center justify-end pr-3 cursor-default">
-                        {timeSlot}
-                      </div>
-                      <div className="flex-1 p-2"></div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
           ) : (
             /* Month Grid */
             <div className="border border-outline-variant/40 rounded-xl bg-surface-container-lowest p-4 shadow-xs">
@@ -2483,7 +2139,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 {daysArray.map((d) => {
                   const isToday = isCurrentMonth && d === todayDate;
                   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                  
+
                   const matchedEvents = allEvents.filter((e) => e.date === dateStr);
                   const matchedTasks = tasks.filter((t) => !t.completed && (t.dueDate?.includes(dateStr) || (isToday && t.dueDate?.toLowerCase().includes('today'))));
 
@@ -2567,6 +2223,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             </div>
           )}
 
+        </div>
         </div>
       );
     }

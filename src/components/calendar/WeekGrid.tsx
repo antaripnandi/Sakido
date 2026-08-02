@@ -55,6 +55,8 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     setEditingTitle,
     setEditingType,
     setEditingCalendarId,
+    editingIsAllDay,
+    setEditingIsAllDay,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
@@ -152,7 +154,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
         ))}
 
         {/* Events */}
-        {dayEvents.map(event => {
+        {dayTimedEvents.map(event => {
           const eventStartMinutes = parseTime(event.startTime);
           const eventEndMinutes = parseTime(event.endTime);
 
@@ -163,7 +165,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
           const height = ((bottomMinutes - topMinutes) / 60) * SLOT_H;
           const color = getCalendarColor(event.calendarId);
 
-          const isBeingDragged = draggingNew?.id === event.id || movingEvent?.id === event.id;
+          const isBeingDragged = movingEvent?.id === event.id;
           const isBeingResized = resizingEvent?.id === event.id;
 
           return (
