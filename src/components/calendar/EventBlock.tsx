@@ -1,4 +1,5 @@
 import React from 'react';
+import { Clock, AlertCircle } from 'lucide-react';
 
 interface EventBlockProps {
   event: any;
@@ -69,8 +70,18 @@ export const EventBlock: React.FC<EventBlockProps> = ({
       }}
       onClick={handleClick}
     >
-      <div className="font-medium truncate">{event.title}</div>
-      <div className="text-[10px] opacity-70">{event.time}</div>
+      <div className="flex items-start gap-1">
+        <div className="flex-1 min-w-0">
+          <div className="font-medium truncate">{event.title}</div>
+          <div className="text-[10px] opacity-70">{event.time}</div>
+        </div>
+        {event.syncStatus === 'pending' && (
+          <Clock className="w-3 h-3 text-yellow-600 flex-shrink-0" aria-label="Sync pending" />
+        )}
+        {event.syncStatus === 'failed' && (
+          <AlertCircle className="w-3 h-3 text-red-600 flex-shrink-0" aria-label="Sync failed" />
+        )}
+      </div>
       {!isAllDay && <div className="resize-handle-top absolute top-0 left-0 right-0 h-2 cursor-ns-resize"></div>}
       {!isAllDay && <div className="resize-handle-bottom absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize"></div>}
     </div>

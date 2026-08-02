@@ -20,6 +20,8 @@ export interface WeekGridProps {
   setEvents: React.Dispatch<React.SetStateAction<any[]>>; // Pass setEvents to useCalendarDrag
   lastUsedCalendarId: string;
   setLastUsedCalendarId: React.Dispatch<React.SetStateAction<string>>; // Add setLastUsedCalendarId
+  onEditingStart?: (eventId: string) => void;
+  onEditingEnd?: (eventId: string) => void;
 }
 
 export const WeekGrid: React.FC<WeekGridProps> = ({
@@ -31,7 +33,9 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
   onEventCreate,
   setEvents,
   lastUsedCalendarId,
-  setLastUsedCalendarId
+  setLastUsedCalendarId,
+  onEditingStart,
+  onEditingEnd
 }) => {
   const [now, setNow] = useState(new Date());
   const gridRef = useRef<HTMLDivElement>(null);
@@ -116,9 +120,10 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
       isPending: false, // ponytail: confirm creation
     };
     onEventUpdate(updatedEvent);
+    if (editingEventId) onEditingEnd?.(editingEventId); // Unlock event
     setEditingEventId(null);
     setLastUsedCalendarId(editingCalendarId); // Update last used calendar
-  }, [editingEventId, editingTitle, editingType, editingCalendarId, editingIsAllDay, events, onEventUpdate, setEditingEventId, setLastUsedCalendarId]);
+  }, [editingEventId, editingTitle, editingType, editingCalendarId, editingIsAllDay, events, onEventUpdate, setEditingEventId, setLastUsedCalendarId, onEditingEnd]);
 
   const handleCancelEdit = useCallback(() => {
     setEvents(prev => {
@@ -128,16 +133,18 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
       }
       return prev;
     });
+    if (editingEventId) onEditingEnd?.(editingEventId); // Unlock event
     setEditingEventId(null);
-  }, [setEditingEventId, editingEventId, setEvents]);
+  }, [setEditingEventId, editingEventId, setEvents, onEditingEnd]);
 
   const handleEditClick = useCallback((id: string, title: string, type: string, calendarId: string, isAllDay: boolean) => {
+    onEditingStart?.(id); // Lock event
     setEditingEventId(id);
     setEditingTitle(title);
     setEditingType(type);
     setEditingCalendarId(calendarId);
     setEditingIsAllDay(isAllDay);
-  }, [setEditingEventId, setEditingTitle, setEditingType, setEditingCalendarId, setEditingIsAllDay]);
+  }, [setEditingEventId, setEditingTitle, setEditingType, setEditingCalendarId, setEditingIsAllDay, onEditingStart]);
 
   const renderDayColumn = (dayOffset: number) => {
     const columnDate = addDays(selectedWeekStart, dayOffset);
