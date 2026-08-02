@@ -60,7 +60,8 @@ export const useCalendarDrag = (
   const [editingTitle, setEditingTitle] = useState('');
   const [editingType, setEditingType] = useState('Event');
   const [editingCalendarId, setEditingCalendarId] = useState<string>(lastUsedCalendarId);
-  const [editingIsAllDay, setEditingIsAllDay] = useState<boolean>(false); // NEW: for all-day checkbox
+  const [editingIsAllDay, setEditingIsAllDay] = useState<boolean>(false);
+  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null); // NEW: for all-day checkbox
 
   useEffect(() => {
     setEditingCalendarId(lastUsedCalendarId);
@@ -99,10 +100,11 @@ export const useCalendarDrag = (
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     const target = e.target as HTMLElement;
-    if (target.closest('.event-block') || !gridRef.current) return; // Ignore if clicking on an event
+    if (target.closest('.event-block') || !gridRef.current) return;
 
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
+    setDragStartPos({ x: e.clientX, y: e.clientY });
 
     const rect = getGridRect();
     if (!rect) return;
@@ -204,22 +206,29 @@ export const useCalendarDrag = (
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     if (draggingNew) {
+      // Check if this was a click (movement < 5px) vs actual drag
+      const movedDistance = dragStartPos
+        ? Math.hypot(e.clientX - dragStartPos.x, e.clientY - dragStartPos.y)
+        : 999;
+      const wasClick = movedDistance < 5;
+
       const startDate = addDays(selectedWeekStart, draggingNew.startDay);
       const endDate = addDays(selectedWeekStart, draggingNew.endDay);
 
       const defaultCalendar = calendars.find(c => c.isDefault) || calendars[0];
       const targetCalendarId = editingCalendarId || defaultCalendar?.id;
 
-      // Enforce a minimum duration so a click-without-drag doesn't create a
-      // zero-height, unselectable event.
+      // Click creates 1-hour event, drag enforces 15-min minimum
       const startMinutes = parseTime(draggingNew.startTime);
-      const endMinutes = Math.max(parseTime(draggingNew.endTime), startMinutes + 30);
+      const endMinutes = wasClick
+        ? startMinutes + 60  // 1-hour default for clicks
+        : Math.max(parseTime(draggingNew.endTime), startMinutes + 15);
       const startTime = minutesToTime(startMinutes);
       const endTime = minutesToTime(Math.min(END_HOUR * 60, endMinutes));
 
       const newEvent = {
         id: `evt-${Date.now()}`,
-        title: 'New Event', // don't inherit the previously-edited event's title
+        title: 'New Event',
         date: formatDate(startDate),
         endDate: draggingNew.endDay > draggingNew.startDay ? formatDate(endDate) : undefined,
         startTime: editingIsAllDay ? undefined : startTime,
@@ -234,7 +243,8 @@ export const useCalendarDrag = (
       onEventCreate(newEvent);
       setLastUsedCalendarId(targetCalendarId);
       setDraggingNew(null);
-      setEditingEventId(newEvent.id); // Open editor for new event
+      setDragStartPos(null);
+      setEditingEventId(newEvent.id);
       setEditingTitle(newEvent.title);
       setEditingType(newEvent.type);
       setEditingCalendarId(newEvent.calendarId);
@@ -288,6 +298,7 @@ export const useCalendarDrag = (
       }
       setMovingEvent(null);
     }
+    setDragStartPos(null);
     e.currentTarget.releasePointerCapture(e.pointerId);
   }, [draggingNew, resizingEvent, movingEvent, events, onEventCreate, onEventUpdate, selectedWeekStart, calendars, editingTitle, editingType, editingCalendarId, editingIsAllDay, setLastUsedCalendarId, setEditingEventId, setEditingTitle, setEditingType, setEditingCalendarId, getGridRect, getColumnWidth, clientXToDayIndex, clientYToGridTime]);
 

@@ -194,13 +194,13 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
           );
         })}
 
-        {/* New event drag preview */}
+        {/* New event drag preview with minimum height */}
         {draggingNew && draggingNew.startDate === dateStr && (
           <div
             className="absolute left-1 right-1 rounded px-2 py-1 text-xs border bg-blue-500/20 border-blue-500 text-blue-800"
             style={{
               top: `${HEADER_H + ((parseTime(draggingNew.startTime) - START_HOUR * 60) / 60) * SLOT_H}px`,
-              height: `${((parseTime(draggingNew.endTime) - parseTime(draggingNew.startTime)) / 60) * SLOT_H}px`,
+              height: `${Math.max(26, ((parseTime(draggingNew.endTime) - parseTime(draggingNew.startTime)) / 60) * SLOT_H)}px`,
               zIndex: 100
             }}
           >
@@ -263,8 +263,8 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
           </div>
         )}
 
-        {/* Current time line (today only) */}
-        {isToday && now.getHours() >= START_HOUR && now.getHours() < END_HOUR && (
+        {/* Current time line (today only) - fixed hour boundary */}
+        {isToday && now.getHours() >= START_HOUR && now.getHours() <= END_HOUR && (
           <div
             className="absolute left-0 right-0 z-20 flex items-center pointer-events-none"
             style={{
@@ -286,24 +286,23 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     >
       {/* All-day row */}
       <AllDayRow
-        events={events} // Pass all events, AllDayRow will filter
+        events={events}
         selectedWeekStart={selectedWeekStart}
         calendars={calendars}
         visibleCalendars={visibleCalendars}
         onEventUpdate={onEventUpdate}
-        onEditClick={handleEditClick} // Pass handleEditClick for all-day events
+        onEditClick={handleEditClick}
       />
-      {/* Pointer handlers live on the hour-slot grid (below the all-day row)
-          so a press on an empty all-day cell doesn't start a timed-event drag,
-          and slotsRef gives the hook the geometry of the slot area. */}
-      <div
-        ref={slotsRef}
-        className="grid grid-cols-[80px_repeat(7,_1fr)]"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp} // Handle cases where pointer leaves document
-      >
+      {/* Scrollable time slots container */}
+      <div className="overflow-y-auto max-h-[calc(100vh-400px)]">
+        <div
+          ref={slotsRef}
+          className="grid grid-cols-[80px_repeat(7,_1fr)]"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+        >
         {/* Time labels column */}
         <div className="border-r border-outline-variant/30 bg-surface sticky left-0 z-20">
           <div className="h-[52px] border-b border-outline-variant/30 flex items-center justify-end pr-2 text-sm font-mono text-secondary"></div> {/* Header spacer */}
@@ -319,6 +318,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
 
         {/* 7 day columns */}
         {[0, 1, 2, 3, 4, 5, 6].map(renderDayColumn)}
+        </div>
       </div>
     </div>
   );
