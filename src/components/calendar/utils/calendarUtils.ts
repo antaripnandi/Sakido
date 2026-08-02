@@ -1,0 +1,47 @@
+/**
+ * Time calculation utilities for calendar components
+ */
+
+export const parseTime = (time: string): number => {
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + m;
+};
+
+export const minutesToTime = (min: number): string => {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+};
+
+export const snapToQuarter = (min: number): number => Math.round(min / 15) * 15;
+
+export const clientYToTime = (clientY: number, containerTop: number): string => {
+  const offsetPx = clientY - containerTop;
+  const minutesFromTop = (offsetPx / 52) * 60;
+  const snappedMinutes = snapToQuarter(minutesFromTop + 7 * 60);
+  return minutesToTime(Math.max(7 * 60, Math.min(22 * 60, snappedMinutes)));
+};
+
+export const addDays = (date: Date, days: number): Date => {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+};
+
+export const startOfWeek = (date: Date): Date => {
+  const result = new Date(date);
+  const day = result.getDay();
+  const diff = day === 0 ? -6 : 1 - day; // Monday as start
+  result.setDate(result.getDate() + diff);
+  return result;
+};
+
+export const isSameDay = (date1: Date, date2: Date): boolean => {
+  return date1.getFullYear() === date2.getFullYear() &&
+         date1.getMonth() === date2.getMonth() &&
+         date1.getDate() === date2.getDate();
+};
+
+export const formatDate = (date: Date): string => {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getProviderToken, setProviderToken, clearProviderToken, getOrRefresh, getGeneration, GoogleService } from '../../lib/googleTokenStore';
+import { useMigrateToCalendars } from '../../hooks/useMigrateToCalendars';
+import { MiniMonthPicker } from '../calendar/MiniMonthPicker';
+import { CalendarList } from '../calendar/CalendarList';
 import {
   Sun,
   Moon,
@@ -588,6 +591,41 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   // Custom events state for Academic Calendar with debounced persistence
   const [events, setEvents] = useLocalStorageState<any[]>('sakido_events', [], 300);
 
+  // Calendars state for calendar management
+  const [calendars, setCalendars] = useLocalStorageState<any[]>('sakido_calendars', [], 300);
+
+  // Run migration to add calendarId to existing events
+  useMigrateToCalendars(events, setEvents, calendars, setCalendars);
+
+  // OAuth scope check for calendar management
+  const [hasCalendarManagementScope, setHasCalendarManagementScope] = useState<boolean>(false);
+
+  const checkCalendarScope = useCallback(async () => {
+    if (!connectors.googleCalendar) {
+      setHasCalendarManagementScope(false);
+      return false;
+    }
+    try {
+      const token = await getOrRefresh('googleCalendar');
+      if (!token) return false;
+      const res = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`);
+      if (!res.ok) return false;
+      const data = await res.json();
+      const hasScope = data.scope?.includes('https://www.googleapis.com/auth/calendar');
+      setHasCalendarManagementScope(hasScope);
+      return hasScope;
+    } catch {
+      setHasCalendarManagementScope(false);
+      return false;
+    }
+  }, [connectors.googleCalendar]);
+
+  useEffect(() => {
+    if (connectors.googleCalendar) {
+      checkCalendarScope();
+    }
+  }, [connectors.googleCalendar, checkCalendarScope]);
+
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventDate, setNewEventDate] = useState('');
   const [newEventStartTime, setNewEventStartTime] = useState('09:00');
@@ -625,6 +663,18 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   // Calendar View Mode ('month' | 'timetable') - must be declared before useEffect that references it
   const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'timetable'>('month');
+
+  // Week view state for unified calendar
+  const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(() => {
+    const now = new Date();
+    const day = now.getDay();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
+    return monday;
+  });
+
+  // Track last used calendar for smart defaults
+  const [lastUsedCalendarId, setLastUsedCalendarId] = useState<string>('cal-personal');
 
   // In-App Video Player Modal state
   const [activeVideo, setActiveVideo] = useState<{
@@ -1170,6 +1220,36 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     }
   };
 
+  // Calendar management handlers
+  const handleToggleCalendarVisibility = (calendarId: string) => {
+    setCalendars(prev => prev.map(c => c.id === calendarId ? { ...c, visible: !c.visible } : c));
+  };
+
+  const handleRenameCalendar = (calendarId: string, newName: string) => {
+    setCalendars(prev => prev.map(c => c.id === calendarId ? { ...c, name: newName } : c));
+  };
+
+  const handleDeleteCalendar = (calendarId: string) => {
+    const calendar = calendars.find(c => c.id === calendarId);
+    const eventCount = events.filter(e => e.calendarId === calendarId).length;
+    if (eventCount > 0 && !window.confirm(`Delete "${calendar?.name}" and ${eventCount} event(s)?`)) return;
+    setCalendars(prev => prev.filter(c => c.id !== calendarId));
+    setEvents(prev => prev.filter(e => e.calendarId !== calendarId));
+  };
+
+  const handleCreateCalendar = (name: string, color: string) => {
+    const newCal = {
+      id: `cal-${Date.now()}`,
+      name,
+      color,
+      visible: true,
+      source: 'sakido' as const
+    };
+    setCalendars(prev => [...prev, newCal]);
+  };
+
+  const visibleCalendars = calendars.filter(c => c.visible).map(c => c.id);
+
   // Form states
   const [newClassName, setNewClassName] = useState('');
   const [newClassCode, setNewClassCode] = useState('');
@@ -1566,16 +1646,16 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   };
 
   // OAuth Connector Handler
-  const handleConnectOAuth = async (serviceKey: 'googleCalendar' | 'googleDrive' | 'gmail') => {
+  const handleConnectOAuth = async (serviceKey: 'googleCalendar' | 'googleDrive' | 'gmail', isReauthorization: boolean = false) => {
     // If currently connecting, clicking again cancels the pending state immediately
-    if (connectingService === serviceKey) {
+    if (connectingService === serviceKey && !isReauthorization) {
       setConnectingService(null);
       localStorage.removeItem('sakido_pending_connector');
       return;
     }
 
     const scopeMap = {
-      googleCalendar: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events',
+      googleCalendar: 'https://www.googleapis.com/auth/calendar',
       googleDrive: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile',
       gmail: 'https://www.googleapis.com/auth/gmail.readonly',
     };
@@ -1587,7 +1667,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     };
 
     // Handle Disconnect Action
-    if (connectors[serviceKey]) {
+    if (connectors[serviceKey] && !isReauthorization) {
       const supabase = getSupabaseClient();
 
       // Compute allOff SYNCHRONOUSLY (before any async call) to avoid stale closure.
@@ -1888,7 +1968,26 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         : events;
 
       return (
-        <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 pl-0 lg:pl-8 border-t lg:border-t-0 lg:border-l border-outline-variant/30 pt-6 lg:pt-0">
+        <div className="col-span-12 lg:col-span-8 flex gap-6 pl-0 lg:pl-8 border-t lg:border-t-0 lg:border-l border-outline-variant/30 pt-6 lg:pt-0">
+          {/* Left Sidebar */}
+          <div className="hidden lg:block w-64 flex-shrink-0 space-y-4">
+            <MiniMonthPicker
+              selectedWeekStart={selectedWeekStart}
+              onWeekSelect={setSelectedWeekStart}
+              events={allEvents}
+              visibleCalendars={visibleCalendars}
+            />
+            <CalendarList
+              calendars={calendars}
+              onToggleVisibility={handleToggleCalendarVisibility}
+              onRename={handleRenameCalendar}
+              onDelete={handleDeleteCalendar}
+              onCreate={handleCreateCalendar}
+            />
+          </div>
+
+          {/* Main Calendar Area */}
+          <div className="flex-1 flex flex-col gap-6">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div>
               <div className="flex items-center gap-3">
@@ -1924,6 +2023,21 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               </button>
             </div>
           </div>
+
+          {/* Re-authorization Banner */}
+          {connectors.googleCalendar && !hasCalendarManagementScope && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+              <p className="text-sm text-amber-900 dark:text-amber-200">
+                <strong>Calendar management features available.</strong> Re-authorize Google Calendar to create and manage calendars.
+              </p>
+              <button
+                onClick={() => handleConnectOAuth('googleCalendar', true)}
+                className="mt-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-container transition-colors text-sm font-medium"
+              >
+                Re-authorize
+              </button>
+            </div>
+          )}
 
           {/* Calendar View Switcher & Sync Controls */}
           <div className="flex items-center justify-between flex-wrap gap-3">
@@ -2106,6 +2220,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                       recurrence: 'none',
                     };
                     setEvents((prev) => [...prev, newEvent]);
+                    syncEventToGoogleCalendar(newEvent);
                     setEditingEventId(newEvent.id);
                     setEditingTitle('');
                     setDraggingNew(null);

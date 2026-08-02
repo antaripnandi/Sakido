@@ -36,7 +36,7 @@ const SERVICE_CONFIGS = [
     name: 'Google Calendar',
     logo: '/logos/google-calendar.webp',
     description: 'Sync deadlines, exam timetables, and lecture schedules directly into your Sakido schedule.',
-    scopes: ['https://www.googleapis.com/auth/calendar.readonly', 'https://www.googleapis.com/auth/calendar.events'],
+    scopes: ['https://www.googleapis.com/auth/calendar'],
     permissions: [
       'Read lecture timetables and exam dates',
       'Create and update academic deadline events',
