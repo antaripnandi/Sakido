@@ -609,10 +609,13 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     try {
       const token = await getOrRefresh('googleCalendar', () => refreshGoogleToken('googleCalendar'));
       if (!token) return false;
-      const res = await fetch(`https://www.googleapis.com/oauth2/v1/tokeninfo?access_token=${token}`);
+      const res = await fetch('https://www.googleapis.com/oauth2/v3/tokeninfo', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!res.ok) return false;
       const data = await res.json();
-      const hasScope = data.scope?.includes('https://www.googleapis.com/auth/calendar');
+      const scopes: string[] = typeof data.scope === 'string' ? data.scope.split(' ') : [];
+      const hasScope = scopes.includes('https://www.googleapis.com/auth/calendar');
       setHasCalendarManagementScope(hasScope);
       return hasScope;
     } catch {
