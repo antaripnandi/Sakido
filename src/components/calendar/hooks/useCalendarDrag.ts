@@ -55,6 +55,7 @@ export const useCalendarDrag = (
   const [editingTitle, setEditingTitle] = useState('');
   const [editingType, setEditingType] = useState('Event');
   const [editingCalendarId, setEditingCalendarId] = useState<string>(lastUsedCalendarId);
+  const [editingIsAllDay, setEditingIsAllDay] = useState<boolean>(false); // NEW: for all-day checkbox
 
   useEffect(() => {
     setEditingCalendarId(lastUsedCalendarId);
@@ -99,7 +100,7 @@ export const useCalendarDrag = (
     if (!rect) return;
 
     const startTime = clientYToGridTime(e.clientY);
-    const startDay = clientXToDay(e.clientX);
+    const startDay = clientXToDayIndex(e.clientX);
     const startDate = formatDate(addDays(selectedWeekStart, startDay));
 
     setDraggingNew({
@@ -113,14 +114,14 @@ export const useCalendarDrag = (
       initialTime: startTime,
       initialDay: startDay,
     });
-  }, [gridRef, getGridRect, clientYToGridTime, clientXToDay, selectedWeekStart]);
+  }, [gridRef, getGridRect, clientYToGridTime, clientXToDayIndex, selectedWeekStart]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!gridRef.current) return;
 
     if (draggingNew) {
       const currentTime = clientYToGridTime(e.clientY);
-      const currentDay = clientXToDay(e.clientX);
+      const currentDay = clientXToDayIndex(e.clientX);
 
       const newStartDay = Math.min(draggingNew.initialDay, currentDay);
       const newEndDay = Math.max(draggingNew.initialDay, currentDay);
@@ -158,7 +159,7 @@ export const useCalendarDrag = (
       const columnWidth = getColumnWidth();
       if (columnWidth === 0) return;
 
-      const newDayIndex = clientXToDay(e.clientX - movingEvent.offsetX);
+      const newDayIndex = clientXToDayIndex(e.clientX - movingEvent.offsetX);
       const newTime = clientYToGridTime(e.clientY - movingEvent.offsetY);
 
       // Preview update - actual update on pointerUp
@@ -169,7 +170,7 @@ export const useCalendarDrag = (
         const dayChange = newDayIndex - originalDayIndex;
 
         // Calculate time change
-        const originalStartMinutes = parseTime(eventToMove.originalStartTime || eventToMove.startTime);
+        const originalStartMinutes = parseTime(movingEvent.originalStartTime);
         const newStartMinutes = parseTime(newTime);
         const timeChange = newStartMinutes - originalStartMinutes;
 
@@ -178,10 +179,17 @@ export const useCalendarDrag = (
         const previewStartTime = minutesToTime(parseTime(eventToMove.startTime) + timeChange);
         const previewEndTime = minutesToTime(parseTime(eventToMove.endTime) + timeChange);
 
-        // TODO: Update some preview state here
+        // Update some preview state here (e.g., setPreviewEvent or update movingEvent to include preview coords)
+        setMovingEvent(prev => prev ? {
+          ...prev,
+          previewDate,
+          previewStartTime,
+          previewEndTime,
+          previewDayIndex: newDayIndex
+        } : null);
       }
     }
-  }, [draggingNew, resizingEvent, movingEvent, events, getGridRect, getColumnWidth, clientYToGridTime, clientXToDay, selectedWeekStart]);
+  }, [draggingNew, resizingEvent, movingEvent, events, getGridRect, getColumnWidth, clientYToGridTime, clientXToDayIndex, selectedWeekStart]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     if (draggingNew) {
@@ -196,13 +204,13 @@ export const useCalendarDrag = (
         title: editingTitle.trim() || 'New Event',
         date: formatDate(startDate),
         endDate: draggingNew.endDay > draggingNew.startDay ? formatDate(endDate) : undefined,
-        startTime: draggingNew.startTime,
-        endTime: draggingNew.endTime,
-        time: `${draggingNew.startTime} - ${draggingNew.endTime}`,
+        startTime: editingIsAllDay ? undefined : draggingNew.startTime,
+        endTime: editingIsAllDay ? undefined : draggingNew.endTime,
+        time: editingIsAllDay ? undefined : `${draggingNew.startTime} - ${draggingNew.endTime}`,
         type: editingType,
         calendarId: targetCalendarId,
         recurrence: 'none',
-        isAllDay: false,
+        isAllDay: editingIsAllDay,
       };
 
       onEventCreate(newEvent);
@@ -212,6 +220,7 @@ export const useCalendarDrag = (
       setEditingTitle(newEvent.title);
       setEditingType(newEvent.type);
       setEditingCalendarId(newEvent.calendarId);
+      setEditingIsAllDay(newEvent.isAllDay);
     } else if (resizingEvent) {
       const event = events.find(ev => ev.id === resizingEvent.id);
       if (event) {
@@ -235,7 +244,7 @@ export const useCalendarDrag = (
         const columnWidth = getColumnWidth();
         if (columnWidth === 0) return;
 
-        const finalDayIndex = clientXToDay(e.clientX - movingEvent.offsetX);
+        const finalDayIndex = clientXToDayIndex(e.clientX - movingEvent.offsetX);
         const finalTime = clientYToGridTime(e.clientY - movingEvent.offsetY);
 
         const originalEventDate = new Date(event.originalDate || event.date);
@@ -311,5 +320,7 @@ export const useCalendarDrag = (
     handlePointerMove,
     handlePointerUp,
     handleEventPointerDown,
+    editingIsAllDay,
+    setEditingIsAllDay
   };
 };

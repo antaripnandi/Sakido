@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { parseTime, minutesToTime, addDays, formatDate, isSameDay, snapToQuarter } from './utils/calendarUtils';
 import { useCalendarDrag } from './hooks/useCalendarDrag';
 import { EventBlock } from './EventBlock';
+import { AllDayRow } from './AllDayRow';
 
 const HEADER_H = 52; // Height of the day header
 const SLOT_H = 52; // Height of each hourly slot (52px/hour)
@@ -110,18 +111,20 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     setEditingEventId(null);
   }, [setEditingEventId]);
 
-  const handleEditClick = useCallback((id: string, title: string, type: string, calendarId: string) => {
+  const handleEditClick = useCallback((id: string, title: string, type: string, calendarId: string, isAllDay: boolean) => {
     setEditingEventId(id);
     setEditingTitle(title);
     setEditingType(type);
     setEditingCalendarId(calendarId);
-  }, [setEditingEventId, setEditingTitle, setEditingType, setEditingCalendarId]);
+    setEditingIsAllDay(isAllDay);
+  }, [setEditingEventId, setEditingTitle, setEditingType, setEditingCalendarId, setEditingIsAllDay]);
 
   const renderDayColumn = (dayOffset: number) => {
     const columnDate = addDays(selectedWeekStart, dayOffset);
     const isToday = isSameDay(columnDate, now);
     const dateStr = formatDate(columnDate);
-    const dayEvents = weekEvents.filter(e => e.date === dateStr);
+    // Filter events for timed events in this column
+    const dayTimedEvents = weekEvents.filter(e => e.date === dateStr && !e.isAllDay && !e.endDate);
 
     return (
       <div key={dayOffset} className="relative border-r border-outline-variant/20 last:border-r-0">
@@ -175,6 +178,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
               isEditing={editingEventId === event.id}
               isBeingDragged={isBeingDragged}
               isBeingResized={isBeingResized}
+              isAllDay={event.isAllDay}
             />
           );
         })}
@@ -204,30 +208,42 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
               className="text-sm font-medium bg-transparent border-b focus:outline-none"
               autoFocus
             />
-            <div className="flex gap-2">
-              <select
-                value={editingType}
-                onChange={(e) => setEditingType(e.target.value)}
-                className="text-xs px-2 py-1 rounded bg-surface-container-high"
-              >
-                <option value="Event">Event</option>
-                <option value="Exam">Exam</option>
-                <option value="Lecture">Lecture</option>
-                <option value="Deadline">Deadline</option>
-              </select>
-              <select
-                value={editingCalendarId}
-                onChange={(e) => setEditingCalendarId(e.target.value)}
-                className="text-xs px-2 py-1 rounded bg-surface-container-high flex-1"
-              >
-                {calendars.filter(c => c.visible).map(cal => (
-                  <option key={cal.id} value={cal.id}>
-                    {cal.name}
-                  </option>
-                ))}
-              </select>
+            <div className="flex flex-col gap-2 mt-2">
+              <div className="flex gap-2">
+                <select
+                  value={editingType}
+                  onChange={(e) => setEditingType(e.target.value)}
+                  className="text-xs px-2 py-1 rounded bg-surface-container-high"
+                >
+                  <option value="Event">Event</option>
+                  <option value="Exam">Exam</option>
+                  <option value="Lecture">Lecture</option>
+                  <option value="Deadline">Deadline</option>
+                </select>
+                <select
+                  value={editingCalendarId}
+                  onChange={(e) => setEditingCalendarId(e.target.value)}
+                  className="text-xs px-2 py-1 rounded bg-surface-container-high flex-1"
+                >
+                  {calendars.filter(c => c.visible).map(cal => (
+                    <option key={cal.id} value={cal.id}>
+                      {cal.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <input
+                  type="checkbox"
+                  id="isAllDayEvent"
+                  checked={editingIsAllDay}
+                  onChange={(e) => setEditingIsAllDay(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <label htmlFor="isAllDayEvent" className="text-sm text-on-surface">All day</label>
+              </div>
             </div>
-            <div className="flex gap-2 justify-end">
+            <div className="flex gap-2 justify-end mt-auto">
               <button onClick={handleCancelEdit} className="text-xs px-3 py-1">Cancel</button>
               <button onClick={handleSaveEdit} className="text-xs px-3 py-1 bg-primary text-white rounded">Save</button>
             </div>
@@ -259,6 +275,15 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp} // Handle cases where pointer leaves document
     >
+      {/* All-day row */}
+      <AllDayRow
+        events={events} // Pass all events, AllDayRow will filter
+        selectedWeekStart={selectedWeekStart}
+        calendars={calendars}
+        visibleCalendars={visibleCalendars}
+        onEventUpdate={onEventUpdate}
+        onEditClick={handleEditClick} // Pass handleEditClick for all-day events
+      />
       <div className="grid grid-cols-[80px_repeat(7,_1fr)]">
         {/* Time labels column */}
         <div className="border-r border-outline-variant/30 bg-surface sticky left-0 z-20">
