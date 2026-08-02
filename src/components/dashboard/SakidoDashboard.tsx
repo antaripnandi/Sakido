@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { getProviderToken, setProviderToken, clearProviderToken, getOrRefresh, getGeneration, GoogleService } from '../../lib/googleTokenStore';
+import { getProviderToken, setProviderToken, clearProviderToken, getOrRefresh, getGeneration, GoogleService, broadcastTokenUpdate, listenForTokenUpdates } from '../../lib/googleTokenStore';
 import { useMigrateToCalendars } from '../../hooks/useMigrateToCalendars';
 import { MiniMonthPicker } from '../calendar/MiniMonthPicker';
 import { CalendarList } from '../calendar/CalendarList';
@@ -521,9 +521,19 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     }, 2500);
   }, [connectors.googleDrive]);
 
+  // Cross-tab token update listener — other tabs signal fresh tokens via BroadcastChannel
+  useEffect(() => {
+    const cleanup = listenForTokenUpdates((service) => {
+      console.log(`[connectors] Token updated in another tab: ${service}`);
+      // Generation guard already handles preventing stale token use
+    });
+    return cleanup;
+  }, []);
+
   // Verify pending connector ONLY after user completes OAuth authorization callback.
-  // Waits for mountSync to complete first (Issue 5 fix) so it never overwrites
-  // fresh OAuth-set flags with stale DB data from the mount read.
+  // Waits for mountSync to complete first so it never overwrites fresh OAuth-set
+  // flags with stale DB data from the mount read. Broadcasts token updates to
+  // other tabs to prevent cross-tab races.
   useEffect(() => {
     if (!mountSynced) return; // wait for mount sync to complete first
 
@@ -542,6 +552,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             const service = pending as GoogleService;
             if (session.provider_token) {
               setProviderToken(service, session.provider_token);
+              // Broadcast to other tabs so they invalidate cached tokens
+              broadcastTokenUpdate(service);
             }
             if ((session as any).provider_refresh_token) {
               const supabase = getSupabaseClient();
@@ -559,7 +571,11 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 updated_at: new Date().toISOString(),
               }, { onConflict: 'user_id' }).then(({ error }) => {
                 if (error) console.warn('[connectors] token+flag upsert failed:', error.message);
-                else console.log('[connectors] token+flag saved:', flagCol);
+                else {
+                  console.log('[connectors] token+flag saved:', flagCol);
+                  // Broadcast after DB write completes
+                  broadcastTokenUpdate(service);
+                }
               });
             }
             setConnectors((prev) => ({ ...prev, [pending]: true }));

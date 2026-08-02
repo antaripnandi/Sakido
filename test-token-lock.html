@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Token Lock Test - Web Locks vs SessionStorage Fallback</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    h1 { margin-top: 0; color: #333; }
+    .status {
+      padding: 15px;
+      margin: 15px 0;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+    .info { background: #e3f2fd; border-left: 4px solid #2196f3; }
+    .success { background: #e8f5e9; border-left: 4px solid #4caf50; }
+    .error { background: #ffebee; border-left: 4px solid #f44336; }
+    .warning { background: #fff3e0; border-left: 4px solid #ff9800; }
+    button {
+      padding: 12px 24px;
+      margin: 8px 8px 8px 0;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      transition: opacity 0.2s;
+    }
+    button:hover { opacity: 0.8; }
+    .primary { background: #2196f3; color: white; }
+    .secondary { background: #9e9e9e; color: white; }
+    .danger { background: #f44336; color: white; }
+    #log {
+      background: #263238;
+      color: #aed581;
+      padding: 15px;
+      border-radius: 4px;
+      max-height: 400px;
+      overflow-y: auto;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      margin-top: 20px;
+    }
+    .log-entry {
+      margin: 4px 0;
+      padding: 2px 0;
+    }
+    .log-time {
+      color: #78909c;
+      margin-right: 8px;
+    }
+    code {
+      background: #f5f5f5;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔒 Token Refresh Lock Test</h1>
+
+    <div class="status info">
+      <strong>Test Mode:</strong> <span id="mode">Detecting...</span><br>
+      <strong>Lock Type:</strong> <span id="lockType">Detecting...</span>
+    </div>
+
+    <div class="status warning" id="instructions">
+      <strong>Testing Instructions:</strong><br>
+      1. Open this page in multiple tabs (Ctrl/Cmd+Click links below)<br>
+      2. Click "Simulate Token Refresh" in all tabs simultaneously<br>
+      3. Check the log - only ONE tab should actually "refresh" at a time<br>
+      4. Toggle "Force Fallback Mode" to test Safari-style locking
+    </div>
+
+    <div>
+      <button class="primary" onclick="simulateRefresh()">Simulate Token Refresh</button>
+      <button class="secondary" onclick="toggleFallback()">
+        <span id="fallbackBtn">Force Fallback Mode</span>
+      </button>
+      <button class="secondary" onclick="openNewTab()">Open New Tab</button>
+      <button class="danger" onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div id="log"></div>
+  </div>
+
+  <script type="module">
+    // Inline version of googleTokenStore.ts lock logic for testing
+    const LOCK_TIMEOUT_MS = 10_000;
+    let forceFallback = false;
+
+    function log(msg, color = '#aed581') {
+      const now = new Date();
+      const time = now.toLocaleTimeString() + '.' + now.getMilliseconds().toString().padStart(3, '0');
+      const logEl = document.getElementById('log');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      entry.innerHTML = `<span class="log-time">[${time}]</span><span style="color: ${color}">${msg}</span>`;
+      logEl.appendChild(entry);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    async function withRefreshLock(service, fn) {
+      const lockName = `sakido_token_lock_${service}`;
+      const hasWebLocks = 'locks' in navigator && navigator.locks && !forceFallback;
+
+      if (hasWebLocks) {
+        log(`🔐 Acquiring Web Locks API lock for ${service}...`, '#64b5f6');
+        return navigator.locks.request(
+          lockName,
+          { mode: 'exclusive', ifAvailable: false },
+          async (lock) => {
+            if (!lock) {
+              log(`⏳ Lock unavailable, waiting...`, '#ffb74d');
+              await new Promise(resolve => setTimeout(resolve, 100));
+              return withRefreshLock(service, fn);
+            }
+            log(`✅ Web Locks API lock acquired`, '#81c784');
+            try {
+              return await fn();
+            } finally {
+              log(`🔓 Web Locks API lock released`, '#90a4ae');
+            }
+          }
+        );
+      }
+
+      // Fallback: sessionStorage + timestamp
+      log(`🔐 Acquiring sessionStorage lock for ${service}...`, '#ba68c8');
+      const lockKey = `sakido_lock_${service}`;
+      const lockValue = sessionStorage.getItem(lockKey);
+      const now = Date.now();
+
+      if (lockValue) {
+        const lockTime = parseInt(lockValue, 10);
+        if (now - lockTime < LOCK_TIMEOUT_MS) {
+          const age = Math.round(now - lockTime);
+          log(`⏳ Lock held by another tab (${age}ms old), waiting...`, '#ffb74d');
+          await new Promise(resolve => setTimeout(resolve, 100));
+          return withRefreshLock(service, fn);
+        }
+        log(`⚠️ Stale lock detected (${Math.round(now - lockTime)}ms old), taking over`, '#ff8a65');
+      }
+
+      sessionStorage.setItem(lockKey, now.toString());
+      log(`✅ SessionStorage lock acquired`, '#ba68c8');
+      try {
+        return await fn();
+      } finally {
+        const currentLock = sessionStorage.getItem(lockKey);
+        if (currentLock === now.toString()) {
+          sessionStorage.removeItem(lockKey);
+          log(`🔓 SessionStorage lock released`, '#90a4ae');
+        } else {
+          log(`⚠️ Lock was taken over by another tab, not releasing`, '#ff8a65');
+        }
+      }
+    }
+
+    // Simulate a token refresh operation
+    async function simulateTokenRefresh() {
+      const duration = 1500 + Math.random() * 1000; // 1.5-2.5s
+      log(`🔄 Starting token refresh (will take ${Math.round(duration)}ms)...`, '#ffd54f');
+      await new Promise(resolve => setTimeout(resolve, duration));
+      log(`✓ Token refresh complete`, '#4caf50');
+      return 'new_token_' + Date.now();
+    }
+
+    window.simulateRefresh = async function() {
+      const service = 'googleCalendar';
+      const startTime = Date.now();
+      log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', '#546e7a');
+      log(`🚀 Initiating token refresh for ${service}`, '#42a5f5');
+
+      try {
+        const token = await withRefreshLock(service, simulateTokenRefresh);
+        const elapsed = Date.now() - startTime;
+        log(`✅ SUCCESS: Token acquired in ${elapsed}ms: ${token}`, '#66bb6a');
+      } catch (err) {
+        log(`❌ ERROR: ${err.message}`, '#ef5350');
+      }
+    };
+
+    window.toggleFallback = function() {
+      forceFallback = !forceFallback;
+      const btn = document.getElementById('fallbackBtn');
+      const lockType = document.getElementById('lockType');
+
+      if (forceFallback) {
+        btn.textContent = 'Use Web Locks API';
+        lockType.textContent = 'SessionStorage Fallback (Forced)';
+        log('⚙️ Switched to SessionStorage fallback mode', '#ab47bc');
+      } else {
+        btn.textContent = 'Force Fallback Mode';
+        updateLockType();
+        log('⚙️ Switched to Web Locks API mode', '#5c6bc0');
+      }
+    };
+
+    window.openNewTab = function() {
+      window.open(window.location.href, '_blank');
+    };
+
+    window.clearLog = function() {
+      document.getElementById('log').innerHTML = '';
+      log('📋 Log cleared', '#90a4ae');
+    };
+
+    function updateLockType() {
+      const hasWebLocks = 'locks' in navigator && navigator.locks;
+      const lockType = document.getElementById('lockType');
+      const mode = document.getElementById('mode');
+
+      if (hasWebLocks) {
+        lockType.textContent = 'Web Locks API (Native)';
+        mode.textContent = 'Modern Browser (Chrome, Firefox, Safari 15.4+)';
+      } else {
+        lockType.textContent = 'SessionStorage Fallback (Required)';
+        mode.textContent = 'Legacy Browser (Safari <15.4, older iOS)';
+      }
+    }
+
+    // Initialize
+    updateLockType();
+    log('🎯 Test harness loaded', '#64b5f6');
+    log('ℹ️ Open multiple tabs and click "Simulate Token Refresh" simultaneously', '#90a4ae');
+  </script>
+</body>
+</html>
