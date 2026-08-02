@@ -4,6 +4,7 @@ import { getProviderToken, setProviderToken, clearProviderToken, getOrRefresh, g
 import { useMigrateToCalendars } from '../../hooks/useMigrateToCalendars';
 import { MiniMonthPicker } from '../calendar/MiniMonthPicker';
 import { CalendarList } from '../calendar/CalendarList';
+import { WeekGrid } from '../calendar/WeekGrid';
 import {
   Sun,
   Moon,
@@ -661,8 +662,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   // Calendar Month State
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date());
 
-  // Calendar View Mode ('month' | 'timetable') - must be declared before useEffect that references it
-  const [calendarViewMode, setCalendarViewMode] = useState<'month' | 'timetable'>('month');
+  // Calendar View Mode ('month' | 'week' | 'day')
+  const [calendarViewMode, setCalendarViewMode] = useLocalStorageState<'month' | 'week' | 'day'>('sakido_calendar_view', 'week');
 
   // Week view state for unified calendar
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(() => {
@@ -2051,18 +2052,18 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                     : 'text-secondary hover:text-on-surface'
                 }`}
               >
-                Month Grid
+                Month View
               </button>
               <button
                 type="button"
-                onClick={() => setCalendarViewMode('timetable')}
+                onClick={() => setCalendarViewMode('week')}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all cursor-pointer ${
-                  calendarViewMode === 'timetable'
+                  calendarViewMode === 'week'
                     ? 'bg-[#8b5e3c] text-white shadow-2xs'
                     : 'text-secondary hover:text-on-surface'
                 }`}
               >
-                Hourly Timetable
+                Week View
               </button>
             </div>
 
@@ -2146,6 +2147,26 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           </form>
 
           {calendarViewMode === 'timetable' ? (
+            /* Week Grid View */
+            <WeekGrid
+              selectedWeekStart={selectedWeekStart}
+              events={allEvents}
+              calendars={calendars}
+              visibleCalendars={visibleCalendars}
+              onEventUpdate={(event) => {
+                setEvents(prev => prev.map(e => e.id === event.id ? event : e));
+                syncEventToGoogleCalendar(event);
+              }}
+              onEventCreate={(event) => {
+                setEvents(prev => [...prev, event]);
+                syncEventToGoogleCalendar(event);
+              }}
+              setEvents={setEvents}
+              syncEventToGoogleCalendar={syncEventToGoogleCalendar}
+              lastUsedCalendarId={lastUsedCalendarId}
+              setLastUsedCalendarId={setLastUsedCalendarId}
+            />
+          ) : (
             /* Apple-Style Hourly Timetable Grid */
             <div className="border border-outline-variant/40 rounded-2xl bg-surface-container-lowest p-4 sm:p-6 shadow-xs flex flex-col gap-4">
               <div className="flex items-center justify-between">
