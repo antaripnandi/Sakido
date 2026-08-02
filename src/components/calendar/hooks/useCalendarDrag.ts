@@ -275,11 +275,11 @@ export const useCalendarDrag = (
         const finalDayIndex = clientXToDayIndex(e.clientX - movingEvent.offsetX);
         const finalTime = clientYToGridTime(e.clientY - movingEvent.offsetY);
 
-        const originalEventDate = parseDate(event.originalDate || event.date);
+        const originalEventDate = parseDate(movingEvent.originalDate);
         const originalDayIndex = diffInDays(originalEventDate, selectedWeekStart);
         const dayChange = finalDayIndex - originalDayIndex;
 
-        const originalStartMinutes = parseTime(event.originalStartTime || event.startTime);
+        const originalStartMinutes = parseTime(movingEvent.originalStartTime);
         const finalStartMinutes = parseTime(finalTime);
         const timeChange = finalStartMinutes - originalStartMinutes;
 

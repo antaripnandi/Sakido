@@ -814,6 +814,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               type: 'Google Cal',
               location: item.location || 'Google Sync',
               description: item.description || '',
+              calendarId: 'google-calendar', // ponytail: fake ID for visibility filter
+              isAllDay,
             };
           });
 
@@ -957,15 +959,35 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     const date = event.date;
 
     try {
-      // Local-time day bounds — the previous `${date}T00:00:00Z` window was a UTC
-      // instant, so events near the day boundary fell outside it and every edit
-      // created a duplicate in Google Calendar.
+      // Use gcalId if available (ponytail: skip title search when we have ID)
+      if (event.gcalId) {
+        const eventBody = {
+          summary: `[Sakido] ${title}`,
+          start: { dateTime: `${date}T${startTime}:00`, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+          end: { dateTime: `${date}T${endTime}:00`, timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone },
+        };
+        const patchRes = await executeGoogleApi((accessToken) =>
+          fetch(
+            `https://www.googleapis.com/calendar/v3/calendars/primary/events/${event.gcalId}`,
+            {
+              method: 'PATCH',
+              headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify(eventBody),
+            }
+          )
+        );
+        if (!patchRes || !patchRes.ok) {
+          setConnectorNotice(`⚠️ Sync failed: ${patchRes?.status || 'network error'}`);
+          return;
+        }
+        return;
+      }
+
+      // Fallback: search by title (for old events without gcalId)
       const dayStart = safeCreateDateTime(date, '00:00');
       const dayEnd = safeCreateDateTime(date, '23:59');
       if (!dayStart || !dayEnd) return;
 
-      // Search for existing event by title. Route through executeGoogleApi so
-      // we get the shared 401 auto-refresh like every other Calendar call.
       const searchRes = await executeGoogleApi((accessToken) =>
         fetch(
           `https://www.googleapis.com/calendar/v3/calendars/primary/events?q=${encodeURIComponent(`[Sakido] ${title}`)}&timeMin=${encodeURIComponent(dayStart.toISOString())}&timeMax=${encodeURIComponent(dayEnd.toISOString())}`,
@@ -973,7 +995,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         )
       );
       if (!searchRes || !searchRes.ok) {
-        console.warn('Google Calendar search failed:', searchRes?.status);
+        setConnectorNotice(`⚠️ Sync search failed: ${searchRes?.status || 'network error'}`);
         return;
       }
       const searchData = await searchRes.json();
@@ -986,7 +1008,6 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       };
 
       if (existingEvent) {
-        // Update existing event
         const patchRes = await executeGoogleApi((accessToken) =>
           fetch(
             `https://www.googleapis.com/calendar/v3/calendars/primary/events/${existingEvent.id}`,
@@ -997,9 +1018,10 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             }
           )
         );
-        if (!patchRes || !patchRes.ok) console.warn('Google Calendar PATCH failed:', patchRes?.status);
+        if (!patchRes || !patchRes.ok) {
+          setConnectorNotice(`⚠️ Sync update failed: ${patchRes?.status || 'network error'}`);
+        }
       } else {
-        // Create new event
         const postRes = await executeGoogleApi((accessToken) =>
           fetch(
             'https://www.googleapis.com/calendar/v3/calendars/primary/events',
@@ -1010,10 +1032,18 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             }
           )
         );
-        if (!postRes || !postRes.ok) console.warn('Google Calendar POST failed:', postRes?.status);
+        if (!postRes || !postRes.ok) {
+          setConnectorNotice(`⚠️ Sync create failed: ${postRes?.status || 'network error'}`);
+          return;
+        }
+        // Store gcalId from response
+        const postData = await postRes.json();
+        if (postData.id) {
+          setEvents(prev => prev.map(e => e.id === event.id ? { ...e, gcalId: postData.id } : e));
+        }
       }
     } catch (err) {
-      console.warn('Google Calendar sync error:', err);
+      setConnectorNotice(`⚠️ Sync error: ${err instanceof Error ? err.message : 'unknown'}`);
     }
   };
 
@@ -1260,7 +1290,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     setCalendars(prev => [...prev, newCal]);
   };
 
-  const visibleCalendars = calendars.filter(c => c.visible).map(c => c.id);
+  const visibleCalendars = [...calendars.filter(c => c.visible).map(c => c.id), 'google-calendar'];
 
   // Form states
   const [newClassName, setNewClassName] = useState('');

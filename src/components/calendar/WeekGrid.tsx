@@ -194,74 +194,9 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
           );
         })}
 
-        {/* New event drag preview with minimum height */}
-        {draggingNew && draggingNew.startDate === dateStr && (
-          <div
-            className="absolute left-1 right-1 rounded px-2 py-1 text-xs border bg-blue-500/20 border-blue-500 text-blue-800"
-            style={{
-              top: `${HEADER_H + ((parseTime(draggingNew.startTime) - START_HOUR * 60) / 60) * SLOT_H}px`,
-              height: `${Math.max(26, ((parseTime(draggingNew.endTime) - parseTime(draggingNew.startTime)) / 60) * SLOT_H)}px`,
-              zIndex: 100
-            }}
-          >
-            <div className="font-medium truncate">New Event</div>
-          </div>
-        )}
+        {/* Removed single-column preview - now rendered outside column loop */}
 
-        {/* Inline Event Editor — render only in the column that holds the
-            edited event, not once per column (which duplicated the DOM id and
-            raced autoFocus). */}
-        {editingEventId && events.some(e => e.id === editingEventId && e.date === dateStr) && (
-          <div className="absolute inset-0 bg-surface-container p-3 rounded-lg shadow-lg z-30 flex flex-col gap-2">
-            <input
-              type="text"
-              value={editingTitle}
-              onChange={(e) => setEditingTitle(e.target.value)}
-              placeholder="Add title"
-              className="text-sm font-medium bg-transparent border-b focus:outline-none"
-              autoFocus
-            />
-            <div className="flex flex-col gap-2 mt-2">
-              <div className="flex gap-2">
-                <select
-                  value={editingType}
-                  onChange={(e) => setEditingType(e.target.value)}
-                  className="text-xs px-2 py-1 rounded bg-surface-container-high"
-                >
-                  <option value="Event">Event</option>
-                  <option value="Exam">Exam</option>
-                  <option value="Lecture">Lecture</option>
-                  <option value="Deadline">Deadline</option>
-                </select>
-                <select
-                  value={editingCalendarId}
-                  onChange={(e) => setEditingCalendarId(e.target.value)}
-                  className="text-xs px-2 py-1 rounded bg-surface-container-high flex-1"
-                >
-                  {calendars.filter(c => visibleCalendars.includes(c.id)).map(cal => (
-                    <option key={cal.id} value={cal.id}>
-                      {cal.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-center gap-2 mt-2">
-                <input
-                  type="checkbox"
-                  id={`isAllDayEvent-${editingEventId}`}
-                  checked={editingIsAllDay}
-                  onChange={(e) => setEditingIsAllDay(e.target.checked)}
-                  className="w-4 h-4"
-                />
-                <label htmlFor={`isAllDayEvent-${editingEventId}`} className="text-sm text-on-surface">All day</label>
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end mt-auto">
-              <button onClick={handleCancelEdit} className="text-xs px-3 py-1">Cancel</button>
-              <button onClick={handleSaveEdit} className="text-xs px-3 py-1 bg-primary text-white rounded">Save</button>
-            </div>
-          </div>
-        )}
+        {/* Removed inline editor - now rendered outside column loop */}
 
         {/* Current time line (today only) - fixed hour boundary */}
         {isToday && now.getHours() >= START_HOUR && now.getHours() <= END_HOUR && (
@@ -318,6 +253,92 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
 
         {/* 7 day columns */}
         {[0, 1, 2, 3, 4, 5, 6].map(renderDayColumn)}
+
+        {/* Multi-day drag preview overlay */}
+        {draggingNew && (() => {
+          const rect = slotsRef.current?.getBoundingClientRect();
+          const columnWidth = rect ? (rect.width - TIME_LABEL_WIDTH) / 7 : 0;
+          return (
+            <div
+              className="absolute rounded px-2 py-1 text-xs border bg-blue-500/20 border-blue-500 text-blue-800"
+              style={{
+                left: `${TIME_LABEL_WIDTH + (draggingNew.startDay * columnWidth)}px`,
+                width: `${(draggingNew.endDay - draggingNew.startDay + 1) * columnWidth - 8}px`,
+                top: `${HEADER_H + ((parseTime(draggingNew.startTime) - START_HOUR * 60) / 60) * SLOT_H}px`,
+                height: `${Math.max(26, ((parseTime(draggingNew.endTime) - parseTime(draggingNew.startTime)) / 60) * SLOT_H)}px`,
+                zIndex: 100,
+                pointerEvents: 'none'
+              }}
+            >
+              <div className="font-medium truncate">New Event</div>
+            </div>
+          );
+        })()}
+
+        {/* Popover inline editor */}
+        {editingEventId && (() => {
+          const editingEvent = events.find(e => e.id === editingEventId);
+          if (!editingEvent) return null;
+          const editorTop = HEADER_H + ((parseTime(editingEvent.startTime || '09:00') - START_HOUR * 60) / 60) * SLOT_H;
+          return (
+            <div
+              className="absolute left-2 bg-surface-container p-3 rounded-lg shadow-xl border border-outline-variant/30 z-50 flex flex-col gap-2"
+              style={{
+                top: `${editorTop}px`,
+                width: '280px',
+                maxHeight: '400px'
+              }}
+            >
+              <input
+                type="text"
+                value={editingTitle}
+                onChange={(e) => setEditingTitle(e.target.value)}
+                placeholder="Add title"
+                className="text-sm font-medium bg-transparent border-b focus:outline-none"
+                autoFocus
+              />
+              <div className="flex flex-col gap-2 mt-2">
+                <div className="flex gap-2">
+                  <select
+                    value={editingType}
+                    onChange={(e) => setEditingType(e.target.value)}
+                    className="text-xs px-2 py-1 rounded bg-surface-container-high"
+                  >
+                    <option value="Event">Event</option>
+                    <option value="Exam">Exam</option>
+                    <option value="Lecture">Lecture</option>
+                    <option value="Deadline">Deadline</option>
+                  </select>
+                  <select
+                    value={editingCalendarId}
+                    onChange={(e) => setEditingCalendarId(e.target.value)}
+                    className="text-xs px-2 py-1 rounded bg-surface-container-high flex-1"
+                  >
+                    {calendars.filter(c => visibleCalendars.includes(c.id)).map(cal => (
+                      <option key={cal.id} value={cal.id}>
+                        {cal.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2 mt-2">
+                  <input
+                    type="checkbox"
+                    id={`isAllDayEvent-${editingEventId}`}
+                    checked={editingIsAllDay}
+                    onChange={(e) => setEditingIsAllDay(e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <label htmlFor={`isAllDayEvent-${editingEventId}`} className="text-sm text-on-surface">All day</label>
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end mt-auto">
+                <button onClick={handleCancelEdit} className="text-xs px-3 py-1">Cancel</button>
+                <button onClick={handleSaveEdit} className="text-xs px-3 py-1 bg-primary text-white rounded">Save</button>
+              </div>
+            </div>
+          );
+        })()}
         </div>
       </div>
     </div>
