@@ -51,7 +51,7 @@ const DEFAULT_CALENDARS: Calendar[] = [
   }
 ];
 
-const TYPE_TO_CALENDAR_MAP: Record<string, string> = {
+export const TYPE_TO_CALENDAR_MAP: Record<string, string> = {
   'Lecture': 'cal-classes',
   'Exam': 'cal-exams',
   'Deadline': 'cal-deadlines',
