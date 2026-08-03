@@ -56,7 +56,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
         {/* Header */}
         <div className="sticky top-0 bg-surface-container-lowest dark:bg-[#201915] border-b border-outline-variant/40 p-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-on-surface">Task Details</h2>
-          <button onClick={onClose} className="p-2 hover:bg-surface-container-high rounded-lg transition-colors">
+          <button onClick={onClose} aria-label="Close task details" className="p-2 hover:bg-surface-container-high rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -192,6 +192,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({
                   </span>
                   <button
                     onClick={() => onDeleteSubtask(task.id, st.id)}
+                    aria-label="Delete subtask"
                     className="p-1 text-secondary/50 hover:text-error transition-colors"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
@@ -303,7 +304,7 @@ export const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
         {/* Header */}
         <div className="sticky top-0 backdrop-blur-sm bg-white/80 dark:bg-[#201915]/80 border-b border-outline-variant/40 p-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-on-surface">Note Details</h2>
-          <button onClick={onClose} className="p-2 hover:bg-surface-container-high rounded-lg transition-colors">
+          <button onClick={onClose} aria-label="Close note details" className="p-2 hover:bg-surface-container-high rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -385,6 +386,7 @@ export const NoteDetailModal: React.FC<NoteDetailModalProps> = ({
                 <button
                   key={colorKey}
                   onClick={() => setEditedNote({ ...editedNote, color: colorKey })}
+                  aria-label={`Select color ${colorKey}`}
                   className={`w-8 h-8 rounded-full ${NOTE_COLOR_MAP[colorKey].dot} border-2 transition-all ${
                     editedNote.color === colorKey ? 'border-on-surface scale-110' : 'border-transparent'
                   }`}
@@ -486,7 +488,7 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
             </div>
             <p className="text-lg text-secondary mt-1">{course.name}</p>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-surface-container-high rounded-lg transition-colors">
+          <button onClick={onClose} aria-label="Close course details" className="p-2 hover:bg-surface-container-high rounded-lg transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
