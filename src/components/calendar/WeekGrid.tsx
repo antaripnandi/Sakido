@@ -474,7 +474,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
                     <span className="text-xs text-secondary font-medium">Color Palette</span>
                     <input
                       type="color"
-                      value={activeColor}
+                      value={activeColor && /^#[0-9A-Fa-f]{6}$/.test(activeColor) ? activeColor : '#8b5e3c'}
                       onChange={(e) => setEditingColor(e.target.value)}
                       className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent"
                       title="Custom color"

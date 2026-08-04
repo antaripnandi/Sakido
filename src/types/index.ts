@@ -38,7 +38,7 @@ export function calculateSM2(card: Flashcard, quality: 0 | 1 | 2 | 3): Flashcard
   const today = new Date();
   const nextDate = new Date(today);
   nextDate.setDate(today.getDate() + interval);
-  const nextReviewDate = nextDate.toISOString().split('T')[0];
+  const nextReviewDate = `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, '0')}-${String(nextDate.getDate()).padStart(2, '0')}`;
 
   return {
     ...card,

@@ -88,10 +88,12 @@ export const ConnectorsView: React.FC<ConnectorsViewProps> = ({
 
   const handleTestConnection = async (serviceKey: 'googleCalendar' | 'googleDrive' | 'gmail') => {
     if (!executeGoogleApi) return;
+    const endpoint = SERVICE_TEST_ENDPOINTS[serviceKey];
+    if (!endpoint) return;
+
     setTestResults((prev) => ({ ...prev, [serviceKey]: 'testing' }));
 
     try {
-      const endpoint = SERVICE_TEST_ENDPOINTS[serviceKey] || SERVICE_TEST_ENDPOINTS.googleCalendar;
       const res = await executeGoogleApi((token) =>
         fetch(endpoint, {
           headers: { Authorization: `Bearer ${token}` },

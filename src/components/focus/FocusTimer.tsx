@@ -183,7 +183,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [isRunning, timeLeft, stage, isPomodoro, currentCycle, config.pomodoroCycles, pomoFocusMins, pomoBreakMins, isExitConfirmOpen]);
+  }, [isRunning, stage, isPomodoro, currentCycle, config.pomodoroCycles, pomoFocusMins, pomoBreakMins, isExitConfirmOpen]);
 
   // Notify parent when session completes
   useEffect(() => {

@@ -41,7 +41,8 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
   const [newBack, setNewBack] = useState<string>('');
   const [newClassId, setNewClassId] = useState<string>(courses[0]?.id || '');
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayDate = new Date();
+  const todayStr = `${todayDate.getFullYear()}-${String(todayDate.getMonth() + 1).padStart(2, '0')}-${String(todayDate.getDate()).padStart(2, '0')}`;
 
   const isCardDue = (card: Flashcard) => card.nextReviewDate <= todayStr;
 

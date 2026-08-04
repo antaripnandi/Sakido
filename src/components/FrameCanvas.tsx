@@ -80,6 +80,10 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
     let currentIdx = 1;
     const batchSize = 12;
 
+    const safeRequestIdle = typeof window !== 'undefined' && window.requestIdleCallback
+      ? window.requestIdleCallback
+      : (cb: () => void) => setTimeout(cb, 1);
+
     const processNextBatch = () => {
       if (!isMounted || currentIdx >= totalFrames) return;
       const end = Math.min(totalFrames, currentIdx + batchSize);
@@ -89,7 +93,7 @@ export const FrameCanvas: React.FC<FrameCanvasProps> = ({
       currentIdx = end;
 
       if (currentIdx < totalFrames) {
-        requestIdleCallback(processNextBatch);
+        safeRequestIdle(processNextBatch);
       }
     };
 

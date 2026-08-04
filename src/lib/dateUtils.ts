@@ -3,7 +3,10 @@
  * Enforces ISO 8601 YYYY-MM-DD formatting and safe Date parsing across the codebase.
  */
 
-const todayISO = () => new Date().toISOString().split('T')[0];
+const formatLocalISODate = (d: Date): string =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const todayISO = () => formatLocalISODate(new Date());
 
 /**
  * Normalizes any date string or Date object into a guaranteed YYYY-MM-DD string.
@@ -23,7 +26,7 @@ export function normalizeToISODate(input: string | Date | null | undefined): str
   // If original was already YYYY-MM-DD (no time component), return as-is
   if (typeof input === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
 
-  return d.toISOString().split('T')[0];
+  return formatLocalISODate(d);
 }
 
 /**
