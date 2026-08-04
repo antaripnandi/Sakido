@@ -136,10 +136,6 @@ export const useCalendarDrag = (
 
     if (draggingNew) {
       const currentTime = clientYToGridTime(e.clientY);
-      const currentDay = clientXToDayIndex(e.clientX);
-
-      const newStartDay = Math.min(draggingNew.initialDay, currentDay);
-      const newEndDay = Math.max(draggingNew.initialDay, currentDay);
 
       const newStartTime = parseTime(draggingNew.initialTime) < parseTime(currentTime)
         ? draggingNew.initialTime
@@ -150,8 +146,9 @@ export const useCalendarDrag = (
 
       setDraggingNew(prev => prev ? {
         ...prev,
-        startDay: newStartDay,
-        endDay: newEndDay,
+        // Lock to initial column (Google Calendar single-column drag)
+        startDay: prev.initialDay,
+        endDay: prev.initialDay,
         startTime: newStartTime,
         endTime: newEndTime,
       } : null);
@@ -182,22 +179,17 @@ export const useCalendarDrag = (
       // Preview update - actual update on pointerUp
       const eventToMove = events.find(ev => ev.id === movingEvent.id);
       if (eventToMove) {
-        // Calculate day change (parse the date-only string in local time —
-        // new Date("YYYY-MM-DD") parses as UTC and shifts the index west of UTC)
         const originalDayIndex = diffInDays(parseDate(eventToMove.date), selectedWeekStart);
         const dayChange = newDayIndex - originalDayIndex;
 
-        // Calculate time change
         const originalStartMinutes = parseTime(movingEvent.originalStartTime);
         const newStartMinutes = parseTime(newTime);
         const timeChange = newStartMinutes - originalStartMinutes;
 
-        // Apply changes for preview
         const previewDate = formatDate(addDays(parseDate(eventToMove.date), dayChange));
         const previewStartTime = minutesToTime(parseTime(eventToMove.startTime) + timeChange);
         const previewEndTime = minutesToTime(parseTime(eventToMove.endTime) + timeChange);
 
-        // Update some preview state here (e.g., setPreviewEvent or update movingEvent to include preview coords)
         setMovingEvent(prev => prev ? {
           ...prev,
           previewDate,
@@ -231,8 +223,7 @@ export const useCalendarDrag = (
         : 999;
       const wasClick = movedDistance < 5;
 
-      const startDate = addDays(selectedWeekStart, draggingNew.startDay);
-      const endDate = addDays(selectedWeekStart, draggingNew.endDay);
+      const startDate = addDays(selectedWeekStart, draggingNew.initialDay);
 
       const defaultCalendar = calendars.find(c => c.isDefault) || calendars[0];
       const targetCalendarId = editingCalendarId || defaultCalendar?.id;
@@ -249,7 +240,7 @@ export const useCalendarDrag = (
         id: `evt-${Date.now()}`,
         title: 'New Event',
         date: formatDate(startDate),
-        endDate: draggingNew.endDay > draggingNew.startDay ? formatDate(endDate) : undefined,
+        endDate: undefined, // Single column only
         startTime: startTime,
         endTime: endTime,
         time: `${startTime} - ${endTime}`,

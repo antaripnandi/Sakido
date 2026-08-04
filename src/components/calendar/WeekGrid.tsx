@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Clock } from 'lucide-react';
-import { parseTime, minutesToTime, addDays, formatDate, isSameDay, snapToQuarter, format12Hour, formatFriendlyDate, diffInDays, parseDate } from './utils/calendarUtils';
+import { parseTime, minutesToTime, addDays, formatDate, isSameDay, format12Hour, formatFriendlyDate, diffInDays, parseDate } from './utils/calendarUtils';
 import { useCalendarDrag } from './hooks/useCalendarDrag';
 import { EventBlock } from './EventBlock';
 import { AllDayRow } from './AllDayRow';
 
-const HEADER_H = 52; // Height of the day header
 const SLOT_H = 52; // Height of each hourly slot (52px/hour)
 const START_HOUR = 0; // Start hour of the grid (midnight)
 const END_HOUR = 24; // End hour of the grid (midnight next day)
@@ -105,6 +104,40 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     return start <= weekEndStr && end >= weekStartStr;
   });
 
+  const assignLanes = (eventsList: any[]) => {
+    if (eventsList.length === 0) return [];
+    const sorted = [...eventsList].sort((a, b) =>
+      parseTime(a.startTime || '00:00') - parseTime(b.startTime || '00:00')
+    );
+
+    const lanes: any[][] = [];
+    const mapped = sorted.map(event => {
+      const startMin = parseTime(event.startTime || '00:00');
+      let laneIndex = lanes.findIndex(l => {
+        const last = l[l.length - 1];
+        return parseTime(last.endTime || '23:59') <= startMin;
+      });
+      if (laneIndex === -1) {
+        laneIndex = lanes.length;
+        lanes.push([]);
+      }
+      lanes[laneIndex].push(event);
+      return { ...event, _lane: laneIndex };
+    });
+
+    return mapped.map(event => {
+      const startMin = parseTime(event.startTime || '00:00');
+      const endMin = parseTime(event.endTime || '23:59');
+      let concurrent = 0;
+      for (const e2 of sorted) {
+        const s2 = parseTime(e2.startTime || '00:00');
+        const e2End = parseTime(e2.endTime || '23:59');
+        if (s2 < endMin && e2End > startMin) concurrent++;
+      }
+      return { ...event, _totalLanes: Math.max(concurrent, lanes.length) };
+    });
+  };
+
   const handleSaveEdit = useCallback(() => {
     const event = events.find(e => e.id === editingEventId);
     if (!event) return;
@@ -156,12 +189,14 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     const columnDate = addDays(selectedWeekStart, dayOffset);
     const isToday = isSameDay(columnDate, now);
     const dateStr = formatDate(columnDate);
-    // Filter events for single-day timed events in this column
+    // Filter events for single-day timed events in this column (hide pending until saved)
     const dayTimedEvents = weekEvents.filter(e => {
+      if (e.isPending) return false;
       if (e.isAllDay) return false;
       if (e.endDate && e.endDate !== e.date) return false; // Multi-day timed events rendered in contiguous layer
       return e.date === dateStr;
     });
+    const lanedEvents = assignLanes(dayTimedEvents);
 
     return (
       <div key={dayOffset} className="relative border-r border-outline-variant/20 last:border-r-0">
@@ -174,7 +209,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
         ))}
 
         {/* Events */}
-        {dayTimedEvents.map(event => {
+        {lanedEvents.map(event => {
           const eventStartMinutes = parseTime(event.startTime || '09:00');
           const eventEndMinutes = parseTime(event.endTime || '10:00');
 
@@ -202,6 +237,8 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
               isBeingDragged={isBeingDragged}
               isBeingResized={isBeingResized}
               isAllDay={event.isAllDay}
+              lane={event._lane}
+              totalLanes={event._totalLanes}
             />
           );
         })}

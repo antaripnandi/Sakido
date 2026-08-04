@@ -12,6 +12,8 @@ interface EventBlockProps {
   isBeingDragged: boolean;
   isBeingResized: boolean;
   isAllDay: boolean;
+  lane?: number;
+  totalLanes?: number;
 }
 
 export const EventBlock: React.FC<EventBlockProps> = ({
@@ -24,7 +26,9 @@ export const EventBlock: React.FC<EventBlockProps> = ({
   isEditing,
   isBeingDragged,
   isBeingResized,
-  isAllDay
+  isAllDay,
+  lane = 0,
+  totalLanes = 1
 }) => {
   // The browser fires a click after every pointer sequence, including drags and
   // resizes. Track the press position and suppress the editor open when the
@@ -49,18 +53,23 @@ export const EventBlock: React.FC<EventBlockProps> = ({
     openEditor();
   };
 
+  const leftPos = totalLanes > 1 ? `${(lane / totalLanes) * 100}%` : '4px';
+  const widthPos = totalLanes > 1 ? `${(1 / totalLanes) * 100 - 1}%` : 'calc(100% - 8px)';
+
   return (
     <div
       role="button"
       tabIndex={0}
       aria-label={`${event.title}${event.time ? `, ${event.time}` : ''}`}
       onKeyDown={handleKeyDown}
-      className={`absolute left-1 right-1 rounded px-2 py-1 text-xs border cursor-pointer transition-shadow event-block ${
+      className={`absolute rounded px-2 py-1 text-xs border cursor-pointer transition-shadow event-block ${
         isEditing || isBeingDragged || isBeingResized ? 'z-40 shadow-lg' : 'hover:shadow-lg'
       } ${isAllDay ? 'top-0 h-full' : ''}`}
       style={{
         top: isAllDay ? '0' : `${top}px`,
         height: isAllDay ? '100%' : `${height}px`,
+        left: leftPos,
+        width: widthPos,
         backgroundColor: `${displayColor}25`,
         borderColor: displayColor,
         color: 'inherit'
