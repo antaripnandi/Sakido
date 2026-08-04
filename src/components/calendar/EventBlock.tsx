@@ -5,7 +5,7 @@ interface EventBlockProps {
   event: any;
   calendarColor: string;
   onPointerDown: (e: React.PointerEvent, event: any) => void;
-  onEditClick: (eventId: string, title: string, type: string, calendarId: string, isAllDay: boolean) => void;
+  onEditClick: (eventId: string, title: string, type: string, calendarId: string, isAllDay: boolean, color?: string) => void;
   top: number;
   height: number;
   isEditing: boolean;
@@ -31,7 +31,8 @@ export const EventBlock: React.FC<EventBlockProps> = ({
   // pointer actually moved (movement threshold > 4px).
   const downPos = React.useRef<{ x: number; y: number } | null>(null);
 
-  const openEditor = () => onEditClick(event.id, event.title, event.type, event.calendarId, event.isAllDay);
+  const displayColor = event.color || calendarColor;
+  const openEditor = () => onEditClick(event.id, event.title, event.type, event.calendarId, event.isAllDay, displayColor);
 
   const handleClick = (e: React.MouseEvent) => {
     const start = downPos.current;
@@ -60,8 +61,8 @@ export const EventBlock: React.FC<EventBlockProps> = ({
       style={{
         top: isAllDay ? '0' : `${top}px`,
         height: isAllDay ? '100%' : `${height}px`,
-        backgroundColor: `${calendarColor}20`,
-        borderColor: calendarColor,
+        backgroundColor: `${displayColor}25`,
+        borderColor: displayColor,
         color: 'inherit'
       }}
       onPointerDown={(e) => {

@@ -840,14 +840,39 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         const fetched = (data.items || [])
           .filter((item: any) => item.status !== 'cancelled')
           .map((item: any) => {
-            const startIso = item.start?.dateTime || item.start?.date || '';
-            const endIso = item.end?.dateTime || item.end?.date || '';
             const isAllDay = !item.start?.dateTime;
-            const startTime = item.start?.dateTime ? startIso.split('T')[1].substring(0, 5) : undefined;
-            const endTime = item.end?.dateTime ? endIso.split('T')[1].substring(0, 5) : undefined;
-            const endDate = isAllDay && endIso
-              ? formatDate(addDays(parseDate(endIso), -1))
-              : undefined;
+            let dateStr = '';
+            let endDateStr: string | undefined = undefined;
+            let startTime: string | undefined = undefined;
+            let endTime: string | undefined = undefined;
+
+            if (isAllDay) {
+              // All-day event: start.date = "YYYY-MM-DD"
+              dateStr = item.start?.date || '';
+              const rawEnd = item.end?.date;
+              if (rawEnd) {
+                // Google Calendar uses exclusive end date for all-day events (+1 day).
+                // Subtract 1 day to get Sakido's inclusive end date.
+                const inclusiveEnd = formatDate(addDays(parseDate(rawEnd), -1));
+                if (inclusiveEnd !== dateStr) {
+                  endDateStr = inclusiveEnd;
+                }
+              }
+            } else {
+              // Timed event: start.dateTime is an ISO string. Parse into local system time!
+              const startDt = new Date(item.start.dateTime);
+              dateStr = formatDate(startDt);
+              startTime = `${String(startDt.getHours()).padStart(2, '0')}:${String(startDt.getMinutes()).padStart(2, '0')}`;
+
+              if (item.end?.dateTime) {
+                const endDt = new Date(item.end.dateTime);
+                const endFormattedDate = formatDate(endDt);
+                endTime = `${String(endDt.getHours()).padStart(2, '0')}:${String(endDt.getMinutes()).padStart(2, '0')}`;
+                if (endFormattedDate !== dateStr) {
+                  endDateStr = endFormattedDate;
+                }
+              }
+            }
 
             return {
               id: `gcal-${item.id}`,
@@ -855,8 +880,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               gcalRecurringEventId: item.recurringEventId,
               gcalOriginalStartTime: item.originalStartTime?.dateTime || item.originalStartTime?.date,
               title: item.summary?.replace(/^\[Sakido\]\s*/, '') || 'Google Calendar Event',
-              date: startIso.split('T')[0],
-              endDate: endDate !== startIso.split('T')[0] ? endDate : undefined,
+              date: dateStr,
+              endDate: endDateStr,
               startTime,
               endTime,
               time: isAllDay ? 'All Day' : `${startTime} - ${endTime}`,

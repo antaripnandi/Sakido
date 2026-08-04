@@ -7,7 +7,7 @@ interface AllDayRowProps {
   calendars: any[];
   visibleCalendars: string[];
   onEventUpdate: (event: any) => void;
-  onEditClick: (eventId: string, title: string, type: string, calendarId: string, isAllDay: boolean) => void;
+  onEditClick: (eventId: string, title: string, type: string, calendarId: string, isAllDay: boolean, color?: string) => void;
 }
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
@@ -82,7 +82,7 @@ export const AllDayRow: React.FC<AllDayRowProps> = ({
               one column). */}
           <div className="col-span-7 relative min-h-[40px]">
             {allDayEvents.map(event => {
-              const color = getCalendarColor(event.calendarId);
+              const color = event.color || getCalendarColor(event.calendarId);
               // Local-time day math (parseDate, not new Date(date-only string)
               // which is UTC and shifts the index west of UTC), clamped to 0-6.
               const startIndex = clamp(diffInDays(parseDate(event.date), selectedWeekStart), 0, 6);
@@ -95,7 +95,7 @@ export const AllDayRow: React.FC<AllDayRowProps> = ({
               return (
                 <div
                   key={event.id}
-                  className="absolute px-2 py-1 rounded text-xs font-medium truncate cursor-pointer hover:shadow-sm transition-shadow"
+                  className="absolute px-2.5 py-1 rounded text-xs font-medium truncate cursor-pointer hover:shadow-sm transition-shadow"
                   style={{
                     backgroundColor: color,
                     color: '#fff',
@@ -105,7 +105,7 @@ export const AllDayRow: React.FC<AllDayRowProps> = ({
                     zIndex: 1
                   }}
                   title={event.title}
-                  onClick={() => onEditClick(event.id, event.title, event.type, event.calendarId, event.isAllDay)}
+                  onClick={() => onEditClick(event.id, event.title, event.type, event.calendarId, event.isAllDay, color)}
                 >
                   {event.title}
                 </div>

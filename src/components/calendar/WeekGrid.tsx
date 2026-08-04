@@ -62,6 +62,8 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     setEditingCalendarId,
     editingIsAllDay,
     setEditingIsAllDay,
+    editingColor,
+    setEditingColor,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
@@ -112,6 +114,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
       title: editingTitle.trim() || 'New Event',
       type: editingType,
       calendarId: editingCalendarId,
+      color: editingColor || getCalendarColor(editingCalendarId),
       isAllDay: editingIsAllDay,
       // Clear time fields when the event becomes all-day so AllDayRow and the
       // day-column filter (which excludes isAllDay) both interpret it correctly.
@@ -124,7 +127,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     if (editingEventId) onEditingEnd?.(editingEventId); // Unlock event
     setEditingEventId(null);
     setLastUsedCalendarId(editingCalendarId); // Update last used calendar
-  }, [editingEventId, editingTitle, editingType, editingCalendarId, editingIsAllDay, events, onEventUpdate, setEditingEventId, setLastUsedCalendarId, onEditingEnd]);
+  }, [editingEventId, editingTitle, editingType, editingCalendarId, editingColor, editingIsAllDay, events, onEventUpdate, setEditingEventId, setLastUsedCalendarId, onEditingEnd, getCalendarColor]);
 
   const handleCancelEdit = useCallback(() => {
     setEvents(prev => {
@@ -138,26 +141,26 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     setEditingEventId(null);
   }, [setEditingEventId, editingEventId, setEvents, onEditingEnd]);
 
-  const handleEditClick = useCallback((id: string, title: string, type: string, calendarId: string, isAllDay: boolean) => {
+  const handleEditClick = useCallback((id: string, title: string, type: string, calendarId: string, isAllDay: boolean, color?: string) => {
     onEditingStart?.(id); // Lock event
     setEditingEventId(id);
     setEditingTitle(title);
     setEditingType(type);
     setEditingCalendarId(calendarId);
     setEditingIsAllDay(isAllDay);
+    setEditingColor(color || '');
     setTimeout(() => editorInputRef.current?.select(), 0);
-  }, [setEditingEventId, setEditingTitle, setEditingType, setEditingCalendarId, setEditingIsAllDay, onEditingStart]);
+  }, [setEditingEventId, setEditingTitle, setEditingType, setEditingCalendarId, setEditingIsAllDay, setEditingColor, onEditingStart]);
 
   const renderDayColumn = (dayOffset: number) => {
     const columnDate = addDays(selectedWeekStart, dayOffset);
     const isToday = isSameDay(columnDate, now);
     const dateStr = formatDate(columnDate);
-    // Filter events for timed events active in this column
+    // Filter events for single-day timed events in this column
     const dayTimedEvents = weekEvents.filter(e => {
       if (e.isAllDay) return false;
-      const start = e.date;
-      const end = e.endDate || e.date;
-      return start <= dateStr && end >= dateStr;
+      if (e.endDate && e.endDate !== e.date) return false; // Multi-day timed events rendered in contiguous layer
+      return e.date === dateStr;
     });
 
     return (
@@ -181,7 +184,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
           // Position inside the day column inside slotsRef (no HEADER_H offset inside slotsRef)
           const top = ((topMinutes - START_HOUR * 60) / 60) * SLOT_H;
           const height = Math.max(26, ((bottomMinutes - topMinutes) / 60) * SLOT_H);
-          const color = getCalendarColor(event.calendarId);
+          const color = event.color || getCalendarColor(event.calendarId);
 
           const isBeingDragged = movingEvent?.id === event.id;
           const isBeingResized = resizingEvent?.id === event.id;
@@ -274,6 +277,49 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
           {[0, 1, 2, 3, 4, 5, 6].map(renderDayColumn)}
           </div>
 
+          {/* Multi-day timed events layer (single contiguous frame across columns) */}
+          {weekEvents.filter(e => !e.isAllDay && e.endDate && e.endDate !== e.date).map(event => {
+            const rect = slotsRef.current?.getBoundingClientRect();
+            const columnWidth = rect ? (rect.width - TIME_LABEL_WIDTH) / 7 : 0;
+
+            const startIdx = Math.max(0, Math.min(6, diffInDays(parseDate(event.date), selectedWeekStart)));
+            const endIdx = Math.max(0, Math.min(6, diffInDays(parseDate(event.endDate), selectedWeekStart)));
+            const span = Math.max(1, endIdx - startIdx + 1);
+
+            const eventStartMinutes = parseTime(event.startTime || '09:00');
+            const eventEndMinutes = parseTime(event.endTime || '10:00');
+            const topMinutes = Math.max(START_HOUR * 60, eventStartMinutes);
+            const bottomMinutes = Math.min(END_HOUR * 60, eventEndMinutes);
+
+            const top = ((topMinutes - START_HOUR * 60) / 60) * SLOT_H;
+            const height = Math.max(26, ((bottomMinutes - topMinutes) / 60) * SLOT_H);
+            const left = TIME_LABEL_WIDTH + startIdx * columnWidth + 4;
+            const width = span * columnWidth - 8;
+            const color = event.color || getCalendarColor(event.calendarId);
+
+            return (
+              <div
+                key={event.id}
+                role="button"
+                tabIndex={0}
+                className="absolute rounded-lg px-3 py-1 text-xs border cursor-pointer z-30 shadow-md backdrop-blur-xs transition-all event-block"
+                style={{
+                  left: `${left}px`,
+                  width: `${width}px`,
+                  top: `${top}px`,
+                  height: `${height}px`,
+                  backgroundColor: `${color}35`,
+                  borderColor: color,
+                  color: 'inherit'
+                }}
+                onClick={() => handleEditClick(event.id, event.title, event.type, event.calendarId, event.isAllDay, color)}
+              >
+                <div className="font-semibold truncate">{event.title}</div>
+                <div className="text-[10px] opacity-80 font-mono truncate">{event.time}</div>
+              </div>
+            );
+          })}
+
           {/* Multi-day drag preview overlay */}
           {draggingNew && (() => {
             const rect = slotsRef.current?.getBoundingClientRect();
@@ -327,6 +373,8 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
               ? formattedDate
               : `${formattedDate} · ${format12Hour(editingEvent.startTime)} – ${format12Hour(editingEvent.endTime)}`;
 
+            const activeColor = editingColor || editingEvent.color || getCalendarColor(editingCalendarId);
+
             return (
               <div
                 className="absolute bg-surface-container p-4 rounded-2xl shadow-2xl border border-outline-variant/40 z-50 flex flex-col gap-3 backdrop-blur-md animate-in fade-in zoom-in-95 duration-150"
@@ -334,7 +382,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
                   top: `${editorTop}px`,
                   left: `${editorLeft}px`,
                   width: '300px',
-                  maxHeight: '420px'
+                  maxHeight: '460px'
                 }}
               >
                 {/* Title Input */}
@@ -374,6 +422,47 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
                 <div className="flex items-center gap-2 text-xs text-secondary font-medium py-1">
                   <Clock className="w-3.5 h-3.5 text-primary flex-shrink-0" />
                   <span className="truncate">{timeRangeText}</span>
+                </div>
+
+                {/* Color Swatches Palette */}
+                <div className="flex flex-col gap-1.5 pt-1.5 border-t border-outline-variant/20">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-secondary font-medium">Color Palette</span>
+                    <input
+                      type="color"
+                      value={activeColor}
+                      onChange={(e) => setEditingColor(e.target.value)}
+                      className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent"
+                      title="Custom color"
+                    />
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { name: 'Brown', hex: '#8b5e3c' },
+                      { name: 'Blue', hex: '#3b82f6' },
+                      { name: 'Green', hex: '#10b981' },
+                      { name: 'Purple', hex: '#8b5cf6' },
+                      { name: 'Orange', hex: '#f97316' },
+                      { name: 'Red', hex: '#ef4444' },
+                      { name: 'Amber', hex: '#f59e0b' },
+                      { name: 'Teal', hex: '#06b6d4' },
+                      { name: 'Pink', hex: '#ec4899' },
+                      { name: 'Slate', hex: '#64748b' },
+                    ].map(preset => (
+                      <button
+                        key={preset.hex}
+                        type="button"
+                        onClick={() => setEditingColor(preset.hex)}
+                        className={`w-5 h-5 rounded-full transition-all border ${
+                          activeColor === preset.hex
+                            ? 'scale-125 border-white shadow-md ring-2 ring-primary/50'
+                            : 'border-transparent hover:scale-110 opacity-80 hover:opacity-100'
+                        }`}
+                        style={{ backgroundColor: preset.hex }}
+                        title={preset.name}
+                      />
+                    ))}
+                  </div>
                 </div>
 
                 {/* Calendar Picker & All Day Checkbox */}

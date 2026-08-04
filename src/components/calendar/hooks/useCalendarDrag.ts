@@ -61,6 +61,7 @@ export const useCalendarDrag = (
   const [editingType, setEditingType] = useState('Event');
   const [editingCalendarId, setEditingCalendarId] = useState<string>(lastUsedCalendarId);
   const [editingIsAllDay, setEditingIsAllDay] = useState<boolean>(false);
+  const [editingColor, setEditingColor] = useState<string>('');
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
   const [capturedElement, setCapturedElement] = useState<Element | null>(null);
 
@@ -377,6 +378,8 @@ export const useCalendarDrag = (
     handlePointerUp,
     handleEventPointerDown,
     editingIsAllDay,
-    setEditingIsAllDay
+    setEditingIsAllDay,
+    editingColor,
+    setEditingColor
   };
 };
