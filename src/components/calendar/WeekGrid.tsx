@@ -134,7 +134,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
         const e2End = parseTime(e2.endTime || '23:59');
         if (s2 < endMin && e2End > startMin) concurrent++;
       }
-      return { ...event, _totalLanes: Math.max(concurrent, lanes.length) };
+      return { ...event, _totalLanes: Math.max(1, concurrent) };
     });
   };
 
@@ -196,9 +196,9 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     const columnDate = addDays(selectedWeekStart, dayOffset);
     const isToday = isSameDay(columnDate, now);
     const dateStr = formatDate(columnDate);
-    // Filter events for single-day timed events in this column (hide pending until saved)
+    // Filter events for single-day timed events in this column
     const dayTimedEvents = weekEvents.filter(e => {
-      if (e.isPending) return false;
+      if (e.isPending && draggingNew) return false; // Hide pending only while active drag preview is drawing
       if (e.isAllDay) return false;
       if (e.endDate && e.endDate !== e.date) return false; // Multi-day timed events rendered in contiguous layer
       return e.date === dateStr;
