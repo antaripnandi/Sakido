@@ -70,9 +70,9 @@ export const EventBlock: React.FC<EventBlockProps> = ({
         height: isAllDay ? '100%' : `${height}px`,
         left: leftPos,
         width: widthPos,
-        backgroundColor: `${displayColor}25`,
+        backgroundColor: displayColor,
         borderColor: displayColor,
-        color: 'inherit'
+        color: '#ffffff'
       }}
       onPointerDown={(e) => {
         downPos.current = { x: e.clientX, y: e.clientY };

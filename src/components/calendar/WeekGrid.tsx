@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Clock } from 'lucide-react';
+import { Clock, Trash2 } from 'lucide-react';
 import { parseTime, minutesToTime, addDays, formatDate, isSameDay, format12Hour, formatFriendlyDate, diffInDays, parseDate } from './utils/calendarUtils';
 import { useCalendarDrag } from './hooks/useCalendarDrag';
 import { EventBlock } from './EventBlock';
@@ -174,6 +174,13 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     setEditingEventId(null);
   }, [setEditingEventId, editingEventId, setEvents, onEditingEnd]);
 
+  const handleDeleteEdit = useCallback(() => {
+    if (!editingEventId) return;
+    setEvents(prev => prev.filter(e => e.id !== editingEventId));
+    if (editingEventId) onEditingEnd?.(editingEventId);
+    setEditingEventId(null);
+  }, [editingEventId, setEvents, onEditingEnd]);
+
   const handleEditClick = useCallback((id: string, title: string, type: string, calendarId: string, isAllDay: boolean, color?: string) => {
     onEditingStart?.(id); // Lock event
     setEditingEventId(id);
@@ -345,9 +352,9 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
                   width: `${width}px`,
                   top: `${top}px`,
                   height: `${height}px`,
-                  backgroundColor: `${color}35`,
+                  backgroundColor: color,
                   borderColor: color,
-                  color: 'inherit'
+                  color: '#ffffff'
                 }}
                 onClick={() => handleEditClick(event.id, event.title, event.type, event.calendarId, event.isAllDay, color)}
               >
@@ -532,21 +539,32 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-2 justify-end pt-2 border-t border-outline-variant/20 mt-auto">
+                <div className="flex gap-2 items-center justify-between pt-2 border-t border-outline-variant/20 mt-auto">
                   <button
                     type="button"
-                    onClick={handleCancelEdit}
-                    className="text-xs px-3.5 py-1.5 rounded-lg text-secondary hover:bg-surface-container-high transition-colors"
+                    onClick={handleDeleteEdit}
+                    className="text-xs px-2.5 py-1.5 rounded-lg text-red-500 hover:bg-red-500/10 font-medium transition-colors flex items-center gap-1"
+                    title="Delete event"
                   >
-                    Cancel
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleSaveEdit}
-                    className="text-xs px-4 py-1.5 bg-primary text-on-primary font-medium rounded-lg shadow-xs hover:opacity-90 transition-opacity"
-                  >
-                    Save
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleCancelEdit}
+                      className="text-xs px-3.5 py-1.5 rounded-lg text-secondary hover:bg-surface-container-high transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveEdit}
+                      className="text-xs px-4 py-1.5 bg-primary text-on-primary font-medium rounded-lg shadow-xs hover:opacity-90 transition-opacity"
+                    >
+                      Save
+                    </button>
+                  </div>
                 </div>
               </div>
             );

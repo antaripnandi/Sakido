@@ -136,6 +136,10 @@ export const useCalendarDrag = (
 
     if (draggingNew) {
       const currentTime = clientYToGridTime(e.clientY);
+      const currentDay = clientXToDayIndex(e.clientX);
+
+      const newStartDay = Math.min(draggingNew.initialDay, currentDay);
+      const newEndDay = Math.max(draggingNew.initialDay, currentDay);
 
       const newStartTime = parseTime(draggingNew.initialTime) < parseTime(currentTime)
         ? draggingNew.initialTime
@@ -146,9 +150,8 @@ export const useCalendarDrag = (
 
       setDraggingNew(prev => prev ? {
         ...prev,
-        // Lock to initial column (Google Calendar single-column drag)
-        startDay: prev.initialDay,
-        endDay: prev.initialDay,
+        startDay: newStartDay,
+        endDay: newEndDay,
         startTime: newStartTime,
         endTime: newEndTime,
       } : null);
@@ -223,7 +226,8 @@ export const useCalendarDrag = (
         : 999;
       const wasClick = movedDistance < 5;
 
-      const startDate = addDays(selectedWeekStart, draggingNew.initialDay);
+      const startDate = addDays(selectedWeekStart, draggingNew.startDay);
+      const endDate = addDays(selectedWeekStart, draggingNew.endDay);
 
       const defaultCalendar = calendars.find(c => c.isDefault) || calendars[0];
       const targetCalendarId = editingCalendarId || defaultCalendar?.id;
@@ -240,7 +244,7 @@ export const useCalendarDrag = (
         id: `evt-${Date.now()}`,
         title: 'New Event',
         date: formatDate(startDate),
-        endDate: undefined, // Single column only
+        endDate: draggingNew.endDay > draggingNew.startDay ? formatDate(endDate) : undefined,
         startTime: startTime,
         endTime: endTime,
         time: `${startTime} - ${endTime}`,
