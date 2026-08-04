@@ -1,5 +1,6 @@
 /**
- * Time calculation utilities for calendar components
+ * Time and Date calculation utilities for Sakido Calendar components.
+ * Includes local-midnight normalization to ensure 100% accurate day index matching.
  */
 
 export const parseTime = (time: string): number => {
