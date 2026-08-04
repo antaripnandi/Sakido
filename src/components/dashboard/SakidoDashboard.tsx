@@ -675,6 +675,9 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   // Track events being edited (locked from 60s poll overwrite)
   const [editingEventIds, setEditingEventIds] = useState<Set<string>>(new Set());
 
+  // Track deleted Google Calendar IDs to prevent ghost afterimages
+  const [deletedGcalIds, setDeletedGcalIds] = useState<Set<string>>(new Set());
+
   // In-App Video Player Modal state
   const [activeVideo, setActiveVideo] = useState<{
     id: string;
@@ -1171,6 +1174,38 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       setEvents(prev => prev.map(e => e.id === event.id ? { ...e, syncStatus: 'failed' } : e));
     }
   };
+
+  const deleteGoogleCalendarEvent = useCallback(async (event: any) => {
+    const gcalId = event.gcalId || (typeof event.id === 'string' && event.id.startsWith('gcal-') ? event.id.replace(/^gcal-/, '') : null);
+
+    if (gcalId) {
+      setDeletedGcalIds(prev => new Set(prev).add(gcalId));
+      setGoogleCalendarEvents(prev => prev.filter(e => e.gcalId !== gcalId && e.id !== event.id && e.id !== `gcal-${gcalId}`));
+    }
+    setEvents(prev => prev.filter(e => e.id !== event.id && (gcalId ? e.gcalId !== gcalId : true)));
+
+    if (!connectors.googleCalendar || !gcalId) return;
+
+    const cal = calendars.find((c: any) => c.id === event.calendarId);
+    const gcalCalId = event.gcalCalendarId || cal?.googleCalendarId || 'primary';
+
+    try {
+      const res = await executeGoogleApi((accessToken) =>
+        fetch(
+          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(gcalCalId)}/events/${encodeURIComponent(gcalId)}`,
+          {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }
+        )
+      );
+      if (res && (res.ok || res.status === 404 || res.status === 410)) {
+        setConnectorNotice(`🗑️ Event deleted from Google Calendar.`);
+      }
+    } catch (err) {
+      console.warn('Google Calendar DELETE error:', err);
+    }
+  }, [connectors.googleCalendar, calendars, executeGoogleApi]);
 
   const handleAddEvent = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2164,12 +2199,14 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         events.filter(e => e.gcalId).map(e => [e.gcalId, e])
       );
 
-      const googleWithOverlay = googleCalendarEvents.map(google => {
-        const local = localByGcalId.get(google.gcalId);
-        return local || google;
-      });
+      const googleWithOverlay = googleCalendarEvents
+        .filter(google => !deletedGcalIds.has(google.gcalId) && !deletedGcalIds.has(google.id) && !deletedGcalIds.has(google.id?.replace(/^gcal-/, '')))
+        .map(google => {
+          const local = localByGcalId.get(google.gcalId);
+          return local || google;
+        });
 
-      const unmatchedLocal = events.filter(e => !e.gcalId);
+      const unmatchedLocal = events.filter(e => !e.gcalId && !deletedGcalIds.has(e.id));
       const allEvents = connectors.googleCalendar
         ? [...googleWithOverlay, ...unmatchedLocal]
         : events;
@@ -2404,6 +2441,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   // Pending drag-created events are only synced after the user saves them.
                   setEvents(prev => [...prev, event]);
                 }}
+                onEventDelete={deleteGoogleCalendarEvent}
                 setEvents={setEvents}
                 lastUsedCalendarId={lastUsedCalendarId}
                 setLastUsedCalendarId={setLastUsedCalendarId}

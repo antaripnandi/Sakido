@@ -17,6 +17,7 @@ export interface WeekGridProps {
   visibleCalendars: string[];
   onEventUpdate: (event: any) => void;
   onEventCreate: (event: any) => void;
+  onEventDelete?: (event: any) => void;
   setEvents: React.Dispatch<React.SetStateAction<any[]>>; // Pass setEvents to useCalendarDrag
   lastUsedCalendarId: string;
   setLastUsedCalendarId: React.Dispatch<React.SetStateAction<string>>; // Add setLastUsedCalendarId
@@ -31,6 +32,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
   visibleCalendars,
   onEventUpdate,
   onEventCreate,
+  onEventDelete,
   setEvents,
   lastUsedCalendarId,
   setLastUsedCalendarId,
@@ -176,10 +178,14 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
 
   const handleDeleteEdit = useCallback(() => {
     if (!editingEventId) return;
+    const eventToDelete = events.find(e => e.id === editingEventId);
     setEvents(prev => prev.filter(e => e.id !== editingEventId));
+    if (eventToDelete) {
+      onEventDelete?.(eventToDelete);
+    }
     if (editingEventId) onEditingEnd?.(editingEventId);
     setEditingEventId(null);
-  }, [editingEventId, setEvents, onEditingEnd]);
+  }, [editingEventId, events, setEvents, onEventDelete, onEditingEnd]);
 
   const handleEditClick = useCallback((id: string, title: string, type: string, calendarId: string, isAllDay: boolean, color?: string) => {
     onEditingStart?.(id); // Lock event
