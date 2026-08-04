@@ -60,3 +60,22 @@ export const parseDate = (value: string): Date => {
 /** Whole-day difference between two local dates, DST-safe (rounds). */
 export const diffInDays = (a: Date, b: Date): number =>
   Math.round((a.getTime() - b.getTime()) / 86400000);
+
+export const format12Hour = (timeStr?: string): string => {
+  if (!timeStr) return '';
+  const [hStr, mStr] = timeStr.split(':');
+  let h = parseInt(hStr, 10);
+  const m = parseInt(mStr, 10);
+  if (isNaN(h) || isNaN(m)) return timeStr;
+  const ampm = h >= 12 ? 'pm' : 'am';
+  h = h % 12;
+  if (h === 0) h = 12;
+  return m === 0 ? `${h}${ampm}` : `${h}:${m.toString().padStart(2, '0')}${ampm}`;
+};
+
+export const formatFriendlyDate = (dateStr: string): string => {
+  if (!dateStr) return '';
+  const d = parseDate(dateStr);
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+};
+

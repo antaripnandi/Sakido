@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { parseTime, minutesToTime, addDays, formatDate, isSameDay, snapToQuarter } from './utils/calendarUtils';
+import { Clock } from 'lucide-react';
+import { parseTime, minutesToTime, addDays, formatDate, isSameDay, snapToQuarter, format12Hour, formatFriendlyDate, diffInDays, parseDate } from './utils/calendarUtils';
 import { useCalendarDrag } from './hooks/useCalendarDrag';
 import { EventBlock } from './EventBlock';
 import { AllDayRow } from './AllDayRow';
@@ -90,11 +91,10 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     return `${hour.toString().padStart(2, '0')}:00`;
   });
 
-  // Filter events by visible calendars and current week (hide pending events)
+  // Filter events by visible calendars and current week
   const weekStartStr = formatDate(selectedWeekStart);
   const weekEndStr = formatDate(addDays(selectedWeekStart, 6));
   const weekEvents = events.filter(e => {
-    if (e.isPending) return false; // ponytail: hide until Save clicked
     if (!visibleCalendars.includes(e.calendarId)) return false;
     // Compare the event range against the week range so multi-day events that
     // start before (or end after) the week are still shown, matching AllDayRow.
@@ -118,7 +118,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
       startTime: editingIsAllDay ? undefined : event.startTime,
       endTime: editingIsAllDay ? undefined : event.endTime,
       time: editingIsAllDay ? undefined : event.time,
-      isPending: false, // ponytail: confirm creation
+      isPending: false, // confirm creation
     };
     onEventUpdate(updatedEvent);
     if (editingEventId) onEditingEnd?.(editingEventId); // Unlock event
@@ -152,8 +152,13 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     const columnDate = addDays(selectedWeekStart, dayOffset);
     const isToday = isSameDay(columnDate, now);
     const dateStr = formatDate(columnDate);
-    // Filter events for timed events in this column
-    const dayTimedEvents = weekEvents.filter(e => e.date === dateStr && !e.isAllDay && !e.endDate);
+    // Filter events for timed events active in this column
+    const dayTimedEvents = weekEvents.filter(e => {
+      if (e.isAllDay) return false;
+      const start = e.date;
+      const end = e.endDate || e.date;
+      return start <= dateStr && end >= dateStr;
+    });
 
     return (
       <div key={dayOffset} className="relative border-r border-outline-variant/20 last:border-r-0">
@@ -167,14 +172,15 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
 
         {/* Events */}
         {dayTimedEvents.map(event => {
-          const eventStartMinutes = parseTime(event.startTime);
-          const eventEndMinutes = parseTime(event.endTime);
+          const eventStartMinutes = parseTime(event.startTime || '09:00');
+          const eventEndMinutes = parseTime(event.endTime || '10:00');
 
           const topMinutes = Math.max(START_HOUR * 60, eventStartMinutes);
           const bottomMinutes = Math.min(END_HOUR * 60, eventEndMinutes);
 
-          const top = HEADER_H + ((topMinutes - START_HOUR * 60) / 60) * SLOT_H;
-          const height = ((bottomMinutes - topMinutes) / 60) * SLOT_H;
+          // Position inside the day column inside slotsRef (no HEADER_H offset inside slotsRef)
+          const top = ((topMinutes - START_HOUR * 60) / 60) * SLOT_H;
+          const height = Math.max(26, ((bottomMinutes - topMinutes) / 60) * SLOT_H);
           const color = getCalendarColor(event.calendarId);
 
           const isBeingDragged = movingEvent?.id === event.id;
@@ -196,12 +202,6 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
             />
           );
         })}
-
-        {/* Removed single-column preview - now rendered outside column loop */}
-
-        {/* Removed inline editor - now rendered outside column loop */}
-
-        {/* Removed current time line - now rendered outside column loop */}
       </div>
     );
   };
@@ -278,62 +278,112 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
           {draggingNew && (() => {
             const rect = slotsRef.current?.getBoundingClientRect();
             const columnWidth = rect ? (rect.width - TIME_LABEL_WIDTH) / 7 : 0;
+            const top = ((parseTime(draggingNew.startTime) - START_HOUR * 60) / 60) * SLOT_H;
+            const height = Math.max(26, ((parseTime(draggingNew.endTime) - parseTime(draggingNew.startTime)) / 60) * SLOT_H);
+            const left = TIME_LABEL_WIDTH + (draggingNew.startDay * columnWidth);
+            const width = (draggingNew.endDay - draggingNew.startDay + 1) * columnWidth - 8;
+            const timeText = `${format12Hour(draggingNew.startTime)} – ${format12Hour(draggingNew.endTime)}`;
+
             return (
               <div
-                className="absolute rounded px-2 py-1 text-xs border bg-blue-500/20 border-blue-500 text-blue-800"
+                className="absolute rounded-lg px-3 py-1.5 text-xs border border-primary bg-primary/25 text-on-surface shadow-md backdrop-blur-xs flex flex-col justify-between"
                 style={{
-                  left: `${TIME_LABEL_WIDTH + (draggingNew.startDay * columnWidth)}px`,
-                  width: `${(draggingNew.endDay - draggingNew.startDay + 1) * columnWidth - 8}px`,
-                  top: `${HEADER_H + ((parseTime(draggingNew.startTime) - START_HOUR * 60) / 60) * SLOT_H}px`,
-                  height: `${Math.max(26, ((parseTime(draggingNew.endTime) - parseTime(draggingNew.startTime)) / 60) * SLOT_H)}px`,
+                  left: `${left}px`,
+                  width: `${width}px`,
+                  top: `${top}px`,
+                  height: `${height}px`,
                   zIndex: 100,
                   pointerEvents: 'none'
                 }}
               >
-                <div className="font-medium truncate">New Event</div>
+                <div className="font-semibold text-primary truncate">New Event</div>
+                <div className="text-[11px] opacity-80 font-mono truncate">{timeText}</div>
               </div>
             );
           })()}
 
-          {/* Popover inline editor */}
+          {/* Popover inline editor (Google Calendar Style Card) */}
           {editingEventId && (() => {
             const editingEvent = events.find(e => e.id === editingEventId);
             if (!editingEvent) return null;
-            const editorTop = HEADER_H + ((parseTime(editingEvent.startTime || '09:00') - START_HOUR * 60) / 60) * SLOT_H;
+            const rect = slotsRef.current?.getBoundingClientRect();
+            const columnWidth = rect ? (rect.width - TIME_LABEL_WIDTH) / 7 : 0;
+
+            const dayIndex = editingEvent.date
+              ? diffInDays(parseDate(editingEvent.date), selectedWeekStart)
+              : 0;
+            const clampedDay = Math.max(0, Math.min(6, dayIndex));
+
+            const editorTop = ((parseTime(editingEvent.startTime || '09:00') - START_HOUR * 60) / 60) * SLOT_H;
+
+            // Position editor popover dynamically anchored to the selected event column
+            let editorLeft = TIME_LABEL_WIDTH + clampedDay * columnWidth + 10;
+            if (editorLeft + 310 > (rect?.width || 800)) {
+              editorLeft = Math.max(10, TIME_LABEL_WIDTH + clampedDay * columnWidth - 300);
+            }
+
+            const formattedDate = formatFriendlyDate(editingEvent.date);
+            const timeRangeText = editingIsAllDay
+              ? formattedDate
+              : `${formattedDate} · ${format12Hour(editingEvent.startTime)} – ${format12Hour(editingEvent.endTime)}`;
+
             return (
               <div
-                className="absolute left-2 bg-surface-container p-3 rounded-lg shadow-xl border border-outline-variant/30 z-50 flex flex-col gap-2"
+                className="absolute bg-surface-container p-4 rounded-2xl shadow-2xl border border-outline-variant/40 z-50 flex flex-col gap-3 backdrop-blur-md animate-in fade-in zoom-in-95 duration-150"
                 style={{
                   top: `${editorTop}px`,
-                  width: '280px',
-                  maxHeight: '400px'
+                  left: `${editorLeft}px`,
+                  width: '300px',
+                  maxHeight: '420px'
                 }}
               >
+                {/* Title Input */}
                 <input
                   ref={editorInputRef}
                   type="text"
                   value={editingTitle}
                   onChange={(e) => setEditingTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveEdit();
+                    if (e.key === 'Escape') handleCancelEdit();
+                  }}
                   placeholder="Add title"
-                  className="text-sm font-medium bg-transparent border-b focus:outline-none"
+                  className="text-base font-semibold bg-transparent border-b border-outline-variant/40 pb-1.5 focus:border-primary focus:outline-none transition-colors"
                   autoFocus
                 />
-                <div className="flex flex-col gap-2 mt-2">
-                  <div className="flex gap-2">
-                    <select
-                      value={editingType}
-                      onChange={(e) => setEditingType(e.target.value)}
-                      className="text-xs px-2 py-1 rounded bg-surface-container-high"
+
+                {/* Event Type Selector Pills */}
+                <div className="flex gap-1.5">
+                  {['Event', 'Exam', 'Lecture', 'Deadline'].map(type => (
+                    <button
+                      key={type}
+                      type="button"
+                      onClick={() => setEditingType(type)}
+                      className={`text-xs px-2.5 py-1 rounded-full font-medium transition-all ${
+                        editingType === type
+                          ? 'bg-primary text-on-primary shadow-xs'
+                          : 'bg-surface-container-high hover:bg-surface-container-highest text-secondary'
+                      }`}
                     >
-                      <option value="Event">Event</option>
-                      <option value="Exam">Exam</option>
-                      <option value="Lecture">Lecture</option>
-                      <option value="Deadline">Deadline</option>
-                    </select>
+                      {type}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Date & Time Range Info */}
+                <div className="flex items-center gap-2 text-xs text-secondary font-medium py-1">
+                  <Clock className="w-3.5 h-3.5 text-primary flex-shrink-0" />
+                  <span className="truncate">{timeRangeText}</span>
+                </div>
+
+                {/* Calendar Picker & All Day Checkbox */}
+                <div className="flex flex-col gap-2.5 pt-1 border-t border-outline-variant/20">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-secondary font-medium">Calendar</span>
                     <select
                       value={editingCalendarId}
                       onChange={(e) => setEditingCalendarId(e.target.value)}
-                      className="text-xs px-2 py-1 rounded bg-surface-container-high flex-1"
+                      className="text-xs px-2.5 py-1 rounded-lg bg-surface-container-high border border-outline-variant/30 text-on-surface focus:outline-none"
                     >
                       {calendars.filter(c => visibleCalendars.includes(c.id)).map(cal => (
                         <option key={cal.id} value={cal.id}>
@@ -342,20 +392,35 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
                       ))}
                     </select>
                   </div>
-                  <div className="flex items-center gap-2 mt-2">
+
+                  <label htmlFor={`isAllDayEvent-${editingEventId}`} className="flex items-center gap-2 text-xs text-on-surface cursor-pointer select-none">
                     <input
                       type="checkbox"
                       id={`isAllDayEvent-${editingEventId}`}
                       checked={editingIsAllDay}
                       onChange={(e) => setEditingIsAllDay(e.target.checked)}
-                      className="w-4 h-4"
+                      className="w-4 h-4 rounded border-outline-variant text-primary focus:ring-primary"
                     />
-                    <label htmlFor={`isAllDayEvent-${editingEventId}`} className="text-sm text-on-surface">All day</label>
-                  </div>
+                    <span>All day</span>
+                  </label>
                 </div>
-                <div className="flex gap-2 justify-end mt-auto">
-                  <button onClick={handleCancelEdit} className="text-xs px-3 py-1">Cancel</button>
-                  <button onClick={handleSaveEdit} className="text-xs px-3 py-1 bg-primary text-white rounded">Save</button>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2 justify-end pt-2 border-t border-outline-variant/20 mt-auto">
+                  <button
+                    type="button"
+                    onClick={handleCancelEdit}
+                    className="text-xs px-3.5 py-1.5 rounded-lg text-secondary hover:bg-surface-container-high transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSaveEdit}
+                    className="text-xs px-4 py-1.5 bg-primary text-on-primary font-medium rounded-lg shadow-xs hover:opacity-90 transition-opacity"
+                  >
+                    Save
+                  </button>
                 </div>
               </div>
             );
@@ -371,7 +436,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
             }
             const rect = slotsRef.current?.getBoundingClientRect();
             const columnWidth = rect ? (rect.width - TIME_LABEL_WIDTH) / 7 : 0;
-            const topPos = HEADER_H + (((now.getHours() - START_HOUR) * 60 + now.getMinutes()) / 60) * SLOT_H;
+            const topPos = (((now.getHours() - START_HOUR) * 60 + now.getMinutes()) / 60) * SLOT_H;
 
             return (
               <div
@@ -392,3 +457,4 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     </div>
   );
 };
+

@@ -25,9 +25,9 @@ export const AllDayRow: React.FC<AllDayRowProps> = ({
   const weekEndStr = formatDate(addDays(selectedWeekStart, 6));
 
   const allDayEvents = events.filter(e => {
+    if (e.isPending && !e.isAllDay) return false;
     if (!visibleCalendars.includes(e.calendarId)) return false;
-    // Ensure it's an all-day or multi-day event
-    if (!e.isAllDay && !e.endDate) return false;
+    if (!e.isAllDay) return false;
     // Check if event overlaps with the current week
     const eventStartDate = e.date;
     const eventEndDate = e.endDate || e.date;

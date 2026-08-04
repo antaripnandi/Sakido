@@ -87,13 +87,12 @@ export const useCalendarDrag = (
   }, [getGridRect, getColumnWidth]);
 
   const clientYToGridTime = useCallback((clientY: number) => {
-    // Measure from the hour-slot grid (below the all-day row), then subtract
-    // the day header so the pointer maps to the slot under it — not one hour
-    // later as when measuring from the outer container's top.
+    // Measure from the hour-slot grid (below the all-day row).
+    // The grid element is slotsRef, which starts right below the all-day row.
     const rect = slotsRef.current?.getBoundingClientRect();
     if (!rect) return minutesToTime(START_HOUR * 60);
 
-    const offsetPx = clientY - rect.top - HEADER_H;
+    const offsetPx = clientY - rect.top;
     const minutesFromTop = (offsetPx / SLOT_H) * 60;
     const snappedMinutes = snapToQuarter(minutesFromTop + START_HOUR * 60);
     return minutesToTime(Math.max(START_HOUR * 60, Math.min(END_HOUR * 60, snappedMinutes)));
@@ -106,6 +105,10 @@ export const useCalendarDrag = (
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     setDragStartPos({ x: e.clientX, y: e.clientY });
+
+    // Reset stale editing states from previous interactions
+    setEditingIsAllDay(false);
+    setEditingType('Event');
 
     const rect = getGridRect();
     if (!rect) return;
@@ -246,14 +249,14 @@ export const useCalendarDrag = (
         title: 'New Event',
         date: formatDate(startDate),
         endDate: draggingNew.endDay > draggingNew.startDay ? formatDate(endDate) : undefined,
-        startTime: editingIsAllDay ? undefined : startTime,
-        endTime: editingIsAllDay ? undefined : endTime,
-        time: editingIsAllDay ? undefined : `${startTime} - ${endTime}`,
-        type: editingType,
+        startTime: startTime,
+        endTime: endTime,
+        time: `${startTime} - ${endTime}`,
+        type: editingType || 'Event',
         calendarId: targetCalendarId,
         recurrence: 'none',
-        isAllDay: editingIsAllDay,
-        isPending: true, // ponytail: hide until user clicks Save
+        isAllDay: false, // Drag/click on grid is always a timed event
+        isPending: true,
       };
 
       onEventCreate(newEvent);
@@ -264,7 +267,7 @@ export const useCalendarDrag = (
       setEditingTitle(newEvent.title);
       setEditingType(newEvent.type);
       setEditingCalendarId(newEvent.calendarId);
-      setEditingIsAllDay(newEvent.isAllDay);
+      setEditingIsAllDay(false);
     } else if (resizingEvent) {
       const event = events.find(ev => ev.id === resizingEvent.id);
       if (event) {
