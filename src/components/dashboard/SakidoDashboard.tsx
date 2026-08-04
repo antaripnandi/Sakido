@@ -43,6 +43,7 @@ import {
   LayoutDashboard,
   PanelLeftClose,
   PanelLeftOpen,
+  Kanban,
   Tag,
   AlertCircle,
   MapPin,
@@ -59,12 +60,14 @@ import { FocusTimerView, FocusSessionConfig } from '../focus/FocusTimerView';
 import { TaskDetailModal, NoteDetailModal, CourseDetailModal } from './DetailModals';
 import { DashboardView } from './DashboardView';
 import { ConnectorsView } from '../connectors/ConnectorsView';
+import { KanbanBoard } from './KanbanBoard';
 
 const TAB_SLUGS: { slug: string; name: string }[] = [
   { slug: 'overview', name: 'Overview' },
   { slug: 'classes', name: 'Classes' },
   { slug: 'calendar', name: 'Calendar' },
   { slug: 'tasks', name: 'Tasks & Grades' },
+  { slug: 'kanban', name: 'Kanban Board' },
   { slug: 'flashcards', name: 'Flashcards' },
   { slug: 'watch-later', name: 'Watch Later' },
   { slug: 'notes', name: 'Notes' },
@@ -2891,6 +2894,18 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       );
     }
 
+    if (activeTab === 'Kanban Board') {
+      return (
+        <KanbanBoard
+          tasks={tasks}
+          courses={classes}
+          schedule={events}
+          watchLater={watchLater}
+          onNavigate={(tab) => handleSelectTab(tab)}
+        />
+      );
+    }
+
     if (activeTab === 'Flashcards') {
       return (
         <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 pl-0 lg:pl-8 border-t lg:border-t-0 lg:border-l border-outline-variant/30 pt-6 lg:pt-0">
@@ -3432,6 +3447,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               { name: 'Classes', icon: BookOpen },
               { name: 'Calendar', icon: CalendarIcon },
               { name: 'Tasks & Grades', icon: CheckCircle2 },
+              { name: 'Kanban Board', icon: Kanban },
               { name: 'Flashcards', icon: Layers },
               { name: 'Watch Later', icon: Video },
               { name: 'Notes', icon: FileText },
