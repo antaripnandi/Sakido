@@ -33,6 +33,7 @@ export const startOfWeek = (date: Date): Date => {
   const day = result.getDay();
   const diff = day === 0 ? -6 : 1 - day; // Monday as start
   result.setDate(result.getDate() + diff);
+  result.setHours(0, 0, 0, 0);
   return result;
 };
 
@@ -54,12 +55,15 @@ export const formatDate = (date: Date): string => {
  */
 export const parseDate = (value: string): Date => {
   const [y, m, d] = value.split('-').map(Number);
-  return new Date(y, m - 1, d);
+  return new Date(y, m - 1, d, 0, 0, 0, 0);
 };
 
 /** Whole-day difference between two local dates, DST-safe (rounds). */
-export const diffInDays = (a: Date, b: Date): number =>
-  Math.round((a.getTime() - b.getTime()) / 86400000);
+export const diffInDays = (a: Date, b: Date): number => {
+  const aMidnight = new Date(a.getFullYear(), a.getMonth(), a.getDate());
+  const bMidnight = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+  return Math.round((aMidnight.getTime() - bMidnight.getTime()) / 86400000);
+};
 
 export const format12Hour = (timeStr?: string): string => {
   if (!timeStr) return '';

@@ -666,11 +666,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   // Week view state for unified calendar
   const [selectedWeekStart, setSelectedWeekStart] = useState<Date>(() => {
-    const now = new Date();
-    const day = now.getDay();
-    const monday = new Date(now);
-    monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
-    return monday;
+    return startOfWeek(new Date());
   });
 
   // Track last used calendar for smart defaults
