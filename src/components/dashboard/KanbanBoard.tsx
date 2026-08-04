@@ -73,7 +73,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   watchLater = [],
   onNavigate,
 }) => {
-  // Persistent Kanban items state - Start clean with NO hardcoded demo items!
+  // Persistent Kanban items state
   const [boardItems, setBoardItems] = useLocalStorageState<KanbanItem[]>('sakido_kanban_board', []);
 
   // Drag & drop state feedback
@@ -289,7 +289,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12">
       {/* Header Strip */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-outline pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-outline-variant/30 pb-4">
         <div>
           <div className="flex items-center gap-2.5">
             <h2 className="font-display text-2xl font-bold text-on-surface tracking-tight">
@@ -304,7 +304,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         <div className="flex items-center gap-2">
           <button
             onClick={() => handleAddItem('todo')}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary hover:opacity-90 font-semibold text-xs transition-all border-2 border-primary cursor-pointer shadow-2xs"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary hover:opacity-90 font-semibold text-xs transition-all border border-primary cursor-pointer shadow-2xs"
           >
             <Plus className="w-4 h-4" />
             New Card
@@ -312,7 +312,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
       </div>
 
-      {/* 1. THREE KANBAN COLUMNS - Distinct Solid Bold Borders */}
+      {/* 1. THREE KANBAN COLUMNS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {columns.map((col) => {
           const itemsInCol = boardItems.filter((i) => i.status === col.id);
@@ -324,20 +324,20 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               onDragOver={(e) => handleDragOverColumn(e, col.id)}
               onDragLeave={handleDragLeaveColumn}
               onDrop={(e) => handleDropOnColumn(e, col.id)}
-              className={`flex flex-col rounded-2xl border-2 transition-all duration-200 bg-surface-container-low/60 dark:bg-[#1a1411]/60 p-4 min-h-[500px] ${
+              className={`flex flex-col rounded-2xl border transition-all duration-200 bg-surface-container-low/60 dark:bg-[#1a1411]/60 p-4 min-h-[500px] ${
                 isHovered
                   ? 'border-primary ring-2 ring-primary/20 bg-surface-container/85'
-                  : 'border-outline hover:border-on-surface/70'
+                  : 'border-outline-variant/40 hover:border-outline-variant/70'
               }`}
             >
               {/* Column Header */}
-              <div className="flex items-center justify-between pb-3 mb-3 border-b-2 border-outline font-mono">
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-outline-variant/30 font-mono">
                 <div className="flex items-center gap-2">
                   <span className="shrink-0">{col.icon}</span>
                   <span className="text-xs font-bold tracking-widest text-on-surface uppercase">
                     {col.label}
                   </span>
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-surface-container-high text-on-surface border-2 border-outline">
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-surface-container-high text-secondary border border-outline-variant/30">
                     {itemsInCol.length}
                   </span>
                 </div>
@@ -354,7 +354,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               {/* Column Cards Container */}
               <div className="flex-1 space-y-3 overflow-y-auto max-h-[600px] pr-1 no-scrollbar">
                 {itemsInCol.length === 0 ? (
-                  <div className="h-36 rounded-xl border-2 border-dashed border-outline/50 bg-surface-container-lowest/40 dark:bg-surface-container-lowest/10 flex flex-col items-center justify-center text-center p-4">
+                  <div className="h-36 rounded-xl border border-dashed border-outline-variant/30 bg-surface-container-lowest/40 dark:bg-surface-container-lowest/10 flex flex-col items-center justify-center text-center p-4">
                     <p className="text-xs font-medium text-secondary">Drop items here</p>
                     <button
                       onClick={() => handleAddItem(col.id)}
@@ -372,11 +372,11 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         key={item.id}
                         draggable
                         onDragStart={(e) => handleDragStartCard(e, item.id)}
-                        className={`group relative p-4 rounded-xl border-2 bg-surface-container-lowest dark:bg-[#201915] transition-all duration-150 shadow-2xs hover:shadow-md cursor-grab active:cursor-grabbing border-outline hover:border-on-surface ${
+                        className={`group relative p-4 rounded-xl border bg-surface-container-lowest dark:bg-[#201915] transition-all duration-150 shadow-2xs hover:shadow-md cursor-grab active:cursor-grabbing border-outline-variant/30 hover:border-outline-variant/80 ${
                           isDragging ? 'opacity-40 scale-95 border-primary' : ''
                         }`}
                         style={{
-                          borderLeftWidth: '5px',
+                          borderLeftWidth: '4px',
                           borderLeftColor: item.color || DEFAULT_COLORS[item.sourceType] || '#8b5cf6',
                         }}
                       >
@@ -412,8 +412,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                               </button>
 
                               {activeMenuId === item.id && (
-                                <div className="absolute right-0 top-6 z-30 w-36 py-1 bg-surface-container-lowest dark:bg-[#251d18] border-2 border-outline rounded-xl shadow-xl text-xs font-medium space-y-0.5">
-                                  <div className="px-2 py-1 text-[10px] font-mono text-secondary uppercase border-b-2 border-outline">
+                                <div className="absolute right-0 top-6 z-30 w-36 py-1 bg-surface-container-lowest dark:bg-[#251d18] border border-outline-variant/60 rounded-xl shadow-xl text-xs font-medium space-y-0.5">
+                                  <div className="px-2 py-1 text-[10px] font-mono text-secondary uppercase border-b border-outline-variant/30">
                                     Move to
                                   </div>
                                   {(['todo', 'doing', 'done'] as const).map((st) => (
@@ -432,7 +432,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                       {item.status === st && <Check className="w-3 h-3 text-primary" />}
                                     </button>
                                   ))}
-                                  <div className="border-t-2 border-outline pt-1">
+                                  <div className="border-t border-outline-variant/30 pt-1">
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -472,7 +472,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         )}
 
                         {/* Footer Badges & External Link */}
-                        <div className="flex items-center justify-between gap-2 mt-3 pt-2 border-t-2 border-outline text-[11px] text-secondary">
+                        <div className="flex items-center justify-between gap-2 mt-3 pt-2 border-t border-outline-variant/20 text-[11px] text-secondary">
                           <span className="flex items-center gap-1 font-mono text-[10px]">
                             <GripVertical className="w-3 h-3 text-secondary/40 cursor-grab" />
                             {new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
@@ -500,9 +500,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         })}
       </div>
 
-      {/* 2. BOTTOM IMPORT DOCK - Bold Outlines */}
-      <div className="p-6 rounded-2xl border-2 border-outline bg-surface-container-low/60 dark:bg-surface-container-low/20 shadow-2xs space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-outline pb-4">
+      {/* 2. BOTTOM IMPORT DOCK */}
+      <div className="p-6 rounded-2xl border border-outline-variant/40 bg-surface-container-low/60 dark:bg-surface-container-low/20 shadow-2xs space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-outline-variant/30 pb-4">
           <div>
             <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
               Import Items from Sakido Workspace
@@ -512,7 +512,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
             </p>
           </div>
 
-          {/* Search Box with Bold Borders */}
+          {/* Search Box */}
           <div className="relative w-full sm:w-64">
             <Search className="w-3.5 h-3.5 text-secondary absolute left-3 top-1/2 -translate-y-1/2" />
             <input
@@ -520,7 +520,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               value={importSearch}
               onChange={(e) => setImportSearch(e.target.value)}
               placeholder="Search items to import..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl border-2 border-outline bg-surface-container-lowest text-xs text-on-surface placeholder:text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-outline-variant/40 bg-surface-container-lowest text-xs text-on-surface placeholder:text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
         </div>
@@ -539,10 +539,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setImportDockTab(tab.id as any)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap border-2 ${
+                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap border ${
                   isActive
                     ? 'bg-primary text-on-primary border-primary shadow-2xs font-bold'
-                    : 'bg-surface-container-lowest hover:bg-surface-container text-secondary hover:text-on-surface border-outline'
+                    : 'bg-surface-container-lowest hover:bg-surface-container text-secondary hover:text-on-surface border-outline-variant/30'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -560,7 +560,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           {/* TAB 1: TASKS */}
           {importDockTab === 'tasks' &&
             (filteredTasks.length === 0 ? (
-              <div className="col-span-full p-6 text-center text-xs text-secondary border-2 border-dashed border-outline rounded-xl">
+              <div className="col-span-full p-6 text-center text-xs text-secondary border border-dashed border-outline-variant/40 rounded-xl">
                 No matching tasks found in Sakido workspace.
               </div>
             ) : (
@@ -571,7 +571,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     key={t.id}
                     draggable
                     onDragStart={(e) => handleDragStartImportItem(e, t, 'task')}
-                    className="p-3 rounded-xl border-2 border-outline bg-surface-container-lowest dark:bg-[#1d1714] hover:border-on-surface flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing group shadow-2xs"
+                    className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-lowest dark:bg-[#1d1714] hover:border-outline-variant/80 flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing group shadow-2xs"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className="text-secondary shrink-0">
@@ -587,7 +587,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
                     <button
                       onClick={() => importItemToBoard(t, 'task', 'todo')}
-                      className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-primary hover:text-on-primary text-secondary text-xs font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer border-2 border-transparent hover:border-primary"
+                      className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-primary hover:text-on-primary text-secondary text-xs font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer border border-transparent hover:border-primary"
                     >
                       {isImported ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Plus className="w-3.5 h-3.5" />}
                       <span className="text-[10px] uppercase font-mono">{isImported ? 'Added' : 'Add'}</span>
@@ -600,7 +600,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           {/* TAB 2: CALENDAR EVENTS */}
           {importDockTab === 'calendar' &&
             (filteredSchedule.length === 0 ? (
-              <div className="col-span-full p-6 text-center text-xs text-secondary border-2 border-dashed border-outline rounded-xl">
+              <div className="col-span-full p-6 text-center text-xs text-secondary border border-dashed border-outline-variant/40 rounded-xl">
                 No matching calendar events found in Sakido workspace.
               </div>
             ) : (
@@ -612,7 +612,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     key={s.id}
                     draggable
                     onDragStart={(e) => handleDragStartImportItem(e, s, 'calendar')}
-                    className="p-3 rounded-xl border-2 border-outline bg-surface-container-lowest dark:bg-[#1d1714] hover:border-on-surface flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing group shadow-2xs"
+                    className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-lowest dark:bg-[#1d1714] hover:border-outline-variant/80 flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing group shadow-2xs"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className="text-secondary shrink-0">
@@ -628,7 +628,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
                     <button
                       onClick={() => importItemToBoard(s, 'calendar', 'todo')}
-                      className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-primary hover:text-on-primary text-secondary text-xs font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer border-2 border-transparent hover:border-primary"
+                      className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-primary hover:text-on-primary text-secondary text-xs font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer border border-transparent hover:border-primary"
                     >
                       {isImported ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Plus className="w-3.5 h-3.5" />}
                       <span className="text-[10px] uppercase font-mono">{isImported ? 'Added' : 'Add'}</span>
@@ -641,7 +641,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           {/* TAB 3: CLASSES & COURSES */}
           {importDockTab === 'classes' &&
             (filteredCourses.length === 0 ? (
-              <div className="col-span-full p-6 text-center text-xs text-secondary border-2 border-dashed border-outline rounded-xl">
+              <div className="col-span-full p-6 text-center text-xs text-secondary border border-dashed border-outline-variant/40 rounded-xl">
                 No active classes found.
               </div>
             ) : (
@@ -652,7 +652,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     key={c.id}
                     draggable
                     onDragStart={(e) => handleDragStartImportItem(e, c, 'class')}
-                    className="p-3 rounded-xl border-2 border-outline bg-surface-container-lowest dark:bg-[#1d1714] hover:border-on-surface flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing group shadow-2xs"
+                    className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-lowest dark:bg-[#1d1714] hover:border-outline-variant/80 flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing group shadow-2xs"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className="text-secondary shrink-0">
@@ -670,7 +670,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
                     <button
                       onClick={() => importItemToBoard(c, 'class', 'todo')}
-                      className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-primary hover:text-on-primary text-secondary text-xs font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer border-2 border-transparent hover:border-primary"
+                      className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-primary hover:text-on-primary text-secondary text-xs font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer border border-transparent hover:border-primary"
                     >
                       {isImported ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Plus className="w-3.5 h-3.5" />}
                       <span className="text-[10px] uppercase font-mono">{isImported ? 'Added' : 'Add'}</span>
@@ -683,7 +683,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           {/* TAB 4: WATCH LATER */}
           {importDockTab === 'watch_later' &&
             (filteredWatchLater.length === 0 ? (
-              <div className="col-span-full p-6 text-center text-xs text-secondary border-2 border-dashed border-outline rounded-xl">
+              <div className="col-span-full p-6 text-center text-xs text-secondary border border-dashed border-outline-variant/40 rounded-xl">
                 No saved videos in Watch Later.
               </div>
             ) : (
@@ -694,7 +694,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     key={w.id}
                     draggable
                     onDragStart={(e) => handleDragStartImportItem(e, w, 'watch_later')}
-                    className="p-3 rounded-xl border-2 border-outline bg-surface-container-lowest dark:bg-[#1d1714] hover:border-on-surface flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing group shadow-2xs"
+                    className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-lowest dark:bg-[#1d1714] hover:border-outline-variant/80 flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing group shadow-2xs"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className="text-secondary shrink-0">
@@ -710,7 +710,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
                     <button
                       onClick={() => importItemToBoard(w, 'watch_later', 'todo')}
-                      className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-primary hover:text-on-primary text-secondary text-xs font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer border-2 border-transparent hover:border-primary"
+                      className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-primary hover:text-on-primary text-secondary text-xs font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer border border-transparent hover:border-primary"
                     >
                       {isImported ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Plus className="w-3.5 h-3.5" />}
                       <span className="text-[10px] uppercase font-mono">{isImported ? 'Added' : 'Add'}</span>
@@ -722,10 +722,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
       </div>
 
-      {/* 3. NEW CUSTOM ITEM MODAL - Bold Borders */}
+      {/* 3. NEW CUSTOM ITEM MODAL */}
       {isAddingNew && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest border-2 border-outline rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-display font-bold text-lg text-on-surface">Create New Card</h3>
               <button
@@ -747,7 +747,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
                   placeholder="e.g. Prepare presentation slides"
-                  className="w-full border-2 border-outline rounded-xl p-3 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full border border-outline-variant/50 rounded-xl p-3 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
 
@@ -760,7 +760,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
                   placeholder="Add details, links, or notes..."
-                  className="w-full border-2 border-outline rounded-xl p-3 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  className="w-full border border-outline-variant/50 rounded-xl p-3 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                 />
               </div>
 
@@ -772,7 +772,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 <select
                   value={newTargetStatus}
                   onChange={(e) => setNewTargetStatus(e.target.value as any)}
-                  className="w-full border-2 border-outline rounded-xl p-2.5 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-mono cursor-pointer"
+                  className="w-full border border-outline-variant/50 rounded-xl p-2.5 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-mono cursor-pointer"
                 >
                   <option value="todo">📌 TODO</option>
                   <option value="doing">⚡ DOING</option>
@@ -780,7 +780,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 </select>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-2 border-t-2 border-outline">
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-outline-variant/20">
                 <button
                   type="button"
                   onClick={() => setIsAddingNew(false)}
@@ -790,7 +790,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-primary text-on-primary font-semibold text-xs hover:opacity-90 transition-all border-2 border-primary cursor-pointer shadow-2xs"
+                  className="px-4 py-2 rounded-xl bg-primary text-on-primary font-semibold text-xs hover:opacity-90 transition-all border border-primary cursor-pointer shadow-2xs"
                 >
                   Save Card
                 </button>
@@ -800,10 +800,10 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
       )}
 
-      {/* 4. EDIT ITEM MODAL - Bold Borders */}
+      {/* 4. EDIT ITEM MODAL */}
       {editingItem && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest border-2 border-outline rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-display font-bold text-lg text-on-surface">
                 Edit Card Details
@@ -826,7 +826,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   required
                   value={editingItem.title}
                   onChange={(e) => setEditingItem({ ...editingItem, title: e.target.value })}
-                  className="w-full border-2 border-outline rounded-xl p-3 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full border border-outline-variant/50 rounded-xl p-3 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
 
@@ -838,7 +838,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   rows={3}
                   value={editingItem.description || ''}
                   onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
-                  className="w-full border-2 border-outline rounded-xl p-3 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                  className="w-full border border-outline-variant/50 rounded-xl p-3 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                 />
               </div>
 
@@ -850,7 +850,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 <select
                   value={editingItem.status}
                   onChange={(e) => setEditingItem({ ...editingItem, status: e.target.value as any })}
-                  className="w-full border-2 border-outline rounded-xl p-2.5 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-mono cursor-pointer"
+                  className="w-full border border-outline-variant/50 rounded-xl p-2.5 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-mono cursor-pointer"
                 >
                   <option value="todo">📌 TODO</option>
                   <option value="doing">⚡ DOING</option>
@@ -868,15 +868,15 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   value={editingItem.url || ''}
                   onChange={(e) => setEditingItem({ ...editingItem, url: e.target.value })}
                   placeholder="https://..."
-                  className="w-full border-2 border-outline rounded-xl p-3 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full border border-outline-variant/50 rounded-xl p-3 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
 
-              <div className="flex items-center justify-between pt-3 border-t-2 border-outline">
+              <div className="flex items-center justify-between pt-3 border-t border-outline-variant/20">
                 <button
                   type="button"
                   onClick={() => handleDeleteItem(editingItem.id)}
-                  className="px-3 py-1.5 rounded-xl bg-error-container/20 text-error hover:bg-error-container/40 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border-2 border-transparent"
+                  className="px-3 py-1.5 rounded-xl bg-error-container/20 text-error hover:bg-error-container/40 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-transparent"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                   Delete Card
@@ -892,7 +892,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl bg-primary text-on-primary font-semibold text-xs hover:opacity-90 transition-all border-2 border-primary cursor-pointer shadow-2xs"
+                    className="px-4 py-2 rounded-xl bg-primary text-on-primary font-semibold text-xs hover:opacity-90 transition-all border border-primary cursor-pointer shadow-2xs"
                   >
                     Save Changes
                   </button>
