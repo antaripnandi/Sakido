@@ -1071,8 +1071,9 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           body.end = { date: formatDate(addDays(parseDate(googleEndDate), 1)) };
         } else {
           const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          const eventEndDate = event.endDate || date;
           body.start = { dateTime: `${date}T${startTime}:00`, timeZone: tz };
-          body.end = { dateTime: `${date}T${endTime}:00`, timeZone: tz };
+          body.end = { dateTime: `${eventEndDate}T${endTime}:00`, timeZone: tz };
         }
 
         return body;
@@ -1207,7 +1208,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     // Resolve calendarId from type via TYPE_TO_CALENDAR_MAP (ponytail: reuse existing map)
     const calendarId = TYPE_TO_CALENDAR_MAP[type] || 'cal-personal';
 
-    const baseEv = {
+    const baseEv: any = {
       id: Date.now().toString(),
       title,
       date,
@@ -1259,7 +1260,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     if (connectors.googleCalendar) {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const startDt = safeCreateDateTime(date, startTime);
-      const endDt = safeCreateDateTime(date, endTime);
+      const endDt = safeCreateDateTime(baseEv.endDate || date, endTime);
 
       // Resolve target Google Calendar ID from the event's calendar
       const targetCal = calendars.find((c: any) => c.id === calendarId);
