@@ -382,7 +382,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
 
             return (
               <div
-                className="absolute rounded-lg px-3 py-1.5 text-xs border border-primary bg-primary/25 text-on-surface shadow-md backdrop-blur-xs flex flex-col justify-between"
+                className="absolute rounded-lg px-3 py-1.5 text-xs border border-primary bg-primary text-white shadow-lg flex flex-col justify-between"
                 style={{
                   left: `${left}px`,
                   width: `${width}px`,
@@ -392,8 +392,8 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
                   pointerEvents: 'none'
                 }}
               >
-                <div className="font-semibold text-primary truncate">New Event</div>
-                <div className="text-[11px] opacity-80 font-mono truncate">{timeText}</div>
+                <div className="font-semibold text-white truncate">New Event</div>
+                <div className="text-[11px] opacity-90 font-mono truncate">{timeText}</div>
               </div>
             );
           })()}
