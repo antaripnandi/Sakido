@@ -274,19 +274,11 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       createdAt: new Date().toISOString(),
     };
 
-    if (newItem.timePeriod?.syncToCalendar) {
-      syncKanbanCalendarEvent(newItem);
-    }
-
     setBoardItems((prev) => [newItem, ...prev]);
     setIsAddingNew(false);
   };
 
   const handleDeleteItem = (id: string) => {
-    const itemToDelete = boardItems.find(i => i.id === id);
-    if (itemToDelete) {
-      syncKanbanCalendarEvent(itemToDelete, true);
-    }
     setBoardItems((prev) => prev.filter((item) => item.id !== id));
     if (editingItem?.id === id) setEditingItem(null);
     setActiveMenuId(null);
@@ -302,12 +294,6 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const handleSaveEditedItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingItem || !editingItem.title.trim()) return;
-
-    if (editingItem.timePeriod?.syncToCalendar && editingItem.timePeriod?.startDate) {
-      syncKanbanCalendarEvent(editingItem);
-    } else {
-      syncKanbanCalendarEvent(editingItem, true);
-    }
 
     setBoardItems((prev) =>
       prev.map((item) => (item.id === editingItem.id ? editingItem : item))
