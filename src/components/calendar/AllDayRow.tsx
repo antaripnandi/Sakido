@@ -1,4 +1,5 @@
 import React from 'react';
+import { Check } from 'lucide-react';
 import { addDays, formatDate, parseDate, diffInDays } from './utils/calendarUtils';
 
 interface AllDayRowProps {
@@ -92,12 +93,15 @@ export const AllDayRow: React.FC<AllDayRowProps> = ({
               );
               const span = endIndex - startIndex + 1;
 
+              const isDone = event.completed || event.status === 'completed' || event.kanbanStatus === 'done';
+              const displayColor = isDone ? '#059669' : color;
+
               return (
                 <div
                   key={event.id}
-                  className="absolute px-2.5 py-1 rounded text-xs font-medium truncate cursor-pointer hover:shadow-sm transition-shadow flex items-center gap-1"
+                  className={`absolute px-2.5 py-1 rounded text-xs font-medium truncate cursor-pointer hover:shadow-sm transition-shadow flex items-center gap-1 ${isDone ? 'opacity-85' : ''}`}
                   style={{
-                    backgroundColor: color,
+                    backgroundColor: displayColor,
                     color: '#fff',
                     left: `${(startIndex / 7) * 100}%`,
                     width: `${(span / 7) * 100}%`,
@@ -105,29 +109,37 @@ export const AllDayRow: React.FC<AllDayRowProps> = ({
                     zIndex: 1
                   }}
                   title={event.title}
-                  onClick={() => onEditClick(event.id, event.title, event.type, event.calendarId, event.isAllDay, color)}
+                  onClick={() => onEditClick(event.id, event.title, event.type, event.calendarId, event.isAllDay, displayColor)}
                 >
-                  {event.priority === 'urgent' && (
-                    <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-red-600 text-white shrink-0 uppercase">
-                      URGENT
+                  {isDone ? (
+                    <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-emerald-600 text-white shrink-0 uppercase flex items-center gap-0.5">
+                      <Check className="w-2.5 h-2.5" /> DONE
                     </span>
+                  ) : (
+                    <>
+                      {event.priority === 'urgent' && (
+                        <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-red-600 text-white shrink-0 uppercase">
+                          URGENT
+                        </span>
+                      )}
+                      {event.priority === 'high' && (
+                        <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500 text-black shrink-0 uppercase">
+                          HIGH
+                        </span>
+                      )}
+                      {event.priority === 'medium' && (
+                        <span className="px-1 py-0.2 rounded text-[9px] font-mono font-semibold bg-blue-600 text-white shrink-0 uppercase">
+                          MED
+                        </span>
+                      )}
+                      {event.priority === 'low' && (
+                        <span className="px-1 py-0.2 rounded text-[9px] font-mono font-medium bg-black/40 text-white/90 shrink-0 uppercase">
+                          LOW
+                        </span>
+                      )}
+                    </>
                   )}
-                  {event.priority === 'high' && (
-                    <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500 text-black shrink-0 uppercase">
-                      HIGH
-                    </span>
-                  )}
-                  {event.priority === 'medium' && (
-                    <span className="px-1 py-0.2 rounded text-[9px] font-mono font-semibold bg-blue-600 text-white shrink-0 uppercase">
-                      MED
-                    </span>
-                  )}
-                  {event.priority === 'low' && (
-                    <span className="px-1 py-0.2 rounded text-[9px] font-mono font-medium bg-black/40 text-white/90 shrink-0 uppercase">
-                      LOW
-                    </span>
-                  )}
-                  <span className="truncate">{event.title}</span>
+                  <span className={`truncate ${isDone ? 'line-through opacity-90' : ''}`}>{event.title}</span>
                 </div>
               );
             })}

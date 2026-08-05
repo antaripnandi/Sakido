@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, AlertCircle } from 'lucide-react';
+import { Clock, AlertCircle, Check } from 'lucide-react';
 
 interface EventBlockProps {
   event: any;
@@ -51,6 +51,19 @@ const renderCalendarPriorityBadge = (priority?: string) => {
   }
 };
 
+const renderCalendarStatusBadge = (event: any) => {
+  const isDone = event.completed || event.status === 'completed' || event.kanbanStatus === 'done';
+  if (isDone) {
+    return (
+      <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-emerald-600 text-white shrink-0 uppercase tracking-tight shadow-2xs">
+        <Check className="w-2.5 h-2.5 text-white" />
+        DONE
+      </span>
+    );
+  }
+  return renderCalendarPriorityBadge(event.priority);
+};
+
 export const EventBlock: React.FC<EventBlockProps> = ({
   event,
   calendarColor,
@@ -70,7 +83,8 @@ export const EventBlock: React.FC<EventBlockProps> = ({
   // pointer actually moved (movement threshold > 4px).
   const downPos = React.useRef<{ x: number; y: number } | null>(null);
 
-  const displayColor = event.color || calendarColor;
+  const isDone = event.completed || event.status === 'completed' || event.kanbanStatus === 'done';
+  const displayColor = isDone ? '#059669' : (event.color || calendarColor);
   const openEditor = () => onEditClick(event.id, event.title, event.type, event.calendarId, event.isAllDay, displayColor);
 
   const handleClick = (e: React.MouseEvent) => {
@@ -99,14 +113,14 @@ export const EventBlock: React.FC<EventBlockProps> = ({
       onKeyDown={handleKeyDown}
       className={`absolute rounded px-2 py-1 text-xs border cursor-pointer transition-shadow event-block ${
         isEditing || isBeingDragged || isBeingResized ? 'z-40 shadow-lg' : 'hover:shadow-lg'
-      } ${isAllDay ? 'top-0 h-full' : ''}`}
+      } ${isAllDay ? 'top-0 h-full' : ''} ${isDone ? 'opacity-85' : ''}`}
       style={{
         top: isAllDay ? '0' : `${top}px`,
         height: isAllDay ? '100%' : `${height}px`,
         left: leftPos,
         width: widthPos,
         backgroundColor: displayColor,
-        borderColor: displayColor,
+        borderColor: isDone ? '#10b981' : displayColor,
         color: '#ffffff'
       }}
       onPointerDown={(e) => {
@@ -118,8 +132,10 @@ export const EventBlock: React.FC<EventBlockProps> = ({
       <div className="flex items-start gap-1">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1 min-w-0 flex-wrap">
-            {renderCalendarPriorityBadge(event.priority)}
-            <span className="font-medium truncate">{event.title}</span>
+            {renderCalendarStatusBadge(event)}
+            <span className={`font-medium truncate ${isDone ? 'line-through opacity-90 font-semibold' : ''}`}>
+              {event.title}
+            </span>
           </div>
           <div className="text-[10px] opacity-80 font-mono mt-0.5">{event.time}</div>
         </div>
