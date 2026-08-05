@@ -13,6 +13,7 @@ import {
   GripVertical,
   ExternalLink,
   ChevronDown,
+  ChevronUp,
   Sparkles,
   Layers,
   MoreVertical,
@@ -85,26 +86,26 @@ const renderPriorityBadge = (priority?: KanbanItem['priority']) => {
   switch (priority) {
     case 'urgent':
       return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md font-mono bg-red-500/15 text-red-400 border border-red-500/30 shrink-0">
-          <AlertCircle className="w-3 h-3 text-red-400" />
+        <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded-md font-mono bg-red-500/15 text-red-400 border border-red-500/30 shrink-0">
+          <AlertCircle className="w-2.5 h-2.5 text-red-400" />
           URGENT
         </span>
       );
     case 'high':
       return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md font-mono bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
+        <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded-md font-mono bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
           HIGH
         </span>
       );
     case 'medium':
       return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md font-mono bg-blue-500/15 text-blue-400 border border-blue-500/30 shrink-0">
+        <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.2 rounded-md font-mono bg-blue-500/15 text-blue-400 border border-blue-500/30 shrink-0">
           MED
         </span>
       );
     case 'low':
       return (
-        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md font-mono bg-surface-container-high text-secondary border border-outline-variant/30 shrink-0">
+        <span className="inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.2 rounded-md font-mono bg-surface-container-high text-secondary border border-outline-variant/30 shrink-0">
           LOW
         </span>
       );
@@ -207,6 +208,26 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 }) => {
   // Persistent Kanban items state
   const [boardItems, setBoardItems] = useLocalStorageState<KanbanItem[]>('sakido_kanban_board', []);
+
+  // Card Expand / Collapse state
+  const [expandedCardIds, setExpandedCardIds] = useState<Set<string>>(new Set());
+
+  const toggleExpandCard = (id: string) => {
+    setExpandedCardIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const expandAllCards = () => {
+    setExpandedCardIds(new Set(boardItems.map((i) => i.id)));
+  };
+
+  const collapseAllCards = () => {
+    setExpandedCardIds(new Set());
+  };
 
   // Sync Kanban items with global events & tasks reactively
   useEffect(() => {
@@ -463,6 +484,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     { id: 'done', label: 'DONE', icon: <Check className="w-4 h-4 text-emerald-500" /> },
   ];
 
+  const isAllExpanded = boardItems.length > 0 && boardItems.every((i) => expandedCardIds.has(i.id));
+
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12">
       {/* Header Strip */}
@@ -479,6 +502,17 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {boardItems.length > 0 && (
+            <button
+              onClick={isAllExpanded ? collapseAllCards : expandAllCards}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container text-secondary hover:text-on-surface font-mono font-semibold text-xs transition-all border border-outline-variant/30 cursor-pointer"
+              title={isAllExpanded ? "Collapse all cards" : "Expand all cards"}
+            >
+              {isAllExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              <span>{isAllExpanded ? 'Collapse All' : 'Expand All'}</span>
+            </button>
+          )}
+
           <button
             onClick={() => handleAddItem('todo')}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary hover:opacity-90 font-semibold text-xs transition-all border border-primary cursor-pointer shadow-2xs"
@@ -529,7 +563,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               </div>
 
               {/* Column Cards Container */}
-              <div className="flex-1 space-y-3 overflow-y-auto max-h-[600px] pr-1 no-scrollbar">
+              <div className="flex-1 space-y-2.5 overflow-y-auto max-h-[600px] pr-1 no-scrollbar">
                 {itemsInCol.length === 0 ? (
                   <div className="h-36 rounded-xl border border-dashed border-outline-variant/30 bg-surface-container-lowest/40 dark:bg-surface-container-lowest/10 flex flex-col items-center justify-center text-center p-4">
                     <p className="text-xs font-medium text-secondary">Drop items here</p>
@@ -543,13 +577,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 ) : (
                   itemsInCol.map((item) => {
                     const isDragging = draggedItemId === item.id;
+                    const isExpanded = expandedCardIds.has(item.id);
 
                     return (
                       <div
                         key={item.id}
                         draggable
                         onDragStart={(e) => handleDragStartCard(e, item.id)}
-                        className={`group relative p-4 rounded-xl border bg-surface-container-lowest dark:bg-[#201915] transition-all duration-150 shadow-2xs hover:shadow-md cursor-grab active:cursor-grabbing border-outline-variant/30 hover:border-outline-variant/80 ${
+                        className={`group relative p-3 rounded-xl border bg-surface-container-lowest dark:bg-[#201915] transition-all duration-150 shadow-2xs hover:shadow-md cursor-grab active:cursor-grabbing border-outline-variant/30 hover:border-outline-variant/80 ${
                           isDragging ? 'opacity-40 scale-95 border-primary' : ''
                         }`}
                         style={{
@@ -557,14 +592,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           borderLeftColor: item.color || DEFAULT_COLORS[item.sourceType] || '#8b5cf6',
                         }}
                       >
-                        {/* Type Icon, Priority & Quick Actions */}
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
+                        {/* Top Bar: Badges & Action Buttons */}
+                        <div className="flex items-center justify-between gap-1.5 mb-1.5">
+                          <div className="flex items-center gap-1 min-w-0 flex-wrap">
                             <span className="text-secondary shrink-0 select-none">
                               {getItemIcon(item.sourceType)}
                             </span>
                             <span
-                              className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md font-mono shrink-0"
+                              className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded-md font-mono shrink-0"
                               style={{
                                 backgroundColor: `${item.color || '#8b5cf6'}18`,
                                 color: item.color || '#8b5cf6',
@@ -574,22 +609,34 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             </span>
                             {renderPriorityBadge(item.priority)}
                             {item.tag && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md font-mono bg-surface-container-high text-secondary border border-outline-variant/30 shrink-0">
+                              <span className="inline-flex items-center gap-0.5 text-[9px] font-medium px-1.5 py-0.2 rounded-md font-mono bg-surface-container-high text-secondary border border-outline-variant/30 shrink-0">
                                 <TagIcon className="w-2.5 h-2.5" />
                                 {item.tag}
                               </span>
                             )}
                           </div>
 
-                          <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
-                            {/* Mobile / Keyboard Move Menu Button */}
+                          <div className="flex items-center gap-0.5 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+                            {/* Expand / Collapse Toggle Button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleExpandCard(item.id);
+                              }}
+                              className="p-1 rounded-md hover:bg-surface-container text-secondary hover:text-on-surface cursor-pointer"
+                              title={isExpanded ? "Collapse details" : "Expand details"}
+                            >
+                              {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                            </button>
+
+                            {/* Move Menu Button */}
                             <div className="relative">
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setActiveMenuId(activeMenuId === item.id ? null : item.id);
                                 }}
-                                className="p-1 rounded-lg hover:bg-surface-container text-secondary hover:text-on-surface cursor-pointer"
+                                className="p-1 rounded-md hover:bg-surface-container text-secondary hover:text-on-surface cursor-pointer"
                                 title="Move status"
                               >
                                 <MoreVertical className="w-3.5 h-3.5" />
@@ -635,7 +682,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             {/* Edit Button */}
                             <button
                               onClick={() => setEditingItem(item)}
-                              className="p-1 rounded-lg hover:bg-surface-container text-secondary hover:text-on-surface cursor-pointer"
+                              className="p-1 rounded-md hover:bg-surface-container text-secondary hover:text-on-surface cursor-pointer"
                               title="Edit item"
                             >
                               <Edit3 className="w-3.5 h-3.5" />
@@ -643,58 +690,78 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           </div>
                         </div>
 
-                        {/* Title */}
-                        <h4 className="text-sm font-semibold text-on-surface leading-snug line-clamp-2">
+                        {/* Title (Clickable to Expand / Collapse) */}
+                        <h4
+                          onClick={() => toggleExpandCard(item.id)}
+                          className="text-xs font-bold text-on-surface leading-tight cursor-pointer hover:text-primary transition-colors truncate"
+                        >
                           {item.title}
                         </h4>
 
-                        {/* Description / Subtitle */}
-                        {item.description && (
-                          <p className="text-xs text-secondary font-normal mt-1 line-clamp-2 leading-relaxed">
-                            {item.description}
-                          </p>
-                        )}
-
-                        {/* Time Period Badge */}
-                        {item.timePeriod?.startDate && (
-                          <div className="flex items-center gap-1.5 mt-2.5 px-2.5 py-1.5 rounded-xl bg-surface-container-high/60 border border-outline-variant/30 text-[11px] font-mono text-secondary">
-                            <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
-                            <span className="font-semibold text-on-surface">
-                              {item.timePeriod.startDate}
-                            </span>
-                            {item.timePeriod.startTime && (
-                              <span>
-                                {item.timePeriod.startTime}{item.timePeriod.endTime ? ` - ${item.timePeriod.endTime}` : ''}
+                        {/* Compact Summary Line when Collapsed */}
+                        {!isExpanded && (item.timePeriod?.startDate || item.description) && (
+                          <div className="flex items-center justify-between gap-2 mt-1.5 text-[10px] text-secondary font-mono">
+                            {item.timePeriod?.startDate ? (
+                              <span className="flex items-center gap-1 truncate">
+                                <Clock className="w-3 h-3 text-primary shrink-0" />
+                                {item.timePeriod.startDate} {item.timePeriod.startTime ? `(${item.timePeriod.startTime})` : ''}
                               </span>
+                            ) : (
+                              <span className="truncate opacity-75">{item.description}</span>
                             )}
-                            {item.timePeriod.syncToCalendar && (
-                              <span className="ml-auto text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-primary/15 text-primary border border-primary/20 flex items-center gap-1">
-                                <CalendarIcon className="w-2.5 h-2.5" />
-                                Calendar
-                              </span>
+                            {item.timePeriod?.syncToCalendar && (
+                              <span className="text-[9px] uppercase font-bold text-primary shrink-0">Calendar</span>
                             )}
                           </div>
                         )}
 
-                        {/* Footer Badges & External Link */}
-                        <div className="flex items-center justify-between gap-2 mt-3 pt-2 border-t border-outline-variant/20 text-[11px] text-secondary">
-                          <span className="flex items-center gap-1 font-mono text-[10px]">
-                            <GripVertical className="w-3 h-3 text-secondary/40 cursor-grab" />
-                            {new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                          </span>
+                        {/* Expanded Full Details */}
+                        {isExpanded && (
+                          <div className="mt-2.5 pt-2 border-t border-outline-variant/20 space-y-2">
+                            {item.description && (
+                              <p className="text-xs text-secondary font-normal leading-relaxed whitespace-pre-wrap">
+                                {item.description}
+                              </p>
+                            )}
 
-                          {item.url && (
-                            <a
-                              href={item.url}
-                              target="_blank"
-                              rel="noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-primary hover:underline font-semibold flex items-center gap-1"
-                            >
-                              Open <ExternalLink className="w-3 h-3" />
-                            </a>
-                          )}
-                        </div>
+                            {item.timePeriod?.startDate && (
+                              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-high/60 border border-outline-variant/30 text-[11px] font-mono text-secondary">
+                                <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
+                                <span className="font-semibold text-on-surface">{item.timePeriod.startDate}</span>
+                                {item.timePeriod.startTime && (
+                                  <span>
+                                    {item.timePeriod.startTime}{item.timePeriod.endTime ? ` - ${item.timePeriod.endTime}` : ''}
+                                  </span>
+                                )}
+                                {item.timePeriod.syncToCalendar && (
+                                  <span className="ml-auto text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-primary/15 text-primary border border-primary/20 flex items-center gap-1">
+                                    <CalendarIcon className="w-2.5 h-2.5" />
+                                    Calendar
+                                  </span>
+                                )}
+                              </div>
+                            )}
+
+                            <div className="flex items-center justify-between gap-2 pt-1 text-[10px] text-secondary font-mono">
+                              <span className="flex items-center gap-1">
+                                <GripVertical className="w-3 h-3 text-secondary/40 cursor-grab" />
+                                Created {new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                              </span>
+
+                              {item.url && (
+                                <a
+                                  href={item.url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-primary hover:underline font-semibold flex items-center gap-1"
+                                >
+                                  Open <ExternalLink className="w-3 h-3" />
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     );
                   })

@@ -16,6 +16,41 @@ interface EventBlockProps {
   totalLanes?: number;
 }
 
+const renderCalendarPriorityBadge = (priority?: string) => {
+  if (!priority) return null;
+  const p = priority.toLowerCase();
+  switch (p) {
+    case 'urgent':
+      return (
+        <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-red-600 text-white shrink-0 uppercase tracking-tight shadow-2xs">
+          <AlertCircle className="w-2.5 h-2.5" />
+          URGENT
+        </span>
+      );
+    case 'high':
+      return (
+        <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500 text-black shrink-0 uppercase tracking-tight shadow-2xs">
+          HIGH
+        </span>
+      );
+    case 'medium':
+    case 'med':
+      return (
+        <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-mono font-semibold bg-blue-600 text-white shrink-0 uppercase tracking-tight shadow-2xs">
+          MED
+        </span>
+      );
+    case 'low':
+      return (
+        <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-mono font-medium bg-black/40 text-white/90 border border-white/20 shrink-0 uppercase tracking-tight shadow-2xs">
+          LOW
+        </span>
+      );
+    default:
+      return null;
+  }
+};
+
 export const EventBlock: React.FC<EventBlockProps> = ({
   event,
   calendarColor,
@@ -83,12 +118,7 @@ export const EventBlock: React.FC<EventBlockProps> = ({
       <div className="flex items-start gap-1">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1 min-w-0 flex-wrap">
-            {(event.priority === 'urgent' || event.isUrgent) && (
-              <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-red-600 text-white shrink-0 uppercase tracking-tight shadow-2xs">
-                <AlertCircle className="w-2.5 h-2.5" />
-                URGENT
-              </span>
-            )}
+            {renderCalendarPriorityBadge(event.priority)}
             <span className="font-medium truncate">{event.title}</span>
           </div>
           <div className="text-[10px] opacity-80 font-mono mt-0.5">{event.time}</div>
