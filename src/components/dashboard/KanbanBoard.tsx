@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Plus,
   Trash2,
@@ -52,6 +52,8 @@ interface KanbanBoardProps {
   schedule: ScheduleEvent[];
   watchLater: any[];
   onNavigate?: (tabName: string) => void;
+  onUpdateEvents?: React.Dispatch<React.SetStateAction<any[]>>;
+  onUpdateTasks?: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 const DEFAULT_COLORS: Record<KanbanItem['sourceType'], string> = {
@@ -111,32 +113,84 @@ const renderPriorityBadge = (priority?: KanbanItem['priority']) => {
   }
 };
 
-const syncKanbanCalendarEvent = (item: KanbanItem, isDelete: boolean = false) => {
+const syncKanbanWithGlobalState = (
+  items: KanbanItem[],
+  onUpdateEvents?: React.Dispatch<React.SetStateAction<any[]>>,
+  onUpdateTasks?: React.Dispatch<React.SetStateAction<any[]>>
+) => {
+  // 1. Sync Calendar Events (for items with timePeriod and syncToCalendar enabled)
+  let currentEvents: any[] = [];
   try {
     const rawEvents = localStorage.getItem('sakido_events');
-    let eventsArr: any[] = rawEvents ? JSON.parse(rawEvents) : [];
-    const eventId = `kanban-event-${item.id}`;
+    currentEvents = rawEvents ? JSON.parse(rawEvents) : [];
+  } catch {
+    currentEvents = [];
+  }
 
-    eventsArr = eventsArr.filter((ev: any) => ev.id !== eventId && ev.sourceKanbanId !== item.id);
+  const nonKanbanEvents = currentEvents.filter(
+    (e: any) => !e.id?.startsWith('kanban-event-') && !e.sourceKanbanId
+  );
 
-    if (!isDelete && item.timePeriod?.syncToCalendar && item.timePeriod?.startDate) {
-      const newEvent = {
-        id: eventId,
-        title: item.title,
-        date: item.timePeriod.startDate,
-        startTime: item.timePeriod.startTime || '09:00',
-        endTime: item.timePeriod.endTime || '10:00',
-        type: 'Kanban Task',
-        calendarId: 'cal-personal',
-        color: item.color || '#8b5cf6',
-        sourceKanbanId: item.id,
-      };
-      eventsArr.push(newEvent);
-    }
+  const kanbanEvents = items
+    .filter((item) => item.timePeriod?.startDate && item.timePeriod?.syncToCalendar)
+    .map((item) => ({
+      id: `kanban-event-${item.id}`,
+      title: item.title,
+      date: item.timePeriod!.startDate!,
+      startTime: item.timePeriod!.startTime || '09:00',
+      endTime: item.timePeriod!.endTime || '10:00',
+      type: 'Event',
+      calendarId: 'cal-personal',
+      color: item.color || '#8b5cf6',
+      sourceKanbanId: item.id,
+    }));
 
-    localStorage.setItem('sakido_events', JSON.stringify(eventsArr));
+  const updatedEvents = [...nonKanbanEvents, ...kanbanEvents];
+  try {
+    localStorage.setItem('sakido_events', JSON.stringify(updatedEvents));
   } catch (err) {
-    console.warn('Failed to sync Kanban event to calendar:', err);
+    console.warn('Failed to save sakido_events:', err);
+  }
+  if (onUpdateEvents) {
+    onUpdateEvents(updatedEvents);
+  }
+
+  // 2. Sync Overview Tasks (for ALL Kanban cards)
+  let currentTasks: any[] = [];
+  try {
+    const rawTasks = localStorage.getItem('sakido_tasks');
+    currentTasks = rawTasks ? JSON.parse(rawTasks) : [];
+  } catch {
+    currentTasks = [];
+  }
+
+  const nonKanbanTasks = currentTasks.filter(
+    (t: any) => !t.id?.startsWith('kanban-task-') && !t.sourceKanbanId
+  );
+
+  const kanbanTasks = items.map((item) => ({
+    id: `kanban-task-${item.id}`,
+    title: item.title,
+    description: item.description || '',
+    courseId: 'c-kanban',
+    courseName: item.tag ? `Kanban • ${item.tag}` : 'Kanban Board',
+    courseColor: item.color || '#8b5cf6',
+    dueDate: item.timePeriod?.startDate || item.dueDate || new Date().toISOString().split('T')[0],
+    priority: item.priority || 'medium',
+    status: item.status === 'done' ? 'completed' : item.status === 'doing' ? 'in_progress' : 'todo',
+    completed: item.status === 'done',
+    createdAt: item.createdAt || new Date().toISOString(),
+    sourceKanbanId: item.id,
+  }));
+
+  const updatedTasks = [...nonKanbanTasks, ...kanbanTasks];
+  try {
+    localStorage.setItem('sakido_tasks', JSON.stringify(updatedTasks));
+  } catch (err) {
+    console.warn('Failed to save sakido_tasks:', err);
+  }
+  if (onUpdateTasks) {
+    onUpdateTasks(updatedTasks);
   }
 };
 
@@ -146,9 +200,16 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   schedule = [],
   watchLater = [],
   onNavigate,
+  onUpdateEvents,
+  onUpdateTasks,
 }) => {
   // Persistent Kanban items state
   const [boardItems, setBoardItems] = useLocalStorageState<KanbanItem[]>('sakido_kanban_board', []);
+
+  // Sync Kanban items with global events & tasks reactively
+  useEffect(() => {
+    syncKanbanWithGlobalState(boardItems, onUpdateEvents, onUpdateTasks);
+  }, [boardItems, onUpdateEvents, onUpdateTasks]);
 
   // Drag & drop state feedback
   const [draggedItemId, setDraggedItemId] = useState<string | null>(null);

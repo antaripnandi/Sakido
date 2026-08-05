@@ -2902,6 +2902,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           schedule={events}
           watchLater={watchLater}
           onNavigate={(tab) => handleSelectTab(tab)}
+          onUpdateEvents={setEvents}
+          onUpdateTasks={setTasks}
         />
       );
     }
