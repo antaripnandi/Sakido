@@ -16,7 +16,10 @@ import {
   Sparkles,
   Layers,
   MoreVertical,
-  ArrowRight
+  ArrowRight,
+  Clock,
+  Tag as TagIcon,
+  AlertCircle
 } from 'lucide-react';
 import { Task, Course, ScheduleEvent } from '../../types';
 import { useLocalStorageState } from '../../hooks/useLocalStorageState';
@@ -30,6 +33,15 @@ export interface KanbanItem {
   sourceId?: string;
   color?: string;
   dueDate?: string;
+  timePeriod?: {
+    startDate?: string;
+    startTime?: string;
+    endDate?: string;
+    endTime?: string;
+    syncToCalendar?: boolean;
+  };
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  tag?: string;
   url?: string;
   createdAt: string;
 }
@@ -66,6 +78,68 @@ const getItemIcon = (sourceType: KanbanItem['sourceType']) => {
   }
 };
 
+const renderPriorityBadge = (priority?: KanbanItem['priority']) => {
+  if (!priority) return null;
+  switch (priority) {
+    case 'urgent':
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md font-mono bg-red-500/15 text-red-400 border border-red-500/30 shrink-0">
+          <AlertCircle className="w-3 h-3 text-red-400" />
+          URGENT
+        </span>
+      );
+    case 'high':
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md font-mono bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
+          HIGH
+        </span>
+      );
+    case 'medium':
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md font-mono bg-blue-500/15 text-blue-400 border border-blue-500/30 shrink-0">
+          MED
+        </span>
+      );
+    case 'low':
+      return (
+        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md font-mono bg-surface-container-high text-secondary border border-outline-variant/30 shrink-0">
+          LOW
+        </span>
+      );
+    default:
+      return null;
+  }
+};
+
+const syncKanbanCalendarEvent = (item: KanbanItem, isDelete: boolean = false) => {
+  try {
+    const rawEvents = localStorage.getItem('sakido_events');
+    let eventsArr: any[] = rawEvents ? JSON.parse(rawEvents) : [];
+    const eventId = `kanban-event-${item.id}`;
+
+    eventsArr = eventsArr.filter((ev: any) => ev.id !== eventId && ev.sourceKanbanId !== item.id);
+
+    if (!isDelete && item.timePeriod?.syncToCalendar && item.timePeriod?.startDate) {
+      const newEvent = {
+        id: eventId,
+        title: item.title,
+        date: item.timePeriod.startDate,
+        startTime: item.timePeriod.startTime || '09:00',
+        endTime: item.timePeriod.endTime || '10:00',
+        type: 'Kanban Task',
+        calendarId: 'cal-personal',
+        color: item.color || '#8b5cf6',
+        sourceKanbanId: item.id,
+      };
+      eventsArr.push(newEvent);
+    }
+
+    localStorage.setItem('sakido_events', JSON.stringify(eventsArr));
+  } catch (err) {
+    console.warn('Failed to sync Kanban event to calendar:', err);
+  }
+};
+
 export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   tasks = [],
   courses = [],
@@ -88,11 +162,18 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const [editingItem, setEditingItem] = useState<KanbanItem | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
 
-  // New Custom Task Modal / Inline state
+  // New Custom Task Modal state
   const [isAddingNew, setIsAddingNew] = useState<boolean>(false);
   const [newTitle, setNewTitle] = useState<string>('');
   const [newDescription, setNewDescription] = useState<string>('');
   const [newTargetStatus, setNewTargetStatus] = useState<'todo' | 'doing' | 'done'>('todo');
+  const [newPriority, setNewPriority] = useState<'low' | 'medium' | 'high' | 'urgent'>('medium');
+  const [newTag, setNewTag] = useState<string>('');
+  const [hasTimePeriod, setHasTimePeriod] = useState<boolean>(false);
+  const [startDate, setStartDate] = useState<string>('');
+  const [startTime, setStartTime] = useState<string>('09:00');
+  const [endTime, setEndTime] = useState<string>('10:00');
+  const [syncToCalendar, setSyncToCalendar] = useState<boolean>(false);
 
   // --- Handlers for Board Actions ---
 
@@ -100,6 +181,13 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     setNewTargetStatus(status);
     setNewTitle('');
     setNewDescription('');
+    setNewPriority('medium');
+    setNewTag('');
+    setHasTimePeriod(false);
+    setStartDate(new Date().toISOString().split('T')[0]);
+    setStartTime('09:00');
+    setEndTime('10:00');
+    setSyncToCalendar(true);
     setIsAddingNew(true);
   };
 
@@ -114,14 +202,30 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       status: newTargetStatus,
       sourceType: 'custom',
       color: '#8b5cf6',
+      priority: newPriority,
+      tag: newTag.trim() || undefined,
+      timePeriod: hasTimePeriod && startDate ? {
+        startDate,
+        startTime,
+        endTime,
+        syncToCalendar,
+      } : undefined,
       createdAt: new Date().toISOString(),
     };
+
+    if (newItem.timePeriod?.syncToCalendar) {
+      syncKanbanCalendarEvent(newItem);
+    }
 
     setBoardItems((prev) => [newItem, ...prev]);
     setIsAddingNew(false);
   };
 
   const handleDeleteItem = (id: string) => {
+    const itemToDelete = boardItems.find(i => i.id === id);
+    if (itemToDelete) {
+      syncKanbanCalendarEvent(itemToDelete, true);
+    }
     setBoardItems((prev) => prev.filter((item) => item.id !== id));
     if (editingItem?.id === id) setEditingItem(null);
     setActiveMenuId(null);
@@ -137,6 +241,12 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   const handleSaveEditedItem = (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingItem || !editingItem.title.trim()) return;
+
+    if (editingItem.timePeriod?.syncToCalendar && editingItem.timePeriod?.startDate) {
+      syncKanbanCalendarEvent(editingItem);
+    } else {
+      syncKanbanCalendarEvent(editingItem, true);
+    }
 
     setBoardItems((prev) =>
       prev.map((item) => (item.id === editingItem.id ? editingItem : item))
@@ -210,15 +320,32 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     let description = '';
     let url = '';
     let color = DEFAULT_COLORS[sourceType];
+    let timePeriod: KanbanItem['timePeriod'] = undefined;
 
     if (sourceType === 'task') {
       title = rawItem.title || 'Untitled Task';
       description = rawItem.courseName ? `Course: ${rawItem.courseName}` : rawItem.description || '';
       color = rawItem.courseColor || DEFAULT_COLORS.task;
+      if (rawItem.dueDate) {
+        timePeriod = {
+          startDate: rawItem.dueDate,
+          startTime: '09:00',
+          endTime: '10:00',
+          syncToCalendar: false,
+        };
+      }
     } else if (sourceType === 'calendar') {
       title = rawItem.title || rawItem.summary || rawItem.courseName || 'Calendar Event';
       description = `${rawItem.date || ''} ${rawItem.startTime ? `(${rawItem.startTime} - ${rawItem.endTime || ''})` : ''}`.trim();
       color = rawItem.color || DEFAULT_COLORS.calendar;
+      if (rawItem.date) {
+        timePeriod = {
+          startDate: rawItem.date,
+          startTime: rawItem.startTime || '09:00',
+          endTime: rawItem.endTime || '10:00',
+          syncToCalendar: false,
+        };
+      }
     } else if (sourceType === 'class') {
       title = `${rawItem.code || ''} - ${rawItem.name || 'Course'}`.trim();
       description = rawItem.instructor ? `Instructor: ${rawItem.instructor} | Room: ${rawItem.room || 'N/A'}` : '';
@@ -239,6 +366,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       sourceId: String(rawItem.id || ''),
       color,
       url: url || undefined,
+      timePeriod,
       createdAt: new Date().toISOString(),
     };
 
@@ -380,9 +508,9 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           borderLeftColor: item.color || DEFAULT_COLORS[item.sourceType] || '#8b5cf6',
                         }}
                       >
-                        {/* Type Icon & Quick Actions */}
-                        <div className="flex items-start justify-between gap-2 mb-1.5">
-                          <div className="flex items-center gap-2 min-w-0">
+                        {/* Type Icon, Priority & Quick Actions */}
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                             <span className="text-secondary shrink-0 select-none">
                               {getItemIcon(item.sourceType)}
                             </span>
@@ -395,6 +523,13 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                             >
                               {item.sourceType.replace('_', ' ')}
                             </span>
+                            {renderPriorityBadge(item.priority)}
+                            {item.tag && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md font-mono bg-surface-container-high text-secondary border border-outline-variant/30 shrink-0">
+                                <TagIcon className="w-2.5 h-2.5" />
+                                {item.tag}
+                              </span>
+                            )}
                           </div>
 
                           <div className="flex items-center gap-1 opacity-80 group-hover:opacity-100 transition-opacity">
@@ -428,7 +563,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                         item.status === st ? 'text-primary font-bold bg-surface-container/50' : 'text-on-surface'
                                       }`}
                                     >
-                                      <span className="capitalize">{st}</span>
+                                      <span className="uppercase font-mono text-xs">{st}</span>
                                       {item.status === st && <Check className="w-3 h-3 text-primary" />}
                                     </button>
                                   ))}
@@ -469,6 +604,27 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           <p className="text-xs text-secondary font-normal mt-1 line-clamp-2 leading-relaxed">
                             {item.description}
                           </p>
+                        )}
+
+                        {/* Time Period Badge */}
+                        {item.timePeriod?.startDate && (
+                          <div className="flex items-center gap-1.5 mt-2.5 px-2.5 py-1.5 rounded-xl bg-surface-container-high/60 border border-outline-variant/30 text-[11px] font-mono text-secondary">
+                            <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <span className="font-semibold text-on-surface">
+                              {item.timePeriod.startDate}
+                            </span>
+                            {item.timePeriod.startTime && (
+                              <span>
+                                {item.timePeriod.startTime}{item.timePeriod.endTime ? ` - ${item.timePeriod.endTime}` : ''}
+                              </span>
+                            )}
+                            {item.timePeriod.syncToCalendar && (
+                              <span className="ml-auto text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-primary/15 text-primary border border-primary/20 flex items-center gap-1">
+                                <CalendarIcon className="w-2.5 h-2.5" />
+                                Calendar
+                              </span>
+                            )}
+                          </div>
                         )}
 
                         {/* Footer Badges & External Link */}
@@ -724,8 +880,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* 3. NEW CUSTOM ITEM MODAL */}
       {isAddingNew && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 my-8">
             <div className="flex items-center justify-between">
               <h3 className="font-display font-bold text-lg text-on-surface">Create New Card</h3>
               <button
@@ -756,7 +912,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   Description / Notes (Optional)
                 </label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
                   placeholder="Add details, links, or notes..."
@@ -774,10 +930,104 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   onChange={(e) => setNewTargetStatus(e.target.value as any)}
                   className="w-full border border-outline-variant/50 rounded-xl p-2.5 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-mono cursor-pointer"
                 >
-                  <option value="todo">📌 TODO</option>
-                  <option value="doing">⚡ DOING</option>
-                  <option value="done">✅ DONE</option>
+                  <option value="todo">TODO</option>
+                  <option value="doing">DOING</option>
+                  <option value="done">DONE</option>
                 </select>
+              </div>
+
+              {/* Priority & Tag Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-mono font-semibold text-secondary block mb-1">
+                    Priority
+                  </label>
+                  <select
+                    value={newPriority}
+                    onChange={(e) => setNewPriority(e.target.value as any)}
+                    className="w-full border border-outline-variant/50 rounded-xl p-2.5 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-mono cursor-pointer"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-mono font-semibold text-secondary block mb-1">
+                    Tag / Label
+                  </label>
+                  <input
+                    type="text"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    placeholder="e.g. Study, Exam"
+                    className="w-full border border-outline-variant/50 rounded-xl p-2.5 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Time Period Section */}
+              <div className="pt-2 border-t border-outline-variant/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-mono font-semibold text-on-surface flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={hasTimePeriod}
+                      onChange={(e) => setHasTimePeriod(e.target.checked)}
+                      className="rounded accent-primary w-4 h-4 cursor-pointer"
+                    />
+                    <span>Set Date & Time Period</span>
+                  </label>
+                </div>
+
+                {hasTimePeriod && (
+                  <div className="p-3 rounded-2xl bg-surface-container-high/40 border border-outline-variant/30 space-y-3">
+                    <div>
+                      <label className="text-[11px] font-mono text-secondary block mb-1">Date</label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full border border-outline-variant/50 rounded-xl p-2 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-mono"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] font-mono text-secondary block mb-1">Start Time</label>
+                        <input
+                          type="time"
+                          value={startTime}
+                          onChange={(e) => setStartTime(e.target.value)}
+                          className="w-full border border-outline-variant/50 rounded-xl p-2 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-mono text-secondary block mb-1">End Time</label>
+                        <input
+                          type="time"
+                          value={endTime}
+                          onChange={(e) => setEndTime(e.target.value)}
+                          className="w-full border border-outline-variant/50 rounded-xl p-2 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <label className="flex items-center gap-2 pt-1 text-xs text-on-surface font-medium cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={syncToCalendar}
+                        onChange={(e) => setSyncToCalendar(e.target.checked)}
+                        className="rounded accent-primary w-4 h-4 cursor-pointer"
+                      />
+                      <span className="flex items-center gap-1.5">
+                        <CalendarIcon className="w-3.5 h-3.5 text-primary" />
+                        Sync event to Sakido Calendar
+                      </span>
+                    </label>
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-2 border-t border-outline-variant/20">
@@ -802,8 +1052,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
       {/* 4. EDIT ITEM MODAL */}
       {editingItem && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 my-8">
             <div className="flex items-center justify-between">
               <h3 className="font-display font-bold text-lg text-on-surface">
                 Edit Card Details
@@ -835,7 +1085,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   Description / Notes
                 </label>
                 <textarea
-                  rows={3}
+                  rows={2}
                   value={editingItem.description || ''}
                   onChange={(e) => setEditingItem({ ...editingItem, description: e.target.value })}
                   className="w-full border border-outline-variant/50 rounded-xl p-3 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary resize-none"
@@ -852,10 +1102,141 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   onChange={(e) => setEditingItem({ ...editingItem, status: e.target.value as any })}
                   className="w-full border border-outline-variant/50 rounded-xl p-2.5 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-mono cursor-pointer"
                 >
-                  <option value="todo">📌 TODO</option>
-                  <option value="doing">⚡ DOING</option>
-                  <option value="done">✅ DONE</option>
+                  <option value="todo">TODO</option>
+                  <option value="doing">DOING</option>
+                  <option value="done">DONE</option>
                 </select>
+              </div>
+
+              {/* Priority & Tag Grid */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-mono font-semibold text-secondary block mb-1">
+                    Priority
+                  </label>
+                  <select
+                    value={editingItem.priority || 'medium'}
+                    onChange={(e) => setEditingItem({ ...editingItem, priority: e.target.value as any })}
+                    className="w-full border border-outline-variant/50 rounded-xl p-2.5 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-mono cursor-pointer"
+                  >
+                    <option value="low">Low</option>
+                    <option value="medium">Medium</option>
+                    <option value="high">High</option>
+                    <option value="urgent">Urgent</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-mono font-semibold text-secondary block mb-1">
+                    Tag / Label
+                  </label>
+                  <input
+                    type="text"
+                    value={editingItem.tag || ''}
+                    onChange={(e) => setEditingItem({ ...editingItem, tag: e.target.value })}
+                    placeholder="e.g. Study, Work"
+                    className="w-full border border-outline-variant/50 rounded-xl p-2.5 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              </div>
+
+              {/* Time Period Section */}
+              <div className="pt-2 border-t border-outline-variant/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-mono font-semibold text-on-surface flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(editingItem.timePeriod?.startDate)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setEditingItem({
+                            ...editingItem,
+                            timePeriod: {
+                              startDate: new Date().toISOString().split('T')[0],
+                              startTime: '09:00',
+                              endTime: '10:00',
+                              syncToCalendar: true,
+                            },
+                          });
+                        } else {
+                          setEditingItem({
+                            ...editingItem,
+                            timePeriod: undefined,
+                          });
+                        }
+                      }}
+                      className="rounded accent-primary w-4 h-4 cursor-pointer"
+                    />
+                    <span>Set Date & Time Period</span>
+                  </label>
+                </div>
+
+                {editingItem.timePeriod?.startDate && (
+                  <div className="p-3 rounded-2xl bg-surface-container-high/40 border border-outline-variant/30 space-y-3">
+                    <div>
+                      <label className="text-[11px] font-mono text-secondary block mb-1">Date</label>
+                      <input
+                        type="date"
+                        value={editingItem.timePeriod.startDate || ''}
+                        onChange={(e) =>
+                          setEditingItem({
+                            ...editingItem,
+                            timePeriod: { ...editingItem.timePeriod, startDate: e.target.value },
+                          })
+                        }
+                        className="w-full border border-outline-variant/50 rounded-xl p-2 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-mono"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[11px] font-mono text-secondary block mb-1">Start Time</label>
+                        <input
+                          type="time"
+                          value={editingItem.timePeriod.startTime || '09:00'}
+                          onChange={(e) =>
+                            setEditingItem({
+                              ...editingItem,
+                              timePeriod: { ...editingItem.timePeriod, startTime: e.target.value },
+                            })
+                          }
+                          className="w-full border border-outline-variant/50 rounded-xl p-2 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-mono"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-mono text-secondary block mb-1">End Time</label>
+                        <input
+                          type="time"
+                          value={editingItem.timePeriod.endTime || '10:00'}
+                          onChange={(e) =>
+                            setEditingItem({
+                              ...editingItem,
+                              timePeriod: { ...editingItem.timePeriod, endTime: e.target.value },
+                            })
+                          }
+                          className="w-full border border-outline-variant/50 rounded-xl p-2 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <label className="flex items-center gap-2 pt-1 text-xs text-on-surface font-medium cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(editingItem.timePeriod.syncToCalendar)}
+                        onChange={(e) =>
+                          setEditingItem({
+                            ...editingItem,
+                            timePeriod: { ...editingItem.timePeriod, syncToCalendar: e.target.checked },
+                          })
+                        }
+                        className="rounded accent-primary w-4 h-4 cursor-pointer"
+                      />
+                      <span className="flex items-center gap-1.5">
+                        <CalendarIcon className="w-3.5 h-3.5 text-primary" />
+                        Sync event to Sakido Calendar
+                      </span>
+                    </label>
+                  </div>
+                )}
               </div>
 
               {/* URL (optional) */}
