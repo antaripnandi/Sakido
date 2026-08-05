@@ -141,7 +141,9 @@ const syncKanbanWithGlobalState = (
       endTime: item.timePeriod!.endTime || '10:00',
       type: 'Event',
       calendarId: 'cal-personal',
-      color: item.color || '#8b5cf6',
+      color: item.priority === 'urgent' ? '#dc2626' : (item.color || '#8b5cf6'),
+      priority: item.priority || 'medium',
+      isUrgent: item.priority === 'urgent',
       sourceKanbanId: item.id,
     }));
 

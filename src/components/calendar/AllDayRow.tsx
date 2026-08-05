@@ -95,7 +95,7 @@ export const AllDayRow: React.FC<AllDayRowProps> = ({
               return (
                 <div
                   key={event.id}
-                  className="absolute px-2.5 py-1 rounded text-xs font-medium truncate cursor-pointer hover:shadow-sm transition-shadow"
+                  className="absolute px-2.5 py-1 rounded text-xs font-medium truncate cursor-pointer hover:shadow-sm transition-shadow flex items-center gap-1"
                   style={{
                     backgroundColor: color,
                     color: '#fff',
@@ -107,7 +107,12 @@ export const AllDayRow: React.FC<AllDayRowProps> = ({
                   title={event.title}
                   onClick={() => onEditClick(event.id, event.title, event.type, event.calendarId, event.isAllDay, color)}
                 >
-                  {event.title}
+                  {(event.priority === 'urgent' || event.isUrgent) && (
+                    <span className="px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-red-600 text-white shrink-0 uppercase">
+                      URGENT
+                    </span>
+                  )}
+                  <span className="truncate">{event.title}</span>
                 </div>
               );
             })}

@@ -82,14 +82,22 @@ export const EventBlock: React.FC<EventBlockProps> = ({
     >
       <div className="flex items-start gap-1">
         <div className="flex-1 min-w-0">
-          <div className="font-medium truncate">{event.title}</div>
-          <div className="text-[10px] opacity-70">{event.time}</div>
+          <div className="flex items-center gap-1 min-w-0 flex-wrap">
+            {(event.priority === 'urgent' || event.isUrgent) && (
+              <span className="inline-flex items-center gap-0.5 px-1 py-0.2 rounded text-[9px] font-mono font-bold bg-red-600 text-white shrink-0 uppercase tracking-tight shadow-2xs">
+                <AlertCircle className="w-2.5 h-2.5" />
+                URGENT
+              </span>
+            )}
+            <span className="font-medium truncate">{event.title}</span>
+          </div>
+          <div className="text-[10px] opacity-80 font-mono mt-0.5">{event.time}</div>
         </div>
         {event.syncStatus === 'pending' && (
-          <Clock className="w-3 h-3 text-yellow-600 flex-shrink-0" aria-label="Sync pending" />
+          <Clock className="w-3 h-3 text-yellow-300 flex-shrink-0" aria-label="Sync pending" />
         )}
         {event.syncStatus === 'failed' && (
-          <AlertCircle className="w-3 h-3 text-red-600 flex-shrink-0" aria-label="Sync failed" />
+          <AlertCircle className="w-3 h-3 text-red-300 flex-shrink-0" aria-label="Sync failed" />
         )}
       </div>
       {!isAllDay && <div className="resize-handle-top absolute top-0 left-0 right-0 h-2 cursor-ns-resize"></div>}
