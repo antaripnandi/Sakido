@@ -203,6 +203,42 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   }, [today, setFocusStats]);
 
   // App data state (persisted per user session with debouncing for high-frequency edits)
+  const [selectedMilestoneEvent, setSelectedMilestoneEvent] = useState<any | null>(null);
+
+  const handleDeleteMilestoneEvent = (eventId: string) => {
+    setEvents((prev) => {
+      const updated = prev.filter((e) => e.id !== eventId);
+      try {
+        localStorage.setItem('sakido_events', JSON.stringify(updated));
+      } catch (err) {
+        console.warn('Failed to save sakido_events:', err);
+      }
+      return updated;
+    });
+
+    // Also un-sync from sakido_kanban_board in localStorage if it was a Kanban event
+    try {
+      const rawKanban = localStorage.getItem('sakido_kanban_board');
+      if (rawKanban) {
+        const kanbanItems: any[] = JSON.parse(rawKanban);
+        const updatedItems = kanbanItems.map((item) => {
+          if (`kanban-event-${item.id}` === eventId || item.id === eventId) {
+            return {
+              ...item,
+              timePeriod: item.timePeriod
+                ? { ...item.timePeriod, syncToCalendar: false }
+                : undefined,
+            };
+          }
+          return item;
+        });
+        localStorage.setItem('sakido_kanban_board', JSON.stringify(updatedItems));
+      }
+    } catch (err) {
+      console.warn('Failed to un-sync kanban item:', err);
+    }
+  };
+
   const [classes, setClasses] = useLocalStorageState<any[]>('sakido_classes', []);
   const [tasks, setTasks] = useLocalStorageState<any[]>('sakido_tasks', [], 300);
   const [watchLater, setWatchLater] = useLocalStorageState<any[]>('sakido_watch', []);
@@ -2533,34 +2569,94 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             </div>
           )}
 
-          {/* User Events List */}
+          {/* User Events List / Scheduled Calendar Milestones */}
           {events.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <div className="text-xs font-bold uppercase tracking-wider text-secondary">
+            <div className="flex flex-col gap-3 mt-4">
+              <div className="text-xs font-bold uppercase tracking-wider text-secondary flex items-center gap-2 font-mono">
+                <CalendarIcon className="w-3.5 h-3.5 text-primary" />
                 Scheduled Calendar Milestones ({events.length})
               </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {events.map((ev) => (
-                  <div
-                    key={ev.id}
-                    className="p-3 border border-outline-variant/40 rounded-xl bg-surface-container-low dark:bg-[#251e19] flex items-center justify-between"
-                  >
-                    <div>
-                      <span className="text-[10px] font-mono uppercase font-bold px-2 py-0.5 rounded bg-surface-container-high text-primary">
-                        {ev.type}
-                      </span>
-                      <h5 className="font-bold text-sm text-on-surface mt-1">{ev.title}</h5>
-                      <span className="text-xs text-secondary font-mono">{ev.date}</span>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteEvent(ev.id)}
-                      className="text-secondary/60 hover:text-error p-1 transition-colors"
-                      title="Delete event"
+                {events.map((ev) => {
+                  const evColor = ev.color || '#8b5cf6';
+                  const isDone = ev.completed || ev.status === 'completed';
+
+                  return (
+                    <div
+                      key={ev.id}
+                      onClick={() => setSelectedMilestoneEvent(ev)}
+                      className="group relative p-3.5 border border-outline-variant/40 hover:border-outline-variant/80 rounded-xl bg-surface-container-low dark:bg-[#201814] hover:bg-surface-container transition-all cursor-pointer shadow-2xs hover:shadow-md flex items-center justify-between gap-3"
+                      style={{
+                        borderLeftWidth: '4px',
+                        borderLeftColor: evColor,
+                      }}
                     >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className="text-[9px] font-mono uppercase font-bold px-1.5 py-0.2 rounded shrink-0"
+                            style={{
+                              backgroundColor: `${evColor}20`,
+                              color: evColor,
+                            }}
+                          >
+                            {ev.type || 'Event'}
+                          </span>
+
+                          {isDone ? (
+                            <span className="inline-flex items-center gap-0.5 text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-emerald-600 text-white uppercase shrink-0">
+                              <Check className="w-2.5 h-2.5" /> DONE
+                            </span>
+                          ) : (
+                            ev.priority && (
+                              <span
+                                className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded uppercase shrink-0 ${
+                                  ev.priority === 'urgent'
+                                    ? 'bg-red-600 text-white'
+                                    : ev.priority === 'high'
+                                    ? 'bg-amber-500 text-black'
+                                    : ev.priority === 'medium'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-surface-container-high text-secondary'
+                                }`}
+                              >
+                                {ev.priority}
+                              </span>
+                            )
+                          )}
+                        </div>
+
+                        <h5 className={`font-bold text-sm text-on-surface mt-1.5 truncate ${isDone ? 'line-through opacity-75' : ''}`}>
+                          {ev.title}
+                        </h5>
+
+                        <div className="flex items-center gap-2 text-xs text-secondary font-mono mt-1">
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-primary shrink-0" />
+                            {ev.date}
+                          </span>
+                          {ev.startTime && (
+                            <span>
+                              {ev.startTime}{ev.endTime ? ` - ${ev.endTime}` : ''}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteMilestoneEvent(ev.id);
+                        }}
+                        className="text-secondary/60 hover:text-error p-1.5 rounded-lg hover:bg-error-container/20 transition-colors shrink-0 cursor-pointer"
+                        title="Delete milestone event"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -4383,6 +4479,118 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           onSelectTask={(task) => setSelectedTask(task)}
           onSelectNote={(note) => setSelectedNote(note)}
         />
+      )}
+
+      {/* Milestone Details & Inspector Modal */}
+      {selectedMilestoneEvent && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+          <div
+            className="bg-surface-container-lowest dark:bg-[#1f1915] border border-outline-variant/60 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 my-8"
+            style={{
+              borderTopWidth: '6px',
+              borderTopColor: selectedMilestoneEvent.color || '#8b5cf6',
+            }}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span
+                    className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded"
+                    style={{
+                      backgroundColor: `${selectedMilestoneEvent.color || '#8b5cf6'}20`,
+                      color: selectedMilestoneEvent.color || '#8b5cf6',
+                    }}
+                  >
+                    {selectedMilestoneEvent.type || 'Event'}
+                  </span>
+                  {selectedMilestoneEvent.priority && (
+                    <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-surface-container-high text-secondary border border-outline-variant/30">
+                      Priority: {selectedMilestoneEvent.priority}
+                    </span>
+                  )}
+                  {selectedMilestoneEvent.sourceKanbanId && (
+                    <span className="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-primary/15 text-primary border border-primary/20">
+                      Kanban Synced
+                    </span>
+                  )}
+                </div>
+                <h3 className="font-display font-bold text-lg text-on-surface mt-2">
+                  {selectedMilestoneEvent.title}
+                </h3>
+              </div>
+
+              <button
+                onClick={() => setSelectedMilestoneEvent(null)}
+                className="text-secondary hover:text-on-surface p-1 rounded-lg hover:bg-surface-container cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3 pt-2 border-t border-outline-variant/30">
+              <div className="flex items-center gap-2 text-xs text-secondary font-mono">
+                <CalendarIcon className="w-4 h-4 text-primary shrink-0" />
+                <span className="font-semibold text-on-surface">{selectedMilestoneEvent.date}</span>
+                {selectedMilestoneEvent.startTime && (
+                  <span>
+                    ({selectedMilestoneEvent.startTime}{selectedMilestoneEvent.endTime ? ` - ${selectedMilestoneEvent.endTime}` : ''})
+                  </span>
+                )}
+              </div>
+
+              {selectedMilestoneEvent.description && (
+                <div className="p-3 rounded-xl bg-surface-container-low dark:bg-[#17120e] text-xs text-on-surface leading-relaxed">
+                  {selectedMilestoneEvent.description}
+                </div>
+              )}
+
+              <div className="flex items-center justify-between pt-2">
+                <label className="flex items-center gap-2 text-xs font-semibold text-on-surface cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(selectedMilestoneEvent.completed || selectedMilestoneEvent.status === 'completed')}
+                    onChange={(e) => {
+                      const isChecked = e.target.checked;
+                      const updatedEv = {
+                        ...selectedMilestoneEvent,
+                        completed: isChecked,
+                        status: isChecked ? 'completed' : 'scheduled',
+                      };
+                      setSelectedMilestoneEvent(updatedEv);
+                      setEvents((prev) =>
+                        prev.map((item) => (item.id === updatedEv.id ? updatedEv : item))
+                      );
+                    }}
+                    className="rounded accent-primary w-4 h-4 cursor-pointer"
+                  />
+                  <span>Mark Event as Completed</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-outline-variant/30">
+              <button
+                type="button"
+                onClick={() => {
+                  handleDeleteMilestoneEvent(selectedMilestoneEvent.id);
+                  setSelectedMilestoneEvent(null);
+                }}
+                className="px-3 py-2 rounded-xl bg-error-container/20 hover:bg-error-container/40 text-error text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-transparent"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Delete Event
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSelectedMilestoneEvent(null)}
+                className="px-4 py-2 rounded-xl bg-primary text-on-primary font-semibold text-xs hover:opacity-90 transition-all cursor-pointer shadow-2xs"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
