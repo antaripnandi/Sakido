@@ -23,7 +23,7 @@ export const SakidoLogo: React.FC<SakidoLogoProps> = ({
             src="/main_logo_sakido.png"
             alt="Sakido Logo"
             onError={() => setImgError(true)}
-            className="w-full h-full object-contain filter invert dark:invert-0 dark:brightness-100 contrast-125 transition-all duration-200"
+            className="w-full h-full object-contain filter dark:invert dark:brightness-200 transition-all duration-200"
           />
         ) : (
           <div className="w-full h-full rounded-xl bg-primary text-on-primary font-display font-black text-sm flex items-center justify-center shadow-2xs">
