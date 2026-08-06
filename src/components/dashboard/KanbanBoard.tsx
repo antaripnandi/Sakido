@@ -20,7 +20,8 @@ import {
   ArrowRight,
   Clock,
   Tag as TagIcon,
-  AlertCircle
+  AlertCircle,
+  Bookmark
 } from 'lucide-react';
 import { Task, Course, ScheduleEvent } from '../../types';
 import { useLocalStorageState } from '../../hooks/useLocalStorageState';
@@ -58,26 +59,26 @@ interface KanbanBoardProps {
 }
 
 const DEFAULT_COLORS: Record<KanbanItem['sourceType'], string> = {
-  task: '#6366f1',
-  calendar: '#3b82f6',
+  task: '#6f4627',
+  calendar: '#265763',
   class: '#10b981',
   watch_later: '#f59e0b',
-  custom: '#8b5cf6',
+  custom: '#8b5e3c',
 };
 
-// Clean minimalist icon selector to replace raw emojis
+// Icon selector for card types
 const getItemIcon = (sourceType: KanbanItem['sourceType']) => {
   switch (sourceType) {
     case 'task':
-      return <CheckSquare className="w-3.5 h-3.5" />;
+      return <CheckSquare className="w-3 h-3 shrink-0" />;
     case 'calendar':
-      return <CalendarIcon className="w-3.5 h-3.5" />;
+      return <CalendarIcon className="w-3 h-3 shrink-0" />;
     case 'class':
-      return <BookOpen className="w-3.5 h-3.5" />;
+      return <BookOpen className="w-3 h-3 shrink-0" />;
     case 'watch_later':
-      return <Video className="w-3.5 h-3.5" />;
+      return <Video className="w-3 h-3 shrink-0" />;
     default:
-      return <Layers className="w-3.5 h-3.5" />;
+      return <Bookmark className="w-3 h-3 shrink-0" />;
   }
 };
 
@@ -86,26 +87,25 @@ const renderPriorityBadge = (priority?: KanbanItem['priority']) => {
   switch (priority) {
     case 'urgent':
       return (
-        <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded-md font-mono bg-red-500/15 text-red-400 border border-red-500/30 shrink-0">
-          <AlertCircle className="w-2.5 h-2.5 text-red-400" />
-          URGENT
+        <span className="flex items-center gap-1 font-body-sm text-[10px] uppercase font-bold text-error bg-error-container/80 dark:bg-red-950/60 dark:text-red-300 px-2 py-0.5 rounded-full shrink-0 border border-error/30">
+          <AlertCircle className="w-3 h-3 text-error dark:text-red-400 shrink-0" /> URGENT
         </span>
       );
     case 'high':
       return (
-        <span className="inline-flex items-center gap-1 text-[9px] font-bold px-1.5 py-0.2 rounded-md font-mono bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
+        <span className="flex items-center gap-1 font-body-sm text-[10px] uppercase font-bold text-amber-800 bg-amber-100 dark:bg-amber-950/60 dark:text-amber-300 px-2 py-0.5 rounded-full shrink-0 border border-amber-500/30">
           HIGH
         </span>
       );
     case 'medium':
       return (
-        <span className="inline-flex items-center gap-1 text-[9px] font-semibold px-1.5 py-0.2 rounded-md font-mono bg-blue-500/15 text-blue-400 border border-blue-500/30 shrink-0">
+        <span className="flex items-center gap-1 font-body-sm text-[10px] uppercase font-bold text-secondary bg-secondary-container dark:bg-surface-container-high dark:text-secondary px-2 py-0.5 rounded-full shrink-0 border border-outline-variant/30">
           MED
         </span>
       );
     case 'low':
       return (
-        <span className="inline-flex items-center gap-1 text-[9px] font-medium px-1.5 py-0.2 rounded-md font-mono bg-surface-container-high text-secondary border border-outline-variant/30 shrink-0">
+        <span className="flex items-center gap-1 font-body-sm text-[10px] uppercase font-medium text-on-surface-variant bg-surface-container-high dark:bg-surface-container px-2 py-0.5 rounded-full shrink-0 border border-outline-variant/30">
           LOW
         </span>
       );
@@ -142,9 +142,12 @@ const syncKanbanWithGlobalState = (
       endTime: item.timePeriod!.endTime || '10:00',
       type: 'Event',
       calendarId: 'cal-personal',
-      color: item.priority === 'urgent' ? '#dc2626' : (item.color || '#8b5cf6'),
+      color: item.status === 'done' ? '#10b981' : (item.priority === 'urgent' ? '#dc2626' : (item.color || '#8b5cf6')),
       priority: item.priority || 'medium',
       isUrgent: item.priority === 'urgent',
+      kanbanStatus: item.status,
+      completed: item.status === 'done',
+      status: item.status === 'done' ? 'completed' : 'scheduled',
       sourceKanbanId: item.id,
     }));
 
@@ -206,7 +209,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   onUpdateEvents,
   onUpdateTasks,
 }) => {
-  // Persistent Kanban items state
+  // Persistent Kanban items state (no hardcoded cards)
   const [boardItems, setBoardItems] = useLocalStorageState<KanbanItem[]>('sakido_kanban_board', []);
 
   // Card Expand / Collapse state
@@ -285,7 +288,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       description: newDescription.trim() || undefined,
       status: newTargetStatus,
       sourceType: 'custom',
-      color: '#8b5cf6',
+      color: '#6f4627',
       priority: newPriority,
       tag: newTag.trim() || undefined,
       timePeriod: hasTimePeriod && startDate ? {
@@ -359,14 +362,14 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
     setDragOverColumn(null);
     setDraggedItemId(null);
 
-    // 1. Check for card ID reorder/move
+    // 1. Card ID reorder/move
     const cardId = e.dataTransfer.getData('text/plain');
     if (cardId) {
       handleMoveStatus(cardId, column);
       return;
     }
 
-    // 2. Check for Import Dock Item payload
+    // 2. Import Dock Item payload
     const jsonStr = e.dataTransfer.getData('application/json');
     if (jsonStr) {
       try {
@@ -488,40 +491,46 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-12">
-      {/* Header Strip */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-outline-variant/30 pb-4">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <h2 className="font-display text-2xl font-bold text-on-surface tracking-tight">
-              Kanban Task Board
-            </h2>
-          </div>
-          <p className="text-xs text-secondary font-medium mt-1">
+      {/* Page Header Strip (Styled to match design template) */}
+      <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-outline-variant/30 pb-4 mt-2">
+        <div className="max-w-2xl">
+          <h2 className="font-display text-2xl sm:text-3xl font-bold text-on-surface mb-1 tracking-tight">
+            Kanban Task Board
+          </h2>
+          <p className="font-body-md text-xs sm:text-sm text-on-surface-variant leading-relaxed">
             Organize assignments, lectures, watch-later resources, and custom goals freely across columns.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           {boardItems.length > 0 && (
             <button
               onClick={isAllExpanded ? collapseAllCards : expandAllCards}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-container-high hover:bg-surface-container text-secondary hover:text-on-surface font-mono font-semibold text-xs transition-all border border-outline-variant/30 cursor-pointer"
-              title={isAllExpanded ? "Collapse all cards" : "Expand all cards"}
+              className="px-4 py-2 border border-outline-variant text-on-surface font-body-sm font-semibold text-xs rounded-xl flex items-center gap-1.5 hover:bg-surface-container-low transition-colors cursor-pointer uppercase tracking-wider shadow-2xs"
             >
-              {isAllExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              <span>{isAllExpanded ? 'Collapse All' : 'Expand All'}</span>
+              {isAllExpanded ? (
+                <>
+                  <span>COLLAPSE ALL</span>
+                  <ChevronUp className="w-4 h-4" />
+                </>
+              ) : (
+                <>
+                  <span>EXPAND ALL</span>
+                  <ChevronDown className="w-4 h-4" />
+                </>
+              )}
             </button>
           )}
 
           <button
             onClick={() => handleAddItem('todo')}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-on-primary hover:opacity-90 font-semibold text-xs transition-all border border-primary cursor-pointer shadow-2xs"
+            className="px-4 py-2 bg-on-surface text-surface dark:bg-primary dark:text-on-primary font-body-sm font-semibold text-xs rounded-xl flex items-center gap-1.5 hover:opacity-90 transition-opacity cursor-pointer uppercase tracking-wider shadow-2xs"
           >
             <Plus className="w-4 h-4" />
-            New Card
+            <span>NEW CARD</span>
           </button>
         </div>
-      </div>
+      </header>
 
       {/* 1. THREE KANBAN COLUMNS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -530,48 +539,48 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           const isHovered = dragOverColumn === col.id;
 
           return (
-            <div
+            <section
               key={col.id}
               onDragOver={(e) => handleDragOverColumn(e, col.id)}
               onDragLeave={handleDragLeaveColumn}
               onDrop={(e) => handleDropOnColumn(e, col.id)}
-              className={`flex flex-col rounded-2xl border transition-all duration-200 bg-surface-container-low/60 dark:bg-[#1a1411]/60 p-4 min-h-[500px] ${
+              className={`flex flex-col bg-surface-container-lowest dark:bg-[#1a1411]/80 border rounded-2xl p-4 transition-all duration-200 min-h-[550px] ${
                 isHovered
                   ? 'border-primary ring-2 ring-primary/20 bg-surface-container/85'
                   : 'border-outline-variant/40 hover:border-outline-variant/70'
               }`}
             >
               {/* Column Header */}
-              <div className="flex items-center justify-between pb-3 mb-3 border-b border-outline-variant/30 font-mono">
+              <div className="flex justify-between items-center mb-4 border-b border-outline-variant/30 pb-3 font-mono">
                 <div className="flex items-center gap-2">
-                  <span className="shrink-0">{col.icon}</span>
-                  <span className="text-xs font-bold tracking-widest text-on-surface uppercase">
+                  <span className="shrink-0 text-on-surface">{col.icon}</span>
+                  <h3 className="font-display font-bold text-sm text-on-surface uppercase tracking-wider">
                     {col.label}
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-surface-container-high text-secondary border border-outline-variant/30">
+                  </h3>
+                  <span className="bg-surface-container-high dark:bg-surface-container text-on-surface-variant font-mono font-bold text-[11px] px-2.5 py-0.5 rounded-full border border-outline-variant/30">
                     {itemsInCol.length}
                   </span>
                 </div>
 
                 <button
                   onClick={() => handleAddItem(col.id)}
-                  className="p-1 rounded-lg hover:bg-surface-container-high text-secondary hover:text-on-surface transition-colors cursor-pointer"
+                  className="text-on-surface-variant hover:text-primary transition-colors p-1 rounded-lg hover:bg-surface-container-high cursor-pointer"
                   title={`Add item to ${col.label}`}
                 >
                   <Plus className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Column Cards Container */}
-              <div className="flex-1 space-y-2.5 overflow-y-auto max-h-[600px] pr-1 no-scrollbar">
+              {/* Column Cards Container (No hardcoded cards - fully dynamic) */}
+              <div className="flex-1 space-y-3 overflow-y-auto pr-1 pb-2 no-scrollbar max-h-[620px]">
                 {itemsInCol.length === 0 ? (
-                  <div className="h-36 rounded-xl border border-dashed border-outline-variant/30 bg-surface-container-lowest/40 dark:bg-surface-container-lowest/10 flex flex-col items-center justify-center text-center p-4">
-                    <p className="text-xs font-medium text-secondary">Drop items here</p>
+                  <div className="flex-1 min-h-[220px] flex flex-col items-center justify-center border-2 border-dashed border-outline-variant/30 rounded-2xl bg-surface-container-lowest/40 dark:bg-surface-container-lowest/10 p-6 text-center">
+                    <p className="font-body-md text-xs font-medium text-secondary mb-2">Drop items here</p>
                     <button
                       onClick={() => handleAddItem(col.id)}
-                      className="mt-2 text-[11px] text-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                      className="font-body-sm text-xs text-primary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
                     >
-                      <Plus className="w-3 h-3" /> Add card
+                      <Plus className="w-3.5 h-3.5" /> Add card
                     </button>
                   </div>
                 ) : (
@@ -580,174 +589,155 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     const isExpanded = expandedCardIds.has(item.id);
 
                     return (
-                      <div
+                      <article
                         key={item.id}
                         draggable
                         onDragStart={(e) => handleDragStartCard(e, item.id)}
-                        className={`group relative p-3 rounded-xl border bg-surface-container-lowest dark:bg-[#201915] transition-all duration-150 shadow-2xs hover:shadow-md cursor-grab active:cursor-grabbing border-outline-variant/30 hover:border-outline-variant/80 ${
+                        className={`bg-surface-container-low dark:bg-[#201915] border border-outline-variant/40 hover:border-primary/80 rounded-2xl p-4 relative group transition-all duration-150 shadow-2xs hover:shadow-md cursor-grab active:cursor-grabbing ${
                           isDragging ? 'opacity-40 scale-95 border-primary' : ''
                         }`}
                         style={{
-                          borderLeftWidth: '4px',
-                          borderLeftColor: item.color || DEFAULT_COLORS[item.sourceType] || '#8b5cf6',
+                          borderLeftWidth: '5px',
+                          borderLeftColor: item.color || DEFAULT_COLORS[item.sourceType] || '#6f4627',
                         }}
                       >
-                        {/* Top Bar: Badges & Action Buttons */}
-                        <div className="flex items-center justify-between gap-1.5 mb-1.5">
-                          <div className="flex items-center gap-1 min-w-0 flex-wrap">
-                            <span className="text-secondary shrink-0 select-none">
-                              {getItemIcon(item.sourceType)}
-                            </span>
-                            <span
-                              className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded-md font-mono shrink-0"
-                              style={{
-                                backgroundColor: `${item.color || '#8b5cf6'}18`,
-                                color: item.color || '#8b5cf6',
-                              }}
-                            >
-                              {item.sourceType.replace('_', ' ')}
-                            </span>
-                            {renderPriorityBadge(item.priority)}
-                            {item.tag && (
-                              <span className="inline-flex items-center gap-0.5 text-[9px] font-medium px-1.5 py-0.2 rounded-md font-mono bg-surface-container-high text-secondary border border-outline-variant/30 shrink-0">
-                                <TagIcon className="w-2.5 h-2.5" />
-                                {item.tag}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-0.5 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
-                            {/* Expand / Collapse Toggle Button */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleExpandCard(item.id);
-                              }}
-                              className="p-1 rounded-md hover:bg-surface-container text-secondary hover:text-on-surface cursor-pointer"
-                              title={isExpanded ? "Collapse details" : "Expand details"}
-                            >
-                              {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                            </button>
-
-                            {/* Move Menu Button */}
-                            <div className="relative">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActiveMenuId(activeMenuId === item.id ? null : item.id);
+                        <div className="flex flex-col gap-2 pl-1">
+                          {/* Top Bar: Badges & Quick Action Controls */}
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+                              <span
+                                className="flex items-center gap-1 font-body-sm text-[10px] uppercase font-bold px-2 py-0.5 rounded-full shrink-0 border"
+                                style={{
+                                  backgroundColor: `${item.color || '#6f4627'}20`,
+                                  color: item.color || '#6f4627',
+                                  borderColor: `${item.color || '#6f4627'}40`,
                                 }}
-                                className="p-1 rounded-md hover:bg-surface-container text-secondary hover:text-on-surface cursor-pointer"
-                                title="Move status"
                               >
-                                <MoreVertical className="w-3.5 h-3.5" />
-                              </button>
-
-                              {activeMenuId === item.id && (
-                                <div className="absolute right-0 top-6 z-30 w-36 py-1 bg-surface-container-lowest dark:bg-[#251d18] border border-outline-variant/60 rounded-xl shadow-xl text-xs font-medium space-y-0.5">
-                                  <div className="px-2 py-1 text-[10px] font-mono text-secondary uppercase border-b border-outline-variant/30">
-                                    Move to
-                                  </div>
-                                  {(['todo', 'doing', 'done'] as const).map((st) => (
-                                    <button
-                                      key={st}
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleMoveStatus(item.id, st);
-                                      }}
-                                      disabled={item.status === st}
-                                      className={`w-full text-left px-3 py-1.5 hover:bg-surface-container flex items-center justify-between cursor-pointer ${
-                                        item.status === st ? 'text-primary font-bold bg-surface-container/50' : 'text-on-surface'
-                                      }`}
-                                    >
-                                      <span className="uppercase font-mono text-xs">{st}</span>
-                                      {item.status === st && <Check className="w-3 h-3 text-primary" />}
-                                    </button>
-                                  ))}
-                                  <div className="border-t border-outline-variant/30 pt-1">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleDeleteItem(item.id);
-                                      }}
-                                      className="w-full text-left px-3 py-1.5 hover:bg-error-container/20 text-error flex items-center gap-1.5 cursor-pointer"
-                                    >
-                                      <Trash2 className="w-3 h-3" />
-                                      Delete
-                                    </button>
-                                  </div>
-                                </div>
+                                {getItemIcon(item.sourceType)}
+                                {item.sourceType.replace('_', ' ')}
+                              </span>
+                              {renderPriorityBadge(item.priority)}
+                              {item.tag && (
+                                <span className="flex items-center gap-1 font-body-sm text-[10px] uppercase font-semibold text-secondary bg-secondary-container dark:bg-surface-container-high px-2 py-0.5 rounded-full shrink-0 border border-outline-variant/30">
+                                  <TagIcon className="w-2.5 h-2.5" /> {item.tag}
+                                </span>
                               )}
                             </div>
 
-                            {/* Edit Button */}
-                            <button
-                              onClick={() => setEditingItem(item)}
-                              className="p-1 rounded-md hover:bg-surface-container text-secondary hover:text-on-surface cursor-pointer"
-                              title="Edit item"
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
+                            <div className="flex items-center gap-0.5 shrink-0 opacity-80 group-hover:opacity-100 transition-opacity">
+                              {/* Expand / Collapse Button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleExpandCard(item.id);
+                                }}
+                                className="p-1 rounded-md hover:bg-surface-container-high text-secondary hover:text-on-surface cursor-pointer"
+                                title={isExpanded ? "Collapse details" : "Expand details"}
+                              >
+                                {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                              </button>
 
-                        {/* Title (Clickable to Expand / Collapse) */}
-                        <h4
-                          onClick={() => toggleExpandCard(item.id)}
-                          className="text-xs font-bold text-on-surface leading-tight cursor-pointer hover:text-primary transition-colors truncate"
-                        >
-                          {item.title}
-                        </h4>
+                              {/* Move Status Dropdown */}
+                              <div className="relative">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveMenuId(activeMenuId === item.id ? null : item.id);
+                                  }}
+                                  className="p-1 rounded-md hover:bg-surface-container-high text-secondary hover:text-on-surface cursor-pointer"
+                                  title="Move status"
+                                >
+                                  <MoreVertical className="w-3.5 h-3.5" />
+                                </button>
 
-                        {/* Compact Summary Line when Collapsed */}
-                        {!isExpanded && (item.timePeriod?.startDate || item.description) && (
-                          <div className="flex items-center justify-between gap-2 mt-1.5 text-[10px] text-secondary font-mono">
-                            {item.timePeriod?.startDate ? (
-                              <span className="flex items-center gap-1 truncate">
-                                <Clock className="w-3 h-3 text-primary shrink-0" />
-                                {item.timePeriod.startDate} {item.timePeriod.startTime ? `(${item.timePeriod.startTime})` : ''}
-                              </span>
-                            ) : (
-                              <span className="truncate opacity-75">{item.description}</span>
-                            )}
-                            {item.timePeriod?.syncToCalendar && (
-                              <span className="text-[9px] uppercase font-bold text-primary shrink-0">Calendar</span>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Expanded Full Details */}
-                        {isExpanded && (
-                          <div className="mt-2.5 pt-2 border-t border-outline-variant/20 space-y-2">
-                            {item.description && (
-                              <p className="text-xs text-secondary font-normal leading-relaxed whitespace-pre-wrap">
-                                {item.description}
-                              </p>
-                            )}
-
-                            {item.timePeriod?.startDate && (
-                              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-surface-container-high/60 border border-outline-variant/30 text-[11px] font-mono text-secondary">
-                                <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
-                                <span className="font-semibold text-on-surface">{item.timePeriod.startDate}</span>
-                                {item.timePeriod.startTime && (
-                                  <span>
-                                    {item.timePeriod.startTime}{item.timePeriod.endTime ? ` - ${item.timePeriod.endTime}` : ''}
-                                  </span>
-                                )}
-                                {item.timePeriod.syncToCalendar && (
-                                  <span className="ml-auto text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded bg-primary/15 text-primary border border-primary/20 flex items-center gap-1">
-                                    <CalendarIcon className="w-2.5 h-2.5" />
-                                    Calendar
-                                  </span>
+                                {activeMenuId === item.id && (
+                                  <div className="absolute right-0 top-6 z-30 w-36 py-1 bg-surface-container-lowest dark:bg-[#251d18] border border-outline-variant/60 rounded-xl shadow-xl text-xs font-medium space-y-0.5">
+                                    <div className="px-2 py-1 text-[10px] font-mono text-secondary uppercase border-b border-outline-variant/30">
+                                      Move to
+                                    </div>
+                                    {(['todo', 'doing', 'done'] as const).map((st) => (
+                                      <button
+                                        key={st}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleMoveStatus(item.id, st);
+                                        }}
+                                        disabled={item.status === st}
+                                        className={`w-full text-left px-3 py-1.5 hover:bg-surface-container flex items-center justify-between cursor-pointer ${
+                                          item.status === st ? 'text-primary font-bold bg-surface-container/50' : 'text-on-surface'
+                                        }`}
+                                      >
+                                        <span className="uppercase font-mono text-xs">{st}</span>
+                                        {item.status === st && <Check className="w-3 h-3 text-primary" />}
+                                      </button>
+                                    ))}
+                                    <div className="border-t border-outline-variant/30 pt-1">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleDeleteItem(item.id);
+                                        }}
+                                        className="w-full text-left px-3 py-1.5 hover:bg-error-container/20 text-error flex items-center gap-1.5 cursor-pointer"
+                                      >
+                                        <Trash2 className="w-3 h-3" />
+                                        Delete
+                                      </button>
+                                    </div>
+                                  </div>
                                 )}
                               </div>
-                            )}
 
-                            <div className="flex items-center justify-between gap-2 pt-1 text-[10px] text-secondary font-mono">
+                              {/* Edit Button */}
+                              <button
+                                onClick={() => setEditingItem(item)}
+                                className="p-1 rounded-md hover:bg-surface-container-high text-secondary hover:text-on-surface cursor-pointer"
+                                title="Edit item"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Title */}
+                          <h4
+                            onClick={() => toggleExpandCard(item.id)}
+                            className="font-body-lg font-medium text-on-surface text-sm leading-snug mt-1 cursor-pointer hover:text-primary transition-colors truncate"
+                          >
+                            {item.title}
+                          </h4>
+
+                          {/* Description Preview */}
+                          {item.description && (
+                            <p className={`font-body-sm text-xs text-on-surface-variant leading-relaxed ${isExpanded ? 'whitespace-pre-wrap mt-1' : 'line-clamp-2'}`}>
+                              {item.description}
+                            </p>
+                          )}
+
+                          {/* Time Period & Calendar Link */}
+                          {item.timePeriod?.startDate && (
+                            <div className="flex justify-between items-center border-t border-outline-variant/30 pt-2 mt-2">
+                              <div className="flex items-center gap-1 text-on-surface-variant font-body-sm text-xs">
+                                <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
+                                <span>{item.timePeriod.startDate}</span>
+                                {item.timePeriod.startTime && (
+                                  <span>({item.timePeriod.startTime})</span>
+                                )}
+                              </div>
+                              {item.timePeriod.syncToCalendar && (
+                                <span className="font-body-sm uppercase text-on-surface-variant hover:text-primary transition-colors text-[10px] font-medium bg-surface-container-high dark:bg-surface-container px-2 py-0.5 rounded-full border border-outline-variant/30">
+                                  CALENDAR
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Expanded Details */}
+                          {isExpanded && (
+                            <div className="flex items-center justify-between gap-2 pt-2 border-t border-outline-variant/30 text-[10px] text-secondary font-mono mt-1">
                               <span className="flex items-center gap-1">
                                 <GripVertical className="w-3 h-3 text-secondary/40 cursor-grab" />
                                 Created {new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                               </span>
-
                               {item.url && (
                                 <a
                                   href={item.url}
@@ -760,45 +750,45 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                                 </a>
                               )}
                             </div>
-                          </div>
-                        )}
-                      </div>
+                          )}
+                        </div>
+                      </article>
                     );
                   })
                 )}
               </div>
-            </div>
+            </section>
           );
         })}
       </div>
 
-      {/* 2. BOTTOM IMPORT DOCK */}
-      <div className="p-6 rounded-2xl border border-outline-variant/40 bg-surface-container-low/60 dark:bg-surface-container-low/20 shadow-2xs space-y-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-outline-variant/30 pb-4">
+      {/* 2. BOTTOM IMPORT DOCK PANEL */}
+      <section className="bg-surface-container-lowest dark:bg-[#1a1411]/60 border border-outline-variant/40 rounded-2xl p-6 shadow-2xs space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div>
-            <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
+            <h3 className="font-headline-md font-display font-bold text-lg text-on-surface mb-1">
               Import Items from Sakido Workspace
             </h3>
-            <p className="text-xs text-secondary font-medium mt-0.5">
-              Drag elements directly into any column above, or click + to append to your board.
+            <p className="font-body-sm text-xs text-on-surface-variant">
+              Drag elements directly into any column above, or click ADD to append to your board.
             </p>
           </div>
 
           {/* Search Box */}
-          <div className="relative w-full sm:w-64">
-            <Search className="w-3.5 h-3.5 text-secondary absolute left-3 top-1/2 -translate-y-1/2" />
+          <div className="relative w-full sm:w-72">
+            <Search className="w-4 h-4 text-on-surface-variant absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               value={importSearch}
               onChange={(e) => setImportSearch(e.target.value)}
               placeholder="Search items to import..."
-              className="w-full pl-9 pr-3 py-1.5 rounded-xl border border-outline-variant/40 bg-surface-container-lowest text-xs text-on-surface placeholder:text-secondary/50 focus:outline-none focus:ring-2 focus:ring-primary"
+              className="w-full pl-10 pr-4 py-2 bg-surface-container-lowest dark:bg-[#201915] border border-outline-variant/50 rounded-xl focus:border-primary focus:outline-none font-body-sm text-xs text-on-surface transition-colors"
             />
           </div>
         </div>
 
-        {/* Multi-Tab Selector */}
-        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+        {/* Tabs */}
+        <div className="flex gap-2 border-b border-outline-variant/30 pb-3 overflow-x-auto no-scrollbar">
           {[
             { id: 'tasks', label: 'Tasks & Grades', icon: CheckSquare, count: filteredTasks.length },
             { id: 'calendar', label: 'Calendar Events', icon: CalendarIcon, count: filteredSchedule.length },
@@ -811,15 +801,19 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
               <button
                 key={tab.id}
                 onClick={() => setImportDockTab(tab.id as any)}
-                className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap border ${
+                className={`flex items-center gap-2 px-4 py-2 font-body-sm font-semibold text-xs rounded-xl transition-all cursor-pointer whitespace-nowrap border ${
                   isActive
                     ? 'bg-primary text-on-primary border-primary shadow-2xs font-bold'
-                    : 'bg-surface-container-lowest hover:bg-surface-container text-secondary hover:text-on-surface border-outline-variant/30'
+                    : 'bg-surface-container-lowest dark:bg-[#201915] hover:bg-surface-container-low text-on-surface-variant border-outline-variant/30'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
                 <span>{tab.label}</span>
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-black/10 dark:bg-white/20 font-mono">
+                <span
+                  className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                    isActive ? 'bg-black/15 dark:bg-white/20' : 'bg-surface-container-high'
+                  }`}
+                >
                   {tab.count}
                 </span>
               </button>
@@ -827,8 +821,8 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
           })}
         </div>
 
-        {/* Tab Contents Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {/* Import List Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* TAB 1: TASKS */}
           {importDockTab === 'tasks' &&
             (filteredTasks.length === 0 ? (
@@ -843,26 +837,37 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     key={t.id}
                     draggable
                     onDragStart={(e) => handleDragStartImportItem(e, t, 'task')}
-                    className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-lowest dark:bg-[#1d1714] hover:border-outline-variant/80 flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing group shadow-2xs"
+                    className="flex items-center justify-between p-3 border border-outline-variant/30 rounded-2xl bg-surface-container-lowest dark:bg-[#1d1714] hover:bg-surface-container-low transition-colors group cursor-grab active:cursor-grabbing shadow-2xs gap-3"
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-secondary shrink-0">
-                        {getItemIcon('task')}
-                      </span>
+                    <div className="flex items-start gap-3 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={t.completed}
+                        readOnly
+                        className="mt-1 rounded text-primary focus:ring-primary bg-surface border-outline-variant cursor-pointer shrink-0"
+                      />
                       <div className="min-w-0">
-                        <h5 className="text-xs font-semibold text-on-surface truncate">{t.title}</h5>
-                        <p className="text-[11px] text-secondary font-mono truncate">
-                          {t.courseName || 'General Task'} {t.dueDate ? `• Due: ${t.dueDate}` : ''}
-                        </p>
+                        <h4 className="font-body-md font-medium text-xs text-on-surface truncate">{t.title}</h4>
+                        <div className="flex items-center gap-1.5 text-[11px] font-body-sm text-on-surface-variant mt-0.5 truncate">
+                          <span>Task</span>
+                          <span className="w-1 h-1 rounded-full bg-outline-variant shrink-0"></span>
+                          <span className="truncate">{t.courseName || 'General'}</span>
+                          {t.dueDate && (
+                            <>
+                              <span className="w-1 h-1 rounded-full bg-outline-variant shrink-0"></span>
+                              <span className="shrink-0">Due: {t.dueDate}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     <button
                       onClick={() => importItemToBoard(t, 'task', 'todo')}
-                      className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-primary hover:text-on-primary text-secondary text-xs font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer border border-transparent hover:border-primary"
+                      className="px-2.5 py-1 border border-outline-variant/50 text-on-surface font-body-sm font-semibold uppercase rounded-lg flex items-center gap-1 hover:bg-surface-container-high transition-colors text-[10px] shrink-0 cursor-pointer"
                     >
                       {isImported ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Plus className="w-3.5 h-3.5" />}
-                      <span className="text-[10px] uppercase font-mono">{isImported ? 'Added' : 'Add'}</span>
+                      <span>{isImported ? 'ADDED' : 'ADD'}</span>
                     </button>
                   </div>
                 );
@@ -884,26 +889,26 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     key={s.id}
                     draggable
                     onDragStart={(e) => handleDragStartImportItem(e, s, 'calendar')}
-                    className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-lowest dark:bg-[#1d1714] hover:border-outline-variant/80 flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing group shadow-2xs"
+                    className="flex items-center justify-between p-3 border border-outline-variant/30 rounded-2xl bg-surface-container-lowest dark:bg-[#1d1714] hover:bg-surface-container-low transition-colors group cursor-grab active:cursor-grabbing shadow-2xs gap-3"
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-secondary shrink-0">
-                        {getItemIcon('calendar')}
-                      </span>
+                    <div className="flex items-start gap-3 min-w-0">
+                      <CalendarIcon className="w-4 h-4 text-primary shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        <h5 className="text-xs font-semibold text-on-surface truncate">{title}</h5>
-                        <p className="text-[11px] text-secondary font-mono truncate">
-                          {s.date || 'Scheduled'} {s.startTime ? `(${s.startTime})` : ''}
-                        </p>
+                        <h4 className="font-body-md font-medium text-xs text-on-surface truncate">{title}</h4>
+                        <div className="flex items-center gap-1.5 text-[11px] font-body-sm text-on-surface-variant mt-0.5 truncate">
+                          <span>Event</span>
+                          <span className="w-1 h-1 rounded-full bg-outline-variant shrink-0"></span>
+                          <span className="shrink-0">{s.date || 'Scheduled'} {s.startTime ? `(${s.startTime})` : ''}</span>
+                        </div>
                       </div>
                     </div>
 
                     <button
                       onClick={() => importItemToBoard(s, 'calendar', 'todo')}
-                      className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-primary hover:text-on-primary text-secondary text-xs font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer border border-transparent hover:border-primary"
+                      className="px-2.5 py-1 border border-outline-variant/50 text-on-surface font-body-sm font-semibold uppercase rounded-lg flex items-center gap-1 hover:bg-surface-container-high transition-colors text-[10px] shrink-0 cursor-pointer"
                     >
                       {isImported ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Plus className="w-3.5 h-3.5" />}
-                      <span className="text-[10px] uppercase font-mono">{isImported ? 'Added' : 'Add'}</span>
+                      <span>{isImported ? 'ADDED' : 'ADD'}</span>
                     </button>
                   </div>
                 );
@@ -924,28 +929,32 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     key={c.id}
                     draggable
                     onDragStart={(e) => handleDragStartImportItem(e, c, 'class')}
-                    className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-lowest dark:bg-[#1d1714] hover:border-outline-variant/80 flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing group shadow-2xs"
+                    className="flex items-center justify-between p-3 border border-outline-variant/30 rounded-2xl bg-surface-container-lowest dark:bg-[#1d1714] hover:bg-surface-container-low transition-colors group cursor-grab active:cursor-grabbing shadow-2xs gap-3"
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-secondary shrink-0">
-                        {getItemIcon('class')}
-                      </span>
+                    <div className="flex items-start gap-3 min-w-0">
+                      <BookOpen className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        <h5 className="text-xs font-semibold text-on-surface truncate">
+                        <h4 className="font-body-md font-medium text-xs text-on-surface truncate">
                           {c.code} - {c.name}
-                        </h5>
-                        <p className="text-[11px] text-secondary font-mono truncate">
-                          {c.instructor ? `Instr: ${c.instructor}` : 'Course item'}
-                        </p>
+                        </h4>
+                        <div className="flex items-center gap-1.5 text-[11px] font-body-sm text-on-surface-variant mt-0.5 truncate">
+                          <span>Course</span>
+                          {c.instructor && (
+                            <>
+                              <span className="w-1 h-1 rounded-full bg-outline-variant shrink-0"></span>
+                              <span className="truncate">Instr: {c.instructor}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     <button
                       onClick={() => importItemToBoard(c, 'class', 'todo')}
-                      className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-primary hover:text-on-primary text-secondary text-xs font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer border border-transparent hover:border-primary"
+                      className="px-2.5 py-1 border border-outline-variant/50 text-on-surface font-body-sm font-semibold uppercase rounded-lg flex items-center gap-1 hover:bg-surface-container-high transition-colors text-[10px] shrink-0 cursor-pointer"
                     >
                       {isImported ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Plus className="w-3.5 h-3.5" />}
-                      <span className="text-[10px] uppercase font-mono">{isImported ? 'Added' : 'Add'}</span>
+                      <span>{isImported ? 'ADDED' : 'ADD'}</span>
                     </button>
                   </div>
                 );
@@ -966,38 +975,38 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     key={w.id}
                     draggable
                     onDragStart={(e) => handleDragStartImportItem(e, w, 'watch_later')}
-                    className="p-3 rounded-xl border border-outline-variant/30 bg-surface-container-lowest dark:bg-[#1d1714] hover:border-outline-variant/80 flex items-center justify-between gap-3 cursor-grab active:cursor-grabbing group shadow-2xs"
+                    className="flex items-center justify-between p-3 border border-outline-variant/30 rounded-2xl bg-surface-container-lowest dark:bg-[#1d1714] hover:bg-surface-container-low transition-colors group cursor-grab active:cursor-grabbing shadow-2xs gap-3"
                   >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="text-secondary shrink-0">
-                        {getItemIcon('watch_later')}
-                      </span>
+                    <div className="flex items-start gap-3 min-w-0">
+                      <Video className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                       <div className="min-w-0">
-                        <h5 className="text-xs font-semibold text-on-surface truncate">{w.title}</h5>
-                        <p className="text-[11px] text-secondary font-mono truncate">
-                          {w.course || 'Resource'}
-                        </p>
+                        <h4 className="font-body-md font-medium text-xs text-on-surface truncate">{w.title}</h4>
+                        <div className="flex items-center gap-1.5 text-[11px] font-body-sm text-on-surface-variant mt-0.5 truncate">
+                          <span>Resource</span>
+                          <span className="w-1 h-1 rounded-full bg-outline-variant shrink-0"></span>
+                          <span className="truncate">{w.course || 'Watch Later'}</span>
+                        </div>
                       </div>
                     </div>
 
                     <button
                       onClick={() => importItemToBoard(w, 'watch_later', 'todo')}
-                      className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-primary hover:text-on-primary text-secondary text-xs font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer border border-transparent hover:border-primary"
+                      className="px-2.5 py-1 border border-outline-variant/50 text-on-surface font-body-sm font-semibold uppercase rounded-lg flex items-center gap-1 hover:bg-surface-container-high transition-colors text-[10px] shrink-0 cursor-pointer"
                     >
                       {isImported ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Plus className="w-3.5 h-3.5" />}
-                      <span className="text-[10px] uppercase font-mono">{isImported ? 'Added' : 'Add'}</span>
+                      <span>{isImported ? 'ADDED' : 'ADD'}</span>
                     </button>
                   </div>
                 );
               })
             ))}
         </div>
-      </div>
+      </section>
 
       {/* 3. NEW CUSTOM ITEM MODAL */}
       {isAddingNew && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 my-8">
+          <div className="bg-surface-container-lowest dark:bg-[#1f1915] border border-outline-variant/60 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 my-8">
             <div className="flex items-center justify-between">
               <h3 className="font-display font-bold text-lg text-on-surface">Create New Card</h3>
               <button
@@ -1018,7 +1027,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   required
                   value={newTitle}
                   onChange={(e) => setNewTitle(e.target.value)}
-                  placeholder="e.g. Prepare presentation slides"
+                  placeholder="e.g. Research Paper Outline"
                   className="w-full border border-outline-variant/50 rounded-xl p-3 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
@@ -1031,7 +1040,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   rows={2}
                   value={newDescription}
                   onChange={(e) => setNewDescription(e.target.value)}
-                  placeholder="Add details, links, or notes..."
+                  placeholder="Draft the initial outline for the paper..."
                   className="w-full border border-outline-variant/50 rounded-xl p-3 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                 />
               </div>
@@ -1077,7 +1086,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     type="text"
                     value={newTag}
                     onChange={(e) => setNewTag(e.target.value)}
-                    placeholder="e.g. Study, Exam"
+                    placeholder="e.g. History 301"
                     className="w-full border border-outline-variant/50 rounded-xl p-2.5 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
@@ -1156,7 +1165,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-xl bg-primary text-on-primary font-semibold text-xs hover:opacity-90 transition-all border border-primary cursor-pointer shadow-2xs"
+                  className="px-4 py-2 rounded-xl bg-primary text-on-primary font-semibold text-xs hover:opacity-90 transition-all border border-primary cursor-pointer shadow-2xs uppercase tracking-wider"
                 >
                   Save Card
                 </button>
@@ -1169,7 +1178,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
       {/* 4. EDIT ITEM MODAL */}
       {editingItem && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 my-8">
+          <div className="bg-surface-container-lowest dark:bg-[#1f1915] border border-outline-variant/60 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 my-8">
             <div className="flex items-center justify-between">
               <h3 className="font-display font-bold text-lg text-on-surface">
                 Edit Card Details
@@ -1249,7 +1258,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                     type="text"
                     value={editingItem.tag || ''}
                     onChange={(e) => setEditingItem({ ...editingItem, tag: e.target.value })}
-                    placeholder="e.g. Study, Work"
+                    placeholder="e.g. History 301"
                     className="w-full border border-outline-variant/50 rounded-xl p-2.5 text-xs bg-surface-container-lowest dark:bg-[#1a1411] text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
                   />
                 </div>
@@ -1355,7 +1364,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                 )}
               </div>
 
-              {/* URL (optional) */}
+              {/* URL */}
               <div>
                 <label className="text-xs font-mono font-semibold text-secondary block mb-1">
                   Resource URL (Optional)
@@ -1389,7 +1398,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 rounded-xl bg-primary text-on-primary font-semibold text-xs hover:opacity-90 transition-all border border-primary cursor-pointer shadow-2xs"
+                    className="px-4 py-2 rounded-xl bg-primary text-on-primary font-semibold text-xs hover:opacity-90 transition-all border border-primary cursor-pointer shadow-2xs uppercase tracking-wider"
                   >
                     Save Changes
                   </button>
