@@ -305,7 +305,50 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
   };
 
   const handleDeleteItem = (id: string) => {
-    setBoardItems((prev) => prev.filter((item) => item.id !== id));
+    setBoardItems((prev) => {
+      const updated = prev.filter((item) => item.id !== id);
+      syncKanbanWithGlobalState(updated, onUpdateEvents, onUpdateTasks);
+      return updated;
+    });
+
+    // Cascade remove from sakido_events in localStorage & state
+    try {
+      const rawEvents = localStorage.getItem('sakido_events');
+      if (rawEvents) {
+        const arr = JSON.parse(rawEvents);
+        const filtered = arr.filter(
+          (e: any) =>
+            e.id !== `kanban-event-${id}` &&
+            e.sourceKanbanId !== id &&
+            e.id !== id &&
+            e.sourceId !== id
+        );
+        localStorage.setItem('sakido_events', JSON.stringify(filtered));
+        if (onUpdateEvents) onUpdateEvents(filtered);
+      }
+    } catch (err) {
+      console.warn('Failed to cascade delete event:', err);
+    }
+
+    // Cascade remove from sakido_tasks in localStorage & state
+    try {
+      const rawTasks = localStorage.getItem('sakido_tasks');
+      if (rawTasks) {
+        const arr = JSON.parse(rawTasks);
+        const filtered = arr.filter(
+          (t: any) =>
+            t.id !== `kanban-task-${id}` &&
+            t.sourceKanbanId !== id &&
+            t.id !== id &&
+            t.sourceId !== id
+        );
+        localStorage.setItem('sakido_tasks', JSON.stringify(filtered));
+        if (onUpdateTasks) onUpdateTasks(filtered);
+      }
+    } catch (err) {
+      console.warn('Failed to cascade delete task:', err);
+    }
+
     if (editingItem?.id === id) setEditingItem(null);
     setActiveMenuId(null);
   };

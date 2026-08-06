@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowUpRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { SakidoLogo } from '../common/SakidoLogo';
 
 interface FooterProps {
   onOpenGetStarted?: () => void;
@@ -14,9 +15,7 @@ export const Footer: React.FC<FooterProps> = ({
       <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
         {/* Left: Brand & Copyright */}
         <div className="flex items-center gap-3">
-          <span className="font-syne text-lg font-bold tracking-tight text-white">
-            Sakido
-          </span>
+          <SakidoLogo size="w-6 h-6" showText textClassName="font-syne text-lg font-bold tracking-tight text-white" />
           <span className="text-zinc-700 text-xs">·</span>
           <span className="text-xs text-zinc-400 font-normal">
             © {new Date().getFullYear()} Sakido Academic Portal
@@ -31,24 +30,14 @@ export const Footer: React.FC<FooterProps> = ({
           <Link to="/terms" className="hover:text-white transition-colors">
             Terms
           </Link>
-          <Link to="/cookie-policy" className="hover:text-white transition-colors">
-            Cookies
-          </Link>
-          <Link to="/contact" className="hover:text-white transition-colors">
-            Support
-          </Link>
-        </div>
-
-        {/* Right: CTA Button */}
-        {onOpenGetStarted && (
           <button
             onClick={onOpenGetStarted}
-            className="bg-white hover:bg-zinc-200 text-black text-xs font-semibold px-4 py-2 rounded-full transition-all flex items-center gap-1 cursor-pointer"
+            className="hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
           >
             <span>Get Started</span>
-            <ArrowUpRight className="w-3 h-3" />
+            <ArrowUpRight className="w-3.5 h-3.5" />
           </button>
-        )}
+        </div>
       </div>
     </footer>
   );

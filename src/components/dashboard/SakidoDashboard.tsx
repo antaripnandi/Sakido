@@ -205,38 +205,90 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   // App data state (persisted per user session with debouncing for high-frequency edits)
   const [selectedMilestoneEvent, setSelectedMilestoneEvent] = useState<any | null>(null);
 
-  const handleDeleteMilestoneEvent = (eventId: string) => {
+  // Universal Cascade Deletion Engine
+  const handleCascadeDelete = (id: string, type: 'kanban' | 'event' | 'task') => {
+    let kanbanId = id;
+    let eventId = id;
+    let taskId = id;
+
+    if (type === 'kanban') {
+      kanbanId = id;
+      eventId = `kanban-event-${id}`;
+      taskId = `kanban-task-${id}`;
+    } else if (type === 'event') {
+      kanbanId = id.startsWith('kanban-event-') ? id.replace('kanban-event-', '') : id;
+      eventId = id;
+      taskId = `kanban-task-${kanbanId}`;
+    } else if (type === 'task') {
+      kanbanId = id.startsWith('kanban-task-') ? id.replace('kanban-task-', '') : id;
+      taskId = id;
+      eventId = `kanban-event-${kanbanId}`;
+    }
+
+    // 1. Remove from Events state & localStorage
     setEvents((prev) => {
-      const updated = prev.filter((e) => e.id !== eventId);
+      const updated = prev.filter(
+        (e) =>
+          e.id !== eventId &&
+          e.id !== kanbanId &&
+          e.sourceKanbanId !== kanbanId &&
+          e.sourceId !== kanbanId &&
+          e.id !== `kanban-event-${kanbanId}`
+      );
       try {
         localStorage.setItem('sakido_events', JSON.stringify(updated));
       } catch (err) {
-        console.warn('Failed to save sakido_events:', err);
+        console.warn('Failed to update sakido_events:', err);
       }
       return updated;
     });
 
-    // Also un-sync from sakido_kanban_board in localStorage if it was a Kanban event
+    // 2. Remove from Tasks state & localStorage
+    setTasks((prev) => {
+      const updated = prev.filter(
+        (t) =>
+          t.id !== taskId &&
+          t.id !== kanbanId &&
+          t.sourceKanbanId !== kanbanId &&
+          t.sourceId !== kanbanId &&
+          t.id !== `kanban-task-${kanbanId}`
+      );
+      try {
+        localStorage.setItem('sakido_tasks', JSON.stringify(updated));
+      } catch (err) {
+        console.warn('Failed to update sakido_tasks:', err);
+      }
+      return updated;
+    });
+
+    // 3. Remove from Kanban Board localStorage
     try {
       const rawKanban = localStorage.getItem('sakido_kanban_board');
       if (rawKanban) {
         const kanbanItems: any[] = JSON.parse(rawKanban);
-        const updatedItems = kanbanItems.map((item) => {
-          if (`kanban-event-${item.id}` === eventId || item.id === eventId) {
-            return {
-              ...item,
-              timePeriod: item.timePeriod
-                ? { ...item.timePeriod, syncToCalendar: false }
-                : undefined,
-            };
-          }
-          return item;
-        });
+        const updatedItems = kanbanItems.filter(
+          (item) =>
+            item.id !== kanbanId &&
+            item.id !== id &&
+            item.sourceId !== id &&
+            item.sourceId !== kanbanId
+        );
         localStorage.setItem('sakido_kanban_board', JSON.stringify(updatedItems));
       }
     } catch (err) {
-      console.warn('Failed to un-sync kanban item:', err);
+      console.warn('Failed to cascade delete kanban items:', err);
     }
+
+    if (selectedMilestoneEvent?.id === eventId || selectedMilestoneEvent?.id === id) {
+      setSelectedMilestoneEvent(null);
+    }
+    if (selectedTask?.id === taskId || selectedTask?.id === id) {
+      setSelectedTask(null);
+    }
+  };
+
+  const handleDeleteMilestoneEvent = (eventId: string) => {
+    handleCascadeDelete(eventId, 'event');
   };
 
   const [classes, setClasses] = useLocalStorageState<any[]>('sakido_classes', []);
@@ -1746,8 +1798,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   };
 
   const handleDeleteTask = (id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-    if (selectedTask?.id === id) setSelectedTask(null);
+    handleCascadeDelete(id, 'task');
   };
 
   const handleUpdateTask = (updatedTask: any) => {
