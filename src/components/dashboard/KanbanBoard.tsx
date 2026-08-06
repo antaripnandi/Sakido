@@ -593,17 +593,17 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                         key={item.id}
                         draggable
                         onDragStart={(e) => handleDragStartCard(e, item.id)}
-                        className={`bg-surface-container-low dark:bg-[#201915] border border-outline-variant/40 hover:border-primary/80 rounded-2xl p-4 relative group transition-all duration-150 shadow-2xs hover:shadow-md cursor-grab active:cursor-grabbing ${
-                          isDragging ? 'opacity-40 scale-95 border-primary' : ''
-                        }`}
+                        className={`bg-surface-container-low dark:bg-[#201915] border border-outline-variant/40 hover:border-primary/80 rounded-2xl relative group transition-all duration-200 ease-in-out shadow-2xs hover:shadow-md cursor-grab active:cursor-grabbing ${
+                          isExpanded ? 'p-3.5 sm:p-4' : 'py-2 px-3 sm:py-2.5 sm:px-3.5'
+                        } ${isDragging ? 'opacity-40 scale-95 border-primary' : ''}`}
                         style={{
                           borderLeftWidth: '5px',
                           borderLeftColor: item.color || DEFAULT_COLORS[item.sourceType] || '#6f4627',
                         }}
                       >
-                        <div className="flex flex-col gap-2 pl-1">
+                        <div className={`flex flex-col ${isExpanded ? 'gap-2 pl-1' : 'gap-0.5 pl-0.5'}`}>
                           {/* Top Bar: Badges & Quick Action Controls */}
-                          <div className="flex justify-between items-start gap-2">
+                          <div className="flex justify-between items-center gap-1.5">
                             <div className="flex items-center gap-1.5 flex-wrap min-w-0">
                               <span
                                 className="flex items-center gap-1 font-body-sm text-[10px] uppercase font-bold px-2 py-0.5 rounded-full shrink-0 border"
@@ -701,55 +701,55 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
                           {/* Title */}
                           <h4
                             onClick={() => toggleExpandCard(item.id)}
-                            className="font-body-lg font-medium text-on-surface text-sm leading-snug mt-1 cursor-pointer hover:text-primary transition-colors truncate"
+                            className="font-body-lg font-medium text-on-surface text-xs sm:text-sm leading-tight mt-0.5 cursor-pointer hover:text-primary transition-colors truncate"
                           >
                             {item.title}
                           </h4>
 
-                          {/* Description Preview */}
-                          {item.description && (
-                            <p className={`font-body-sm text-xs text-on-surface-variant leading-relaxed ${isExpanded ? 'whitespace-pre-wrap mt-1' : 'line-clamp-2'}`}>
-                              {item.description}
-                            </p>
-                          )}
+                          {/* Expanded Full Details Only */}
+                          {isExpanded && (
+                            <>
+                              {item.description && (
+                                <p className="font-body-sm text-xs text-on-surface-variant leading-relaxed whitespace-pre-wrap mt-1">
+                                  {item.description}
+                                </p>
+                              )}
 
-                          {/* Time Period & Calendar Link */}
-                          {item.timePeriod?.startDate && (
-                            <div className="flex justify-between items-center border-t border-outline-variant/30 pt-2 mt-2">
-                              <div className="flex items-center gap-1 text-on-surface-variant font-body-sm text-xs">
-                                <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
-                                <span>{item.timePeriod.startDate}</span>
-                                {item.timePeriod.startTime && (
-                                  <span>({item.timePeriod.startTime})</span>
+                              {item.timePeriod?.startDate && (
+                                <div className="flex justify-between items-center border-t border-outline-variant/30 pt-2 mt-1">
+                                  <div className="flex items-center gap-1 text-on-surface-variant font-body-sm text-xs">
+                                    <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
+                                    <span>{item.timePeriod.startDate}</span>
+                                    {item.timePeriod.startTime && (
+                                      <span>({item.timePeriod.startTime})</span>
+                                    )}
+                                  </div>
+                                  {item.timePeriod.syncToCalendar && (
+                                    <span className="font-body-sm uppercase text-on-surface-variant hover:text-primary transition-colors text-[10px] font-medium bg-surface-container-high dark:bg-surface-container px-2 py-0.5 rounded-full border border-outline-variant/30">
+                                      CALENDAR
+                                    </span>
+                                  )}
+                                </div>
+                              )}
+
+                              <div className="flex items-center justify-between gap-2 pt-2 border-t border-outline-variant/30 text-[10px] text-secondary font-mono mt-1">
+                                <span className="flex items-center gap-1">
+                                  <GripVertical className="w-3 h-3 text-secondary/40 cursor-grab" />
+                                  Created {new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                </span>
+                                {item.url && (
+                                  <a
+                                    href={item.url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-primary hover:underline font-semibold flex items-center gap-1"
+                                  >
+                                    Open <ExternalLink className="w-3 h-3" />
+                                  </a>
                                 )}
                               </div>
-                              {item.timePeriod.syncToCalendar && (
-                                <span className="font-body-sm uppercase text-on-surface-variant hover:text-primary transition-colors text-[10px] font-medium bg-surface-container-high dark:bg-surface-container px-2 py-0.5 rounded-full border border-outline-variant/30">
-                                  CALENDAR
-                                </span>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Expanded Details */}
-                          {isExpanded && (
-                            <div className="flex items-center justify-between gap-2 pt-2 border-t border-outline-variant/30 text-[10px] text-secondary font-mono mt-1">
-                              <span className="flex items-center gap-1">
-                                <GripVertical className="w-3 h-3 text-secondary/40 cursor-grab" />
-                                Created {new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                              </span>
-                              {item.url && (
-                                <a
-                                  href={item.url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="text-primary hover:underline font-semibold flex items-center gap-1"
-                                >
-                                  Open <ExternalLink className="w-3 h-3" />
-                                </a>
-                              )}
-                            </div>
+                            </>
                           )}
                         </div>
                       </article>
