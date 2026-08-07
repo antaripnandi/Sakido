@@ -47,7 +47,8 @@ import {
   Tag,
   AlertCircle,
   MapPin,
-  Save
+  Save,
+  MessageCircle
 } from 'lucide-react';
 import { getSupabaseClient } from '../../lib/supabaseClient';
 import { normalizeToISODate, safeCreateDateTime } from '../../lib/dateUtils';
@@ -61,6 +62,7 @@ import { TaskDetailModal, NoteDetailModal, CourseDetailModal } from './DetailMod
 import { DashboardView } from './DashboardView';
 import { ConnectorsView } from '../connectors/ConnectorsView';
 import { KanbanBoard } from './KanbanBoard';
+import { ChatView } from '../chat/ChatView';
 
 const TAB_SLUGS: { slug: string; name: string }[] = [
   { slug: 'overview', name: 'Overview' },
@@ -71,6 +73,7 @@ const TAB_SLUGS: { slug: string; name: string }[] = [
   { slug: 'flashcards', name: 'Flashcards' },
   { slug: 'watch-later', name: 'Watch Later' },
   { slug: 'notes', name: 'Notes' },
+  { slug: 'chat', name: 'Chat' },
   { slug: 'connectors', name: 'Connectors' },
   { slug: 'university', name: 'University & People' },
   { slug: 'ai', name: 'AI Features' },
@@ -3492,6 +3495,14 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       );
     }
 
+    if (activeTab === 'Chat') {
+      return (
+        <div className="col-span-12">
+          <ChatView currentUserId={currentUser?.id} currentUserEmail={currentUser?.email} />
+        </div>
+      );
+    }
+
     if (activeTab === 'Connectors') {
       return (
         <div className="col-span-12 lg:col-span-8 pl-0 lg:pl-8 border-t lg:border-t-0 lg:border-l border-outline-variant/30 pt-6 lg:pt-0">
@@ -3618,6 +3629,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               { name: 'Flashcards', icon: Layers },
               { name: 'Watch Later', icon: Video },
               { name: 'Notes', icon: FileText },
+              { name: 'Chat', icon: MessageCircle },
             ].map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.name;
