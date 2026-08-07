@@ -118,6 +118,14 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     setIsMobileMenuOpen(false);
   };
 
+  const handleGoToLanding = () => {
+    if (onBackToLanding) {
+      onBackToLanding();
+    } else {
+      navigate('/');
+    }
+  };
+
   // Theme state with localStorage persistence
   const [isDarkMode, setIsDarkMode] = useLocalStorageState<boolean>('sakido_theme_mode', () => {
     return window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -3535,7 +3543,13 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           >
             {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-          <SakidoLogo size="w-6 h-6" showText textClassName="font-display font-bold text-lg text-on-surface" />
+          <button
+            onClick={handleGoToLanding}
+            className="flex items-center gap-2 text-left cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl p-1 -m-1"
+            title="Go to Sakido Home Page"
+          >
+            <SakidoLogo size="w-6 h-6" showText textClassName="font-display font-bold text-lg text-on-surface group-hover:text-primary transition-colors" />
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -3560,19 +3574,23 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         <div className="flex-1 overflow-y-auto py-6 px-3 flex flex-col no-scrollbar">
           {/* Unified Brand & Collapse Header Row */}
           <div className="mb-6 flex items-center justify-between shrink-0 px-2 pb-4 border-b border-outline-variant/20">
-            <div className="flex items-center gap-2.5 min-w-0">
+            <button
+              onClick={handleGoToLanding}
+              className="flex items-center gap-2.5 min-w-0 text-left cursor-pointer group rounded-xl p-1.5 -m-1.5 hover:bg-surface-container/60 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              title="Go to Sakido Home Page"
+            >
               <SakidoLogo size="w-7 h-7" />
               {!isSidebarCollapsed && (
                 <div className="min-w-0 flex flex-col justify-center">
-                  <h1 className="font-display text-lg font-bold tracking-tight text-on-surface leading-tight truncate">
+                  <h1 className="font-display text-lg font-bold tracking-tight text-on-surface group-hover:text-primary transition-colors leading-tight truncate">
                     Sakido
                   </h1>
-                  <span className="text-[10px] text-secondary font-mono leading-none tracking-wide">
+                  <span className="text-[10px] text-secondary font-mono leading-none tracking-wide group-hover:text-secondary/80">
                     Productivity Portal
                   </span>
                 </div>
               )}
-            </div>
+            </button>
 
             <button
               onClick={toggleSidebar}
