@@ -3,12 +3,9 @@ import {
   Send,
   Lock,
   Search,
-  User,
   Check,
   CheckCheck,
   AlertTriangle,
-  Clock,
-  Shield,
   ArrowLeft,
   RefreshCw,
   Edit2,
@@ -17,7 +14,7 @@ import {
   X,
   MessageSquare
 } from 'lucide-react';
-import { useChat, DecryptedMessage, Conversation } from '../../hooks/useChat';
+import { useChat } from '../../hooks/useChat';
 
 interface ChatViewProps {
   currentUserId?: string;
@@ -67,7 +64,6 @@ export const ChatView: React.FC<ChatViewProps> = ({ currentUserId, currentUserEm
   const [editNameInput, setEditNameInput] = useState(myUsername);
   const [copiedTag, setCopiedTag] = useState(false);
   const [showSearchBox, setShowSearchBox] = useState(false);
-  const [showKeyDetails, setShowKeyDetails] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -97,6 +93,11 @@ export const ChatView: React.FC<ChatViewProps> = ({ currentUserId, currentUserEm
     setIsEditingUsername(false);
   };
 
+  const handleCancelUsernameEdit = () => {
+    setEditNameInput(myUsername);
+    setIsEditingUsername(false);
+  };
+
   const handleCopyHandle = () => {
     navigator.clipboard.writeText(myHandle);
     setCopiedTag(true);
@@ -120,6 +121,9 @@ export const ChatView: React.FC<ChatViewProps> = ({ currentUserId, currentUserEm
                   type="text"
                   value={editNameInput}
                   onChange={(e) => setEditNameInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') handleCancelUsernameEdit();
+                  }}
                   placeholder="username"
                   autoFocus
                   className="w-full bg-surface-container border border-outline-variant/40 rounded px-2 py-1 text-xs text-on-surface font-mono outline-none focus:border-primary"
@@ -129,6 +133,14 @@ export const ChatView: React.FC<ChatViewProps> = ({ currentUserId, currentUserEm
                   className="px-2 py-1 rounded bg-primary text-on-primary text-[10px] font-bold uppercase cursor-pointer shrink-0"
                 >
                   Save
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelUsernameEdit}
+                  className="p-1 text-secondary hover:text-on-surface cursor-pointer shrink-0"
+                  title="Cancel (Esc)"
+                >
+                  <X className="w-3.5 h-3.5" />
                 </button>
               </form>
             ) : (
@@ -142,7 +154,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ currentUserId, currentUserEm
                       {myUsername}
                     </span>
                     <span className="text-[10px] text-secondary font-mono shrink-0">
-                      #{myDiscriminator}
+                      #{myDiscriminator || '0000'}
                     </span>
                   </div>
                 </div>
@@ -321,14 +333,13 @@ export const ChatView: React.FC<ChatViewProps> = ({ currentUserId, currentUserEm
 
               {/* Minimal E2E Badge */}
               <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => setShowKeyDetails(!showKeyDetails)}
-                  className="flex items-center gap-1 text-[11px] font-mono text-emerald-500 hover:text-emerald-400 transition-colors cursor-pointer"
-                  title="View security details"
+                <div
+                  className="flex items-center gap-1 text-[11px] font-mono text-emerald-500"
+                  title="End-to-end encrypted with libsodium"
                 >
                   <Lock className="w-3 h-3" />
                   <span className="hidden sm:inline">E2E</span>
-                </button>
+                </div>
               </div>
             </div>
 
@@ -424,32 +435,43 @@ export const ChatView: React.FC<ChatViewProps> = ({ currentUserId, currentUserEm
 
             {/* Input Composer */}
             <form onSubmit={handleSend} className="p-3 border-t border-outline-variant/20 bg-surface-container-low/20">
-              <div className="flex items-center gap-2 bg-surface-container-lowest dark:bg-[#1f1915] border border-outline-variant/30 rounded-xl px-3 py-1.5 focus-within:border-primary transition-colors">
-                <textarea
-                  value={inputMessage}
-                  onChange={(e) => {
-                    setInputMessage(e.target.value);
-                    sendTypingIndicator();
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend(e);
-                    }
-                  }}
-                  placeholder={`Message ${activePeer.peerName}...`}
-                  rows={1}
-                  disabled={rateLimitCooldown > 0}
-                  className="flex-1 bg-transparent border-0 outline-none text-xs text-on-surface placeholder:text-secondary/50 resize-none py-1 no-scrollbar"
-                />
+              <div className="flex flex-col gap-1 bg-surface-container-lowest dark:bg-[#1f1915] border border-outline-variant/30 rounded-xl px-3 py-1.5 focus-within:border-primary transition-colors">
+                <div className="flex items-center gap-2">
+                  <textarea
+                    value={inputMessage}
+                    onChange={(e) => {
+                      setInputMessage(e.target.value);
+                      sendTypingIndicator();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSend(e);
+                      }
+                    }}
+                    placeholder={`Message ${activePeer.peerName}...`}
+                    rows={1}
+                    disabled={rateLimitCooldown > 0}
+                    className="flex-1 bg-transparent border-0 outline-none text-xs text-on-surface placeholder:text-secondary/50 resize-none py-1 no-scrollbar"
+                  />
 
-                <button
-                  type="submit"
-                  disabled={!inputMessage.trim() || isSending || rateLimitCooldown > 0}
-                  className="p-1.5 rounded-lg bg-primary text-on-primary hover:bg-primary/90 transition-opacity disabled:opacity-30 cursor-pointer shrink-0"
-                >
-                  {isSending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
-                </button>
+                  <button
+                    type="submit"
+                    disabled={!inputMessage.trim() || isSending || rateLimitCooldown > 0}
+                    className="p-1.5 rounded-lg bg-primary text-on-primary hover:bg-primary/90 transition-opacity disabled:opacity-30 cursor-pointer shrink-0"
+                  >
+                    {isSending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
+
+                {/* Issue #8 Fix: Character counter feedback when nearing the 5000 character limit */}
+                {inputMessage.length > 4000 && (
+                  <div className="text-[9px] font-mono text-right text-secondary px-1 pb-0.5">
+                    <span className={inputMessage.length > 4900 ? 'text-error font-bold' : ''}>
+                      {inputMessage.length}/5000
+                    </span>
+                  </div>
+                )}
               </div>
             </form>
           </>

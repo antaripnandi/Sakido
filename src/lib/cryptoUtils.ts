@@ -35,10 +35,16 @@ export async function storePrivateKey(userId: string, privateKey: Uint8Array): P
   const db = await openCryptoDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.oncomplete = () => {
+      db.close();
+      resolve();
+    };
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error);
+    };
     const store = tx.objectStore(STORE_NAME);
-    const request = store.put({ userId, privateKeyArray: Array.from(privateKey), updatedAt: Date.now() });
-    request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+    store.put({ userId, privateKeyArray: Array.from(privateKey), updatedAt: Date.now() });
   });
 }
 
@@ -46,17 +52,24 @@ export async function loadPrivateKey(userId: string): Promise<Uint8Array | null>
   const db = await openCryptoDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, 'readonly');
+    let resultData: Uint8Array | null = null;
+
+    tx.oncomplete = () => {
+      db.close();
+      resolve(resultData);
+    };
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error);
+    };
+
     const store = tx.objectStore(STORE_NAME);
     const request = store.get(userId);
     request.onsuccess = () => {
-      const result = request.result;
-      if (result && result.privateKeyArray) {
-        resolve(new Uint8Array(result.privateKeyArray));
-      } else {
-        resolve(null);
+      if (request.result && request.result.privateKeyArray) {
+        resultData = new Uint8Array(request.result.privateKeyArray);
       }
     };
-    request.onerror = () => reject(request.error);
   });
 }
 
@@ -107,14 +120,11 @@ export async function upsertPublicKey(userId: string, publicKeyBase64: string): 
 
   const { error } = await supabase
     .from('profiles')
-    .upsert(
-      {
-        id: userId,
-        public_key: publicKeyBase64,
-        public_key_updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'id' }
-    );
+    .update({
+      public_key: publicKeyBase64,
+      public_key_updated_at: new Date().toISOString(),
+    })
+    .eq('id', userId);
 
   if (error) {
     throw new Error(`Failed to publish public key: ${error.message}`);

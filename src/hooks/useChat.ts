@@ -95,15 +95,16 @@ export function useChat(userId: string | undefined, defaultEmail?: string): UseC
     return defaultEmail ? defaultEmail.split('@')[0] : 'student';
   });
 
+  // Issue #2 Fix: Do NOT generate random discriminator on initial state render
   const [myDiscriminator, setMyDiscriminator] = useState<string>(() => {
     try {
       const saved = localStorage.getItem('sakido_user_handle');
-      if (saved) return JSON.parse(saved).discriminator || '1000';
+      if (saved) return JSON.parse(saved).discriminator || '';
     } catch {}
-    return Math.floor(1000 + Math.random() * 9000).toString();
+    return '';
   });
 
-  const myHandle = `${myUsername}#${myDiscriminator}`;
+  const myHandle = `${myUsername}#${myDiscriminator || '0000'}`;
 
   // Conversations & Active Chat State
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -112,6 +113,12 @@ export function useChat(userId: string | undefined, defaultEmail?: string): UseC
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [messageOffset, setMessageOffset] = useState(0);
+
+  // Issue #3 Fix: Ref for active conversation to avoid stale closures in realtime inbox
+  const activeConvoRef = useRef<string | null>(null);
+  useEffect(() => {
+    activeConvoRef.current = activeConversation;
+  }, [activeConversation]);
 
   // Send & Rate Limit State
   const [isSending, setIsSending] = useState(false);
@@ -179,18 +186,17 @@ export function useChat(userId: string | undefined, defaultEmail?: string): UseC
           }
           if (prof?.discriminator) {
             currentDisc = prof.discriminator;
-          } else {
-            // Generate permanent discriminator
+          } else if (!currentDisc) {
+            // Issue #2 Fix: Only generate random discriminator ONCE if DB has nothing
             currentDisc = Math.floor(1000 + Math.random() * 9000).toString();
           }
 
-          // Save handle back to profiles
-          await supabase.from('profiles').upsert({
-            id: uid,
+          // Issue #4 Fix: Update profile using update() instead of upsert() to avoid clobbering other columns
+          await supabase.from('profiles').update({
             username: currentUsername,
             discriminator: currentDisc,
             updated_at: new Date().toISOString(),
-          }, { onConflict: 'id' });
+          }).eq('id', uid);
         }
 
         if (isMounted) {
@@ -255,12 +261,12 @@ export function useChat(userId: string | undefined, defaultEmail?: string): UseC
     }));
 
     if (supabase) {
-      await supabase.from('profiles').upsert({
-        id: userId,
+      // Issue #4 Fix: Update profile without wiping existing columns
+      await supabase.from('profiles').update({
         username: clean,
         discriminator: myDiscriminator,
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'id' });
+      }).eq('id', userId);
     }
   };
 
@@ -305,11 +311,8 @@ export function useChat(userId: string | undefined, defaultEmail?: string): UseC
         return;
       }
 
-      // Fetch profile info including username & discriminator
-      const { data: profilesData } = await supabase
-        .from('profiles')
-        .select('id, public_key, username, discriminator')
-        .in('id', peerIds);
+      // Issue #5 Fix: Use get_peer_profiles RPC function to bypass RLS restrictions on profiles table
+      const { data: profilesData } = await supabase.rpc('get_peer_profiles', { peer_ids: peerIds });
 
       const profileMap = new Map<string, { public_key?: string; username?: string; discriminator?: string }>();
       if (profilesData) {
@@ -372,6 +375,13 @@ export function useChat(userId: string | undefined, defaultEmail?: string): UseC
           unreadCount: 0,
         });
       }
+
+      // Issue #9 Fix: Sort conversations by most recent message created_at timestamp
+      list.sort((a, b) => {
+        const aTime = a.lastMessage ? new Date(a.lastMessage.created_at).getTime() : 0;
+        const bTime = b.lastMessage ? new Date(b.lastMessage.created_at).getTime() : 0;
+        return bTime - aTime;
+      });
 
       setConversations(list);
     } catch (err) {
@@ -508,7 +518,8 @@ export function useChat(userId: string | undefined, defaultEmail?: string): UseC
               isSelf: false,
             };
 
-            if (activeConversation === senderId) {
+            // Issue #3 Fix: Use activeConvoRef to avoid stale closure and prevent unnecessary re-subscribing
+            if (activeConvoRef.current === senderId) {
               setMessages((prev) => {
                 if (prev.some((m) => m.id === decrypted.id)) return prev;
                 return [...prev, decrypted];
@@ -526,7 +537,7 @@ export function useChat(userId: string | undefined, defaultEmail?: string): UseC
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, supabase, privateKey, activeConversation, getOrFetchPeerPubKey, loadConversations]);
+  }, [userId, supabase, privateKey, getOrFetchPeerPubKey, loadConversations]); // activeConversation removed to avoid channel re-sub teardown
 
   // ─── 5. REALTIME PRESENCE, TYPING & READ RECEIPTS ──────────────────────
   useEffect(() => {
@@ -686,7 +697,7 @@ export function useChat(userId: string | undefined, defaultEmail?: string): UseC
     }
   };
 
-  // ─── 7. DISCORD-STYLE USER SEARCH (username#1234) ──────────────────────
+  // ─── 7. DISCORD-STYLE USER SEARCH (find_user_handle RPC) ───────────────
   const handleSearchUser = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     const query = searchQuery.trim();
@@ -697,45 +708,25 @@ export function useChat(userId: string | undefined, defaultEmail?: string): UseC
     setSearchResult(null);
 
     try {
-      let matchProfile: any = null;
+      // Issue #1 Fix: Call SECURITY DEFINER find_user_handle RPC to bypass profile RLS
+      const { data, error } = await supabase.rpc('find_user_handle', { search_query: query });
 
-      if (query.includes('#')) {
-        const parts = query.split('#');
-        const namePart = parts[0].toLowerCase();
-        const discPart = parts[1];
-
-        const { data } = await supabase
-          .from('profiles')
-          .select('id, username, discriminator')
-          .ilike('username', namePart)
-          .eq('discriminator', discPart)
-          .maybeSingle();
-
-        matchProfile = data;
-      } else {
-        const { data } = await supabase
-          .from('profiles')
-          .select('id, username, discriminator')
-          .or(`username.ilike.${query},id.eq.${query}`)
-          .limit(1)
-          .maybeSingle();
-
-        matchProfile = data;
-      }
-
-      if (!matchProfile) {
+      if (error || !data || data.length === 0) {
         setSearchError('No student found with that handle or ID.');
-      } else if (matchProfile.id === userId) {
-        setSearchError('You cannot message yourself.');
       } else {
-        const uName = matchProfile.username || 'student';
-        const uDisc = matchProfile.discriminator || '0000';
-        setSearchResult({
-          id: matchProfile.id,
-          handle: `${uName}#${uDisc}`,
-          username: uName,
-          discriminator: uDisc,
-        });
+        const matchProfile = data[0];
+        if (matchProfile.id === userId) {
+          setSearchError('You cannot message yourself.');
+        } else {
+          const uName = matchProfile.username || 'student';
+          const uDisc = matchProfile.discriminator || '0000';
+          setSearchResult({
+            id: matchProfile.id,
+            handle: `${uName}#${uDisc}`,
+            username: uName,
+            discriminator: uDisc,
+          });
+        }
       }
     } catch {
       setSearchError('Search request failed.');
