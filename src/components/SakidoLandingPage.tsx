@@ -6,6 +6,7 @@ import Lenis from 'lenis';
 import { AuthModal } from './auth/AuthModal';
 import { Footer } from './landing/Footer';
 import { SpecularButton } from './ui/SpecularButton';
+import { SakidoLogo } from './common/SakidoLogo';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import { User } from 'lucide-react';
 
@@ -86,7 +87,6 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
 
     // Reduced-motion: skip all pinning/animation — page is a normal static scroll
     if (prefersReducedMotion) {
-      // Make everything visible statically
       if (heroRef.current) {
         heroRef.current.style.opacity = '1';
         heroRef.current.style.transform = 'translateY(0)';
@@ -109,15 +109,12 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           pin: pinnedRef.current,
           start: 'top top',
           end: 'bottom bottom',
-          // Snappier on mobile to keep animation from lagging behind touch
           scrub: isMobile ? 0.5 : 1.0,
           onUpdate: (self) => {
             const progress = self.progress;
 
-            // Drive canvas frame
             frameRef.current = frameObjRef.current.value;
 
-            // Update React section state only on boundary crossings (for aria-hidden)
             const newSection = Math.min(
               TOTAL_SECTIONS - 1,
               Math.max(0, Math.round(progress * (TOTAL_SECTIONS - 1)))
@@ -127,9 +124,6 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
               setCurrentSection(newSection);
             }
 
-            // --- Direct DOM writes — no React re-renders ---
-
-            // Hero: fade + slide up as scroll leaves section 0
             if (heroRef.current) {
               const heroOpacity = clamp(1 - progress * 8, 0, 1);
               const heroY = progress * -120;
@@ -137,16 +131,14 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
               heroRef.current.style.transform = `translateY(${heroY}px)`;
             }
 
-            // Feature callouts: each eases in from below, out above, linked to progress
             const sectionWidth = 1 / (TOTAL_SECTIONS - 1);
             calloutRefs.current.forEach((el, i) => {
               if (!el) return;
               const sectionIndex = FEATURE_CALLOUTS[i].sectionIndex;
               const center = sectionIndex * sectionWidth;
-              const t = (progress - center) / sectionWidth; // -1..0..1
+              const t = (progress - center) / sectionWidth;
 
               const opacity = clamp(1 - Math.abs(t) * 2.5, 0, 1);
-              // On mobile: opacity-only (avoids composite-layer jank from translateY)
               const translateY = isMobile ? -50 : -50 + t * -60;
 
               el.style.opacity = String(opacity);
@@ -167,7 +159,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
     };
   }, []);
 
-  // Lenis smooth scroll — already guards prefers-reduced-motion
+  // Lenis smooth scroll
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) return;
@@ -221,43 +213,55 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
 
   return (
     <div className="bg-black text-white font-sans selection:bg-white selection:text-black overflow-x-hidden relative no-scrollbar">
-      {/* Native Scroll Container (700dvh for 6 scroll intervals) */}
+      {/* Native Scroll Container */}
       <div ref={containerRef} className="h-[700dvh] relative w-full">
-        {/* Pinned Viewport Container (Pinned by GSAP ScrollTrigger) */}
+        {/* Pinned Viewport Container */}
         <div ref={pinnedRef} className="h-[100dvh] w-full overflow-hidden relative">
           {/* Header Action Bar */}
-          <div className="fixed top-5 right-6 z-50 flex items-center gap-3">
-            {currentUser ? (
-              <button
-                onClick={() => setIsAuthOpen(true)}
-                className="group px-3.5 py-1.5 rounded-full bg-zinc-900/90 border border-zinc-800 hover:border-zinc-600 text-xs text-zinc-200 flex items-center gap-2.5 transition-all shadow-md backdrop-blur-md cursor-pointer hover:bg-zinc-800"
-              >
-                <div className="w-6 h-6 rounded-full bg-black border border-[#444748] flex items-center justify-center text-white overflow-hidden shrink-0 shadow-inner">
-                  {currentUser.avatarUrl ? (
-                    <img
-                      src={currentUser.avatarUrl}
-                      alt="User Profile"
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = 'none';
-                      }}
-                    />
-                  ) : (
-                    <User className="w-3.5 h-3.5 text-zinc-300" />
-                  )}
-                </div>
-                <span className="font-mono text-xs text-zinc-200 group-hover:text-white transition-colors">
-                  {currentUser.name || currentUser.email}
-                </span>
-              </button>
-            ) : (
-              <button
-                onClick={() => setIsAuthOpen(true)}
-                className="px-4 py-2 rounded-full bg-white hover:bg-zinc-200 text-black font-semibold text-xs transition-colors shadow-md cursor-pointer"
-              >
-                Get Started
-              </button>
-            )}
+          <div className="fixed top-5 left-6 right-6 z-50 flex items-center justify-between pointer-events-auto">
+            <button
+              onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+              className="flex items-center gap-2.5 cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-white/50 rounded-xl p-1.5 -m-1.5 bg-black/40 backdrop-blur-md border border-white/10 hover:border-white/20 transition-all"
+              title="Sakido Home"
+            >
+              <SakidoLogo size="w-7 h-7" showText textClassName="font-display text-lg font-bold text-white tracking-tight group-hover:text-zinc-200 transition-colors" forceInvert />
+            </button>
+
+            <div className="flex items-center gap-3">
+              {currentUser ? (
+                <button
+                  onClick={() => {
+                    if (onOpenDashboard) onOpenDashboard();
+                  }}
+                  className="group px-3.5 py-1.5 rounded-full bg-zinc-900/90 border border-zinc-800 hover:border-zinc-600 text-xs text-zinc-200 flex items-center gap-2.5 transition-all shadow-md backdrop-blur-md cursor-pointer hover:bg-zinc-800"
+                >
+                  <div className="w-6 h-6 rounded-full bg-black border border-[#444748] flex items-center justify-center text-white overflow-hidden shrink-0 shadow-inner">
+                    {currentUser.avatarUrl ? (
+                      <img
+                        src={currentUser.avatarUrl}
+                        alt="User Profile"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <User className="w-3.5 h-3.5 text-zinc-300" />
+                    )}
+                  </div>
+                  <span className="font-mono text-xs text-zinc-200 group-hover:text-white transition-colors">
+                    {currentUser.name || currentUser.email}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setIsAuthOpen(true)}
+                  className="px-4 py-2 rounded-full bg-white hover:bg-zinc-200 text-black font-semibold text-xs transition-colors shadow-md cursor-pointer"
+                >
+                  Get Started
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Canvas Background Layer */}
@@ -265,7 +269,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
             <FrameCanvas frameRef={frameRef} totalFrames={240} className="w-full h-full" />
           </div>
 
-          {/* Canvas vignette overlay — darkens subtly as hero exits (scroll-driven) */}
+          {/* Canvas vignette overlay */}
           <div
             ref={overlayRef}
             className="absolute inset-0 z-[15] bg-black pointer-events-none"
@@ -298,30 +302,28 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
 
             {/* Feature Callouts */}
             {FEATURE_CALLOUTS.map((item, i) => {
-              const isCurrent = currentSection === item.sectionIndex;
               const isLeft = item.align === 'left';
-
+              const isActive = currentSection === item.sectionIndex;
               return (
                 <div
                   key={item.id}
                   ref={(el) => { calloutRefs.current[i] = el; }}
-                  aria-hidden={!isCurrent}
-                  className={`landing-callout absolute top-1/2 p-5 sm:p-8 md:p-10 max-w-[calc(100vw-2.5rem)] sm:max-w-md lg:max-w-lg ${isCurrent ? 'pointer-events-auto' : 'pointer-events-none'
-                    } ${isLeft
-                      ? 'left-5 sm:left-12 md:left-16 lg:left-24 text-left'
-                      : 'right-5 sm:right-12 md:right-16 lg:right-24 text-left sm:text-right'
-                    } bg-black/55 sm:bg-transparent backdrop-blur-lg sm:backdrop-blur-none rounded-2xl sm:rounded-none border border-white/15 sm:border-none shadow-2xl sm:shadow-none`}
-                  style={{ opacity: 0, transform: 'translateY(calc(-50% + 80px))' }}
+                  aria-hidden={!isActive}
+                  className={`absolute top-1/2 -translate-y-1/2 w-full px-6 sm:px-16 flex ${isLeft ? 'justify-start' : 'justify-end'
+                    } landing-callout ${isActive ? 'pointer-events-auto' : 'pointer-events-none'}`}
+                  style={{ opacity: 0 }}
                 >
-                  <span className="text-[10px] sm:text-xs uppercase tracking-[0.25em] text-white font-mono font-bold mb-1.5 block">
-                    {item.category}
-                  </span>
-                  <h2 className="font-display text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-tight text-white mb-2 leading-tight drop-shadow-md">
-                    {item.title}
-                  </h2>
-                  <p className="text-xs sm:text-base md:text-lg font-sans text-zinc-200/90 font-normal tracking-normal leading-relaxed text-balance">
-                    {item.text}
-                  </p>
+                  <div className="max-w-md bg-zinc-950/80 border border-zinc-800/80 rounded-2xl p-6 sm:p-8 backdrop-blur-md shadow-2xl space-y-3">
+                    <span className="text-xs font-mono text-zinc-400 tracking-wider block">
+                      {item.category}
+                    </span>
+                    <h2 className="font-display text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                      {item.title}
+                    </h2>
+                    <p className="text-sm sm:text-base text-zinc-300 leading-relaxed font-sans font-light">
+                      {item.text}
+                    </p>
+                  </div>
                 </div>
               );
             })}
@@ -329,49 +331,49 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
         </div>
       </div>
 
-      {/* Final CTA Section — fades in via IntersectionObserver */}
+      {/* CTA Section */}
       <section
         ref={ctaRef}
-        className="cta-section relative z-30 min-h-screen bg-black flex flex-col items-center justify-center px-6 py-24 border-t border-zinc-900 text-center"
+        className="relative z-30 bg-black py-28 sm:py-36 px-6 text-center border-t border-zinc-900 transition-opacity duration-700 opacity-0 [.in-view&]:opacity-100"
       >
-        <div className="max-w-3xl mx-auto space-y-8 flex flex-col items-center">
-          <h2 className="font-display text-5xl sm:text-7xl md:text-8xl font-extrabold tracking-tight text-white leading-none">
-            Everything school.<br className="hidden sm:inline" /> One app.
+        <div className="max-w-3xl mx-auto space-y-8">
+          <span className="text-xs font-mono text-zinc-500 tracking-[0.2em] uppercase block">
+            Ready to simplify your study workflow?
+          </span>
+          <h2 className="font-display text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-tight">
+            Stop juggling five different tabs.
           </h2>
-          <p className="text-zinc-300 text-base sm:text-lg font-sans max-w-2xl mx-auto font-normal leading-relaxed">
-            <strong className="text-white">Sakido</strong> is a unified student productivity platform. Sakido integrates with Google Calendar and Google Drive to sync your class schedules, assignment deadlines, and study notes directly into one personal student dashboard.
+          <p className="text-base sm:text-lg text-zinc-400 max-w-xl mx-auto font-sans leading-relaxed">
+            Sakido brings your schedule, courses, notes, and direct messages together in one quiet workspace.
           </p>
-          <div className="pt-4 flex justify-center">
-            <SpecularButton
-              size="lg"
-              radius={24}
-              tint="#ffffff"
-              tintOpacity={0.08}
-              blur={10}
-              textColor="#ffffff"
-              lineColor="#ffffff"
-              baseColor="#525252"
-              intensity={1.2}
-              shineSize={12}
-              shineFade={40}
-              thickness={1.5}
-              speed={0.35}
-              followMouse
-              proximity={250}
-              autoAnimate={false}
-              onClick={() => (currentUser && onOpenDashboard ? onOpenDashboard() : setIsAuthOpen(true))}
-            >
-              {currentUser ? 'Open Dashboard' : 'Get Started'}
-            </SpecularButton>
+
+          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
+            {currentUser ? (
+              <SpecularButton
+                onClick={() => {
+                  if (onOpenDashboard) onOpenDashboard();
+                }}
+                className="w-full sm:w-auto px-8 py-3.5 font-bold text-sm"
+              >
+                Go to Workspace →
+              </SpecularButton>
+            ) : (
+              <SpecularButton
+                onClick={() => setIsAuthOpen(true)}
+                className="w-full sm:w-auto px-8 py-3.5 font-bold text-sm"
+              >
+                Get Started Free
+              </SpecularButton>
+            )}
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <Footer onOpenGetStarted={() => setIsAuthOpen(true)} />
+      <Footer />
 
       {/* Auth Modal */}
-      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} onGoToDashboard={onOpenDashboard} />
+      <AuthModal isOpen={isAuthOpen} onClose={() => setIsAuthOpen(false)} />
     </div>
   );
 };

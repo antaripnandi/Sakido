@@ -5,6 +5,7 @@ interface SakidoLogoProps {
   showText?: boolean;
   textClassName?: string;
   className?: string;
+  forceInvert?: boolean;
 }
 
 export const SakidoLogo: React.FC<SakidoLogoProps> = ({
@@ -12,6 +13,7 @@ export const SakidoLogo: React.FC<SakidoLogoProps> = ({
   showText = false,
   textClassName = "font-display font-bold tracking-tight text-on-surface text-xl",
   className = "",
+  forceInvert = false,
 }) => {
   const [imgError, setImgError] = useState(false);
 
@@ -23,7 +25,9 @@ export const SakidoLogo: React.FC<SakidoLogoProps> = ({
             src="/main_logo_sakido.png"
             alt="Sakido Logo"
             onError={() => setImgError(true)}
-            className="w-full h-full object-contain filter dark:invert dark:brightness-200 transition-all duration-200"
+            className={`w-full h-full object-contain filter transition-all duration-200 ${
+              forceInvert ? 'invert brightness-200' : 'dark:invert dark:brightness-200'
+            }`}
           />
         ) : (
           <div className="w-full h-full rounded-xl bg-primary text-on-primary font-display font-black text-sm flex items-center justify-center shadow-2xs">
