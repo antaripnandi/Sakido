@@ -28,6 +28,9 @@ export interface Conversation {
   peerId: string;
   peerEmail: string;
   peerName: string;
+  peerUsername: string;
+  peerDiscriminator: string;
+  peerHandle: string;
   peerAvatarUrl?: string;
   peerPublicKey: string;
   peerFingerprint: string;
@@ -57,20 +60,24 @@ export interface UseChatReturn {
 
   keyStatus: 'ready' | 'new_device' | 'loading' | 'error';
   myFingerprint: string;
+  myUsername: string;
+  myDiscriminator: string;
+  myHandle: string;
+  updateUsername: (newUsername: string) => Promise<void>;
   peerKeyChanged: boolean;
 
-  searchEmail: string;
-  setSearchEmail: (email: string) => void;
-  searchResult: { id: string; email: string; name?: string } | null;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  searchResult: { id: string; handle: string; username: string; discriminator: string } | null;
   searchError: string | null;
   isSearching: boolean;
   handleSearchUser: (e?: React.FormEvent) => Promise<void>;
-  startConversationWithUser: (user: { id: string; email: string; name?: string }) => Promise<void>;
+  startConversationWithUser: (user: { id: string; handle?: string; username?: string; discriminator?: string }) => Promise<void>;
 }
 
 const MESSAGES_PER_PAGE = 20;
 
-export function useChat(userId: string | undefined): UseChatReturn {
+export function useChat(userId: string | undefined, defaultEmail?: string): UseChatReturn {
   const supabase = getSupabaseClient();
 
   // Key & Auth state
@@ -78,6 +85,25 @@ export function useChat(userId: string | undefined): UseChatReturn {
   const [myPublicKey, setMyPublicKey] = useState<string>('');
   const [myFingerprint, setMyFingerprint] = useState<string>('');
   const [keyStatus, setKeyStatus] = useState<'ready' | 'new_device' | 'loading' | 'error'>('loading');
+
+  // Discord-style User Handle State (username#1234)
+  const [myUsername, setMyUsername] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('sakido_user_handle');
+      if (saved) return JSON.parse(saved).username || 'student';
+    } catch {}
+    return defaultEmail ? defaultEmail.split('@')[0] : 'student';
+  });
+
+  const [myDiscriminator, setMyDiscriminator] = useState<string>(() => {
+    try {
+      const saved = localStorage.getItem('sakido_user_handle');
+      if (saved) return JSON.parse(saved).discriminator || '1000';
+    } catch {}
+    return Math.floor(1000 + Math.random() * 9000).toString();
+  });
+
+  const myHandle = `${myUsername}#${myDiscriminator}`;
 
   // Conversations & Active Chat State
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -101,8 +127,8 @@ export function useChat(userId: string | undefined): UseChatReturn {
   const lastTypingBroadcastRef = useRef<number>(0);
 
   // User Search State
-  const [searchEmail, setSearchEmail] = useState('');
-  const [searchResult, setSearchResult] = useState<{ id: string; email: string; name?: string } | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResult, setSearchResult] = useState<{ id: string; handle: string; username: string; discriminator: string } | null>(null);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [isSearching, setIsSearching] = useState(false);
 
@@ -124,23 +150,63 @@ export function useChat(userId: string | undefined): UseChatReturn {
     return () => clearInterval(interval);
   }, [rateLimitCooldown]);
 
-  // ─── 1. KEY INITIALIZATION & HYGIENE ───────────────────────────────────
+  // ─── 1. KEY & HANDLE INITIALIZATION ──────────────────────────────────────
   useEffect(() => {
     if (!userId) return;
 
     let isMounted = true;
 
-    async function initKeys() {
+    async function initKeysAndHandle() {
       const uid = userId;
       if (!uid) return;
 
       try {
         await initSodium();
+
+        // 1. Initialize Discord-style username#discriminator
+        let currentUsername = myUsername;
+        let currentDisc = myDiscriminator;
+
+        if (supabase) {
+          const { data: prof } = await supabase
+            .from('profiles')
+            .select('username, discriminator')
+            .eq('id', uid)
+            .maybeSingle();
+
+          if (prof?.username) {
+            currentUsername = prof.username;
+          }
+          if (prof?.discriminator) {
+            currentDisc = prof.discriminator;
+          } else {
+            // Generate permanent discriminator
+            currentDisc = Math.floor(1000 + Math.random() * 9000).toString();
+          }
+
+          // Save handle back to profiles
+          await supabase.from('profiles').upsert({
+            id: uid,
+            username: currentUsername,
+            discriminator: currentDisc,
+            updated_at: new Date().toISOString(),
+          }, { onConflict: 'id' });
+        }
+
+        if (isMounted) {
+          setMyUsername(currentUsername);
+          setMyDiscriminator(currentDisc);
+          localStorage.setItem('sakido_user_handle', JSON.stringify({
+            username: currentUsername,
+            discriminator: currentDisc
+          }));
+        }
+
+        // 2. Initialize E2E Keys
         let loadedKey = await loadPrivateKey(uid);
         const existingRemotePubKey = await fetchPublicKey(uid);
 
         if (!loadedKey) {
-          // Key missing from IndexedDB
           const newPair = await generateKeyPair();
           await storePrivateKey(uid, newPair.privateKey);
           await upsertPublicKey(uid, newPair.publicKey);
@@ -149,20 +215,11 @@ export function useChat(userId: string | undefined): UseChatReturn {
             setPrivateKey(newPair.privateKey);
             setMyPublicKey(newPair.publicKey);
             setMyFingerprint(await getKeyFingerprint(newPair.publicKey));
-            // If user already had a public key in profiles from a prior device
-            if (existingRemotePubKey) {
-              setKeyStatus('new_device');
-            } else {
-              setKeyStatus('ready');
-            }
+            setKeyStatus(existingRemotePubKey ? 'new_device' : 'ready');
           }
         } else {
-          // Key exists in IndexedDB
           const derivedPub = await derivePublicKey(loadedKey);
-          if (existingRemotePubKey && existingRemotePubKey !== derivedPub) {
-            // Re-sync remote public key if out of alignment
-            await upsertPublicKey(uid, derivedPub);
-          } else if (!existingRemotePubKey) {
+          if (existingRemotePubKey !== derivedPub) {
             await upsertPublicKey(uid, derivedPub);
           }
 
@@ -174,17 +231,38 @@ export function useChat(userId: string | undefined): UseChatReturn {
           }
         }
       } catch (err) {
-        console.error('Failed to initialize E2E crypto keys:', err);
+        console.error('Failed to initialize E2E crypto keys & handle:', err);
         if (isMounted) setKeyStatus('error');
       }
     }
 
-    initKeys();
+    initKeysAndHandle();
 
     return () => {
       isMounted = false;
     };
-  }, [userId]);
+  }, [userId, supabase]);
+
+  // Update Username Handler
+  const updateUsername = async (newUsername: string) => {
+    const clean = newUsername.trim().toLowerCase().replace(/[^a-z0-9_]/g, '').slice(0, 20);
+    if (!clean || !userId) return;
+
+    setMyUsername(clean);
+    localStorage.setItem('sakido_user_handle', JSON.stringify({
+      username: clean,
+      discriminator: myDiscriminator,
+    }));
+
+    if (supabase) {
+      await supabase.from('profiles').upsert({
+        id: userId,
+        username: clean,
+        discriminator: myDiscriminator,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'id' });
+    }
+  };
 
   // Helper to resolve peer public key (cached or fetched)
   const getOrFetchPeerPubKey = useCallback(async (peerId: string): Promise<string | null> => {
@@ -203,7 +281,6 @@ export function useChat(userId: string | undefined): UseChatReturn {
     if (!userId || !supabase || !privateKey) return;
 
     try {
-      // Fetch latest 50 messages involving userId to build conversation list
       const { data: rawMsgs, error } = await supabase
         .from('messages')
         .select('*')
@@ -228,19 +305,17 @@ export function useChat(userId: string | undefined): UseChatReturn {
         return;
       }
 
-      // Fetch profile info for peers
+      // Fetch profile info including username & discriminator
       const { data: profilesData } = await supabase
         .from('profiles')
-        .select('id, public_key')
+        .select('id, public_key, username, discriminator')
         .in('id', peerIds);
 
-      const profileKeyMap = new Map<string, string>();
+      const profileMap = new Map<string, { public_key?: string; username?: string; discriminator?: string }>();
       if (profilesData) {
         for (const p of profilesData) {
-          if (p.public_key) {
-            profileKeyMap.set(p.id, p.public_key);
-            peerKeyCache.current.set(p.id, p.public_key);
-          }
+          profileMap.set(p.id, p);
+          if (p.public_key) peerKeyCache.current.set(p.id, p.public_key);
         }
       }
 
@@ -248,8 +323,13 @@ export function useChat(userId: string | undefined): UseChatReturn {
 
       for (const [pId, msgs] of peerMap.entries()) {
         const latestMsg = msgs[0];
-        const peerPubKey = profileKeyMap.get(pId) || (await fetchPublicKey(pId)) || '';
+        const pProf = profileMap.get(pId);
+        const peerPubKey = pProf?.public_key || (await fetchPublicKey(pId)) || '';
         const fingerprint = peerPubKey ? await getKeyFingerprint(peerPubKey) : 'UNKNOWN';
+
+        const uName = pProf?.username || `student_${pId.substring(0, 4)}`;
+        const uDisc = pProf?.discriminator || '0000';
+        const uHandle = `${uName}#${uDisc}`;
 
         let decryptedLatest: DecryptedMessage | undefined;
         if (latestMsg && peerPubKey) {
@@ -281,8 +361,11 @@ export function useChat(userId: string | undefined): UseChatReturn {
 
         list.push({
           peerId: pId,
-          peerEmail: `User (${pId.substring(0, 8)})`,
-          peerName: `Classmate ${pId.substring(0, 4).toUpperCase()}`,
+          peerEmail: `${uHandle}`,
+          peerName: uName,
+          peerUsername: uName,
+          peerDiscriminator: uDisc,
+          peerHandle: uHandle,
           peerPublicKey: peerPubKey,
           peerFingerprint: fingerprint,
           lastMessage: decryptedLatest,
@@ -359,7 +442,6 @@ export function useChat(userId: string | undefined): UseChatReturn {
           }
         }
 
-        // Reverse to chronological order (oldest -> newest) for display
         const ordered = decryptedList.reverse();
 
         if (isInitial) {
@@ -376,7 +458,6 @@ export function useChat(userId: string | undefined): UseChatReturn {
     [userId, supabase, privateKey, myPublicKey, getOrFetchPeerPubKey]
   );
 
-  // Switch active conversation
   useEffect(() => {
     if (activeConversation) {
       setMessageOffset(0);
@@ -393,7 +474,7 @@ export function useChat(userId: string | undefined): UseChatReturn {
     await fetchMessagesForPeer(activeConversation, nextOffset, false);
   };
 
-  // ─── 4. REALTIME INBOX SUBSCRIPTION (NEW MESSAGES) ──────────────────────
+  // ─── 4. REALTIME INBOX SUBSCRIPTION ──────────────────────────────────────
   useEffect(() => {
     if (!userId || !supabase || !privateKey) return;
 
@@ -409,7 +490,6 @@ export function useChat(userId: string | undefined): UseChatReturn {
         },
         async (payload) => {
           const newMsg = payload.new;
-          // Client-side recipient verification (defense-in-depth)
           if (newMsg.recipient_id !== userId) return;
 
           const senderId = newMsg.sender_id;
@@ -428,7 +508,6 @@ export function useChat(userId: string | undefined): UseChatReturn {
               isSelf: false,
             };
 
-            // If incoming message is from active conversation, append to thread
             if (activeConversation === senderId) {
               setMessages((prev) => {
                 if (prev.some((m) => m.id === decrypted.id)) return prev;
@@ -436,7 +515,6 @@ export function useChat(userId: string | undefined): UseChatReturn {
               });
             }
 
-            // Update conversation list
             loadConversations();
           } catch (err) {
             console.warn('Failed to decrypt incoming realtime message:', err);
@@ -493,7 +571,6 @@ export function useChat(userId: string | undefined): UseChatReturn {
         .subscribe((status: string) => {
           if (status === 'SUBSCRIBED') {
             channel.track({ user_id: userId, online_at: new Date().toISOString() });
-            // Broadcast read receipt to peer
             channel.send({
               type: 'broadcast',
               event: 'read',
@@ -518,7 +595,7 @@ export function useChat(userId: string | undefined): UseChatReturn {
 
   const sendTypingIndicator = useCallback(() => {
     const now = Date.now();
-    if (now - lastTypingBroadcastRef.current < 1500) return; // Debounce 1.5s
+    if (now - lastTypingBroadcastRef.current < 1500) return;
     lastTypingBroadcastRef.current = now;
 
     if (activeChannelRef.current) {
@@ -558,7 +635,6 @@ export function useChat(userId: string | undefined): UseChatReturn {
         return;
       }
 
-      // Check if peer's public key changed since cached
       const freshPubKey = await fetchPublicKey(activeConversation);
       if (freshPubKey && freshPubKey !== peerPubKey) {
         setPeerKeyChanged(true);
@@ -591,7 +667,6 @@ export function useChat(userId: string | undefined): UseChatReturn {
         return;
       }
 
-      // Append locally
       const newDecryptedMsg: DecryptedMessage = {
         id: inserted ? inserted.id : `tmp-${Date.now()}`,
         sender_id: userId,
@@ -611,51 +686,81 @@ export function useChat(userId: string | undefined): UseChatReturn {
     }
   };
 
-  // ─── 7. USER SEARCH BY EMAIL ───────────────────────────────────────────
+  // ─── 7. DISCORD-STYLE USER SEARCH (username#1234) ──────────────────────
   const handleSearchUser = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    const cleanEmail = searchEmail.trim().toLowerCase();
-    if (!cleanEmail || !supabase) return;
+    const query = searchQuery.trim();
+    if (!query || !supabase) return;
 
     setIsSearching(true);
     setSearchError(null);
     setSearchResult(null);
 
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('id, public_key')
-        .eq('id', cleanEmail) // If profiles stores email or id lookup
-        .maybeSingle();
+      let matchProfile: any = null;
 
-      if (error || !data) {
-        setSearchError('User not found or has not registered on Sakido yet.');
-      } else if (data.id === userId) {
+      if (query.includes('#')) {
+        const parts = query.split('#');
+        const namePart = parts[0].toLowerCase();
+        const discPart = parts[1];
+
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, username, discriminator')
+          .ilike('username', namePart)
+          .eq('discriminator', discPart)
+          .maybeSingle();
+
+        matchProfile = data;
+      } else {
+        const { data } = await supabase
+          .from('profiles')
+          .select('id, username, discriminator')
+          .or(`username.ilike.${query},id.eq.${query}`)
+          .limit(1)
+          .maybeSingle();
+
+        matchProfile = data;
+      }
+
+      if (!matchProfile) {
+        setSearchError('No student found with that handle or ID.');
+      } else if (matchProfile.id === userId) {
         setSearchError('You cannot message yourself.');
       } else {
+        const uName = matchProfile.username || 'student';
+        const uDisc = matchProfile.discriminator || '0000';
         setSearchResult({
-          id: data.id,
-          email: cleanEmail,
-          name: `Student (${cleanEmail.split('@')[0]})`,
+          id: matchProfile.id,
+          handle: `${uName}#${uDisc}`,
+          username: uName,
+          discriminator: uDisc,
         });
       }
     } catch {
-      setSearchError('Failed to search for user.');
+      setSearchError('Search request failed.');
     } finally {
       setIsSearching(false);
     }
   };
 
-  const startConversationWithUser = async (user: { id: string; email: string; name?: string }) => {
+  const startConversationWithUser = async (user: { id: string; handle?: string; username?: string; discriminator?: string }) => {
     const peerPubKey = await getOrFetchPeerPubKey(user.id);
     const fingerprint = peerPubKey ? await getKeyFingerprint(peerPubKey) : 'UNKNOWN';
+
+    const uName = user.username || user.handle?.split('#')[0] || 'student';
+    const uDisc = user.discriminator || user.handle?.split('#')[1] || '0000';
+    const uHandle = `${uName}#${uDisc}`;
 
     const existingIndex = conversations.findIndex((c) => c.peerId === user.id);
     if (existingIndex < 0) {
       const newConvo: Conversation = {
         peerId: user.id,
-        peerEmail: user.email,
-        peerName: user.name || user.email.split('@')[0],
+        peerEmail: uHandle,
+        peerName: uName,
+        peerUsername: uName,
+        peerDiscriminator: uDisc,
+        peerHandle: uHandle,
         peerPublicKey: peerPubKey || '',
         peerFingerprint: fingerprint,
         unreadCount: 0,
@@ -664,11 +769,10 @@ export function useChat(userId: string | undefined): UseChatReturn {
     }
 
     setActiveConversation(user.id);
-    setSearchEmail('');
+    setSearchQuery('');
     setSearchResult(null);
   };
 
-  // Active Peer object
   const activePeer = conversations.find((c) => c.peerId === activeConversation) || null;
 
   return {
@@ -693,10 +797,14 @@ export function useChat(userId: string | undefined): UseChatReturn {
 
     keyStatus,
     myFingerprint,
+    myUsername,
+    myDiscriminator,
+    myHandle,
+    updateUsername,
     peerKeyChanged,
 
-    searchEmail,
-    setSearchEmail,
+    searchQuery,
+    setSearchQuery,
     searchResult,
     searchError,
     isSearching,
