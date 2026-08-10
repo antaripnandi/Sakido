@@ -86,12 +86,14 @@ const TAB_SLUG_MAP = Object.fromEntries(TAB_SLUGS.flatMap(({ slug, name }) => [
   ...(slug === 'watch-later' ? [['watch', name]] : []),
   ...(slug === 'focus' ? [['focus-timer', name]] : []),
   ...(slug === 'calendar' ? [['schedule', name]] : []),
+  ...(slug === 'classes' ? [['courses', name]] : []),
 ]));
 
 const TAB_NAME_TO_SLUG = Object.fromEntries(TAB_SLUGS.flatMap(({ slug, name }) => [
   [name, slug],
   [slug, slug],
   ...(slug === 'calendar' ? [['schedule', slug]] : []),
+  ...(slug === 'classes' ? [['courses', slug]] : []),
 ]));
 
 interface SakidoDashboardProps {

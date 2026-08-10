@@ -19,7 +19,7 @@ export function calculateSM2(card: Flashcard, quality: 0 | 1 | 2 | 3): Flashcard
 
   if (quality < 2) {
     repetitions = 0;
-    interval = 1;
+    interval = quality === 0 ? 0 : 1;
   } else {
     if (repetitions === 0) {
       interval = 1;

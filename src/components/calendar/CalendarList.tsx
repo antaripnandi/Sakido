@@ -81,13 +81,15 @@ export const CalendarList: React.FC<CalendarListProps> = ({
               {cal.name}
             </span>
           )}
-          <button
-            onClick={() => onDelete(cal.id)}
-            aria-label={`Delete ${cal.name} calendar`}
-            className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity"
-          >
-            <Trash2 className="w-3.5 h-3.5 text-error" />
-          </button>
+          {!cal.isDefault && !cal.id.startsWith('cal-') && (
+            <button
+              onClick={() => onDelete(cal.id)}
+              aria-label={`Delete ${cal.name} calendar`}
+              className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-error" />
+            </button>
+          )}
         </div>
       ))}
 

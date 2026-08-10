@@ -19,6 +19,7 @@ import {
   FileText
 } from 'lucide-react';
 import { Task, Course, ScheduleEvent, UserProfile, NavView } from '../../types';
+import { safeCreateDateTime } from '../../lib/dateUtils';
 
 interface DashboardViewProps {
   profile: UserProfile;
@@ -133,7 +134,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         const dateStr = isTask ? item.dueDate : (item as any).date;
         if (!dateStr || dateStr === 'Upcoming') return null;
 
-        const itemDate = new Date(dateStr);
+        const rawDateOnly = dateStr.split('T')[0];
+        const itemDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDateOnly)
+          ? (safeCreateDateTime(rawDateOnly, '00:00') || new Date(dateStr))
+          : new Date(dateStr);
         if (isNaN(itemDate.getTime())) return null;
 
         const timeStr = isTask ? '' : ((item as any).startTime || '09:00');
@@ -708,7 +712,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="flex items-center justify-between mb-3">
               <span className="text-xs font-bold text-on-surface">Enrolled Courses</span>
               <button
-                onClick={() => onNavigate('courses')}
+                onClick={() => onNavigate('classes')}
                 className="text-[11px] font-semibold text-primary hover:underline cursor-pointer"
               >
                 Manage Classes
@@ -726,7 +730,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <p className="text-[11px] text-secondary mt-0.5">Enroll to track grades and assignment deadlines</p>
                   </div>
                   <button
-                    onClick={() => onNavigate('courses')}
+                    onClick={() => onNavigate('classes')}
                     className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold hover:opacity-90 transition-all shadow-2xs cursor-pointer"
                   >
                     <Plus className="w-3.5 h-3.5" />
@@ -737,7 +741,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 courses.slice(0, 4).map((course) => (
                   <div
                     key={course.id}
-                    onClick={() => onNavigate('courses')}
+                    onClick={() => onNavigate('classes')}
                     className="p-3 rounded-xl bg-surface-container/40 hover:bg-surface-container border border-outline-variant/20 transition-all cursor-pointer flex items-center justify-between group"
                   >
                     <div className="space-y-0.5">

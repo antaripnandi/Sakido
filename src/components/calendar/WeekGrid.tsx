@@ -98,7 +98,8 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
   const weekStartStr = formatDate(selectedWeekStart);
   const weekEndStr = formatDate(addDays(selectedWeekStart, 6));
   const weekEvents = events.filter(e => {
-    if (!visibleCalendars.includes(e.calendarId)) return false;
+    const calId = e.calendarId || 'cal-personal';
+    if (visibleCalendars.length > 0 && !visibleCalendars.includes(calId)) return false;
     // Compare the event range against the week range so multi-day events that
     // start before (or end after) the week are still shown, matching AllDayRow.
     const start = e.date;
