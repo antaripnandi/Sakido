@@ -68,6 +68,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return 'upcoming';
   };
 
+  const isScheduleEventPast = (s: any): boolean => {
+    let eventDateStr = s.date;
+
+    if (!eventDateStr && typeof s.dayOfWeek === 'number') {
+      const todayDay = now.getDay();
+      if (s.dayOfWeek < todayDay) return true;
+      if (s.dayOfWeek > todayDay) return false;
+      eventDateStr = todayStr;
+    }
+
+    if (!eventDateStr) return false;
+
+    const dateOnlyStr = eventDateStr.split('T')[0];
+    if (dateOnlyStr < todayStr) return true;
+    if (dateOnlyStr > todayStr) return false;
+
+    let endTimeStr = s.endTime;
+    if (!endTimeStr && s.time && s.time.includes('-')) {
+      endTimeStr = s.time.split('-')[1]?.trim();
+    }
+    if (!endTimeStr) {
+      endTimeStr = s.startTime || s.time || '23:59';
+    }
+
+    const timeMatch = endTimeStr.match(/(\d{1,2}):(\d{2})/);
+    if (!timeMatch) return false;
+
+    const hours = parseInt(timeMatch[1], 10);
+    const minutes = parseInt(timeMatch[2], 10);
+
+    const endDateTime = new Date(dateOnlyStr);
+    if (isNaN(endDateTime.getTime())) return false;
+
+    endDateTime.setHours(hours, minutes, 59, 999);
+    return now.getTime() > endDateTime.getTime();
+  };
+
   const urgentTasks = useMemo(
     () => tasks.filter((t) => getTaskCalculatedStatus(t) !== 'completed'),
     [tasks, todayStr]
@@ -166,6 +203,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     // Add Exams & Lectures from Schedule (including live Google Calendar events)
     schedule.forEach((s: any) => {
+      // Filter out events whose time period has already passed from Overview
+      if (isScheduleEventPast(s)) return;
+
       const isGCal = s.id?.toString().startsWith('gcal-') || s.type === 'Google Cal';
       const eventTitle = s.title || s.summary || (s.type === 'exam' ? `EXAM: ${s.courseName}` : s.courseName || 'Calendar Event');
       const eventCourse = s.courseCode || (isGCal ? 'GCal' : 'Lecture');
@@ -187,7 +227,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     });
 
     return items;
-  }, [tasks, schedule, todayStr]);
+  }, [tasks, schedule, todayStr, now]);
 
   // Filtered Items for Main View
   const filteredAcademicItems = useMemo(() => {
@@ -567,7 +607,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </span>
 
                         <button
-                          onClick={() => onNavigate(isTask ? 'tasks' : 'schedule')}
+                          onClick={() => onNavigate(isTask ? 'tasks' : 'calendar')}
                           className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 group-hover:translate-x-0.5 transition-transform cursor-pointer"
                         >
                           Open in {isTask ? 'Tasks & Grades' : 'Schedule'}
