@@ -81,7 +81,7 @@ export const LegalPage: React.FC<LegalPageProps> = ({ initialTab = 'privacy' }) 
             ))}
           </nav>
 
-          <div className="pt-6 border-t border-[#2c241f] text-[11px] text-[#8e9192] font-mono space-y-1">
+          <div className="pt-6 border-t border-[#2c241f] text-xs text-[#8e9192] font-mono space-y-1">
             <div>Effective: {lastUpdated}</div>
             <div>Version: 2.4.0 (Production)</div>
           </div>

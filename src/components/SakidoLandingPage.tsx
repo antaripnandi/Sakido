@@ -5,7 +5,6 @@ import { FrameCanvas } from './FrameCanvas';
 import Lenis from 'lenis';
 import { AuthModal } from './auth/AuthModal';
 import { Footer } from './landing/Footer';
-import { SpecularButton } from './ui/SpecularButton';
 import { SakidoLogo } from './common/SakidoLogo';
 import { getSupabaseClient } from '../lib/supabaseClient';
 import { User } from 'lucide-react';
@@ -349,21 +348,21 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
 
           <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
             {currentUser ? (
-              <SpecularButton
+              <button
                 onClick={() => {
                   if (onOpenDashboard) onOpenDashboard();
                 }}
-                className="w-full sm:w-auto px-8 py-3.5 font-bold text-sm"
+                className="w-full sm:w-auto px-8 py-3.5 font-bold text-sm bg-white hover:bg-zinc-200 text-black rounded-full transition-all shadow-md cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
               >
                 Go to Workspace →
-              </SpecularButton>
+              </button>
             ) : (
-              <SpecularButton
+              <button
                 onClick={() => setIsAuthOpen(true)}
-                className="w-full sm:w-auto px-8 py-3.5 font-bold text-sm"
+                className="w-full sm:w-auto px-8 py-3.5 font-bold text-sm bg-white hover:bg-zinc-200 text-black rounded-full transition-all shadow-md cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
               >
                 Get Started Free
-              </SpecularButton>
+              </button>
             )}
           </div>
         </div>

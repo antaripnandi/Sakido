@@ -168,7 +168,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({ onStartFocusSess
               <section className="space-y-6 animate-in fade-in duration-150">
                 {/* Ratio Selection */}
                 <div className="space-y-2">
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-on-surface-variant block px-1">
+                  <span className="text-xs font-mono uppercase tracking-wider text-on-surface-variant block px-1">
                     Ratio
                   </span>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 md:gap-3">
@@ -203,7 +203,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({ onStartFocusSess
                     </div>
                   </div>
                   <div className="flex-grow space-y-2">
-                    <div className="flex justify-between font-mono text-[11px] text-on-surface-variant opacity-70 uppercase">
+                    <div className="flex justify-between font-mono text-xs text-on-surface-variant opacity-70 uppercase">
                       <span>Focus duration</span>
                       <span>10 - 90 min</span>
                     </div>
@@ -221,7 +221,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({ onStartFocusSess
 
                 {/* Repeat Cycles Selector */}
                 <div className="space-y-2">
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-on-surface-variant block px-1">
+                  <span className="text-xs font-mono uppercase tracking-wider text-on-surface-variant block px-1">
                     Repeat cycles
                   </span>
                   <div className="grid grid-cols-6 gap-2">
@@ -251,7 +251,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({ onStartFocusSess
                     <span className="font-semibold text-on-surface block">
                       {pomodoroCycles} cycles · {pomoFocusMinutes}m focus + {currentBreakMinutes}m rest
                     </span>
-                    <span className="text-on-surface-variant text-[11px] font-mono">
+                    <span className="text-on-surface-variant text-xs font-mono">
                       Focus: {totalFocusMins}m  ·  Rest: {totalBreakMins}m
                     </span>
                   </div>
@@ -271,7 +271,7 @@ export const FocusTimerView: React.FC<FocusTimerViewProps> = ({ onStartFocusSess
               >
                 <span className="font-display text-xl md:text-2xl">Start Session</span>
                 <span
-                  className="material-symbols-outlined text-[28px] group-hover:translate-x-1 transition-transform"
+                  className="material-symbols-outlined text-3xl group-hover:translate-x-1 transition-transform"
                   style={{ fontVariationSettings: "'FILL' 1" }}
                 >
                   play_arrow

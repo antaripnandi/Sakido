@@ -23,28 +23,28 @@ const DEFAULT_CALENDARS: Calendar[] = [
   {
     id: 'cal-classes',
     name: 'Classes',
-    color: '#2563eb',
+    color: '#265763',
     visible: true,
     source: 'sakido'
   },
   {
     id: 'cal-exams',
     name: 'Exams',
-    color: '#f59e0b',
+    color: '#8b5e3c',
     visible: true,
     source: 'sakido'
   },
   {
     id: 'cal-deadlines',
     name: 'Deadlines',
-    color: '#dc2626',
+    color: '#ba1a1a',
     visible: true,
     source: 'sakido'
   },
   {
     id: 'cal-personal',
     name: 'Personal',
-    color: '#8b5e3c',
+    color: '#6f4627',
     visible: true,
     source: 'sakido',
     isDefault: true

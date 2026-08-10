@@ -258,7 +258,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
           >
             <span className="material-symbols-outlined text-sm">close</span>
             <span>Exit</span>
-            <span className="px-1.5 py-0.5 rounded border border-outline-variant text-[10px] bg-surface-container font-mono ml-1">
+            <span className="px-1.5 py-0.5 rounded border border-outline-variant text-xs bg-surface-container font-mono ml-1">
               ESC
             </span>
           </button>
@@ -354,7 +354,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
 
               {/* Time Display */}
               <div className="flex flex-col items-center justify-center z-10 text-center">
-                <h1 className={`font-display text-[48px] md:text-[64px] tabular-nums tracking-tighter mb-1 font-extrabold ${
+                <h1 className={`font-display text-5xl md:text-6xl tabular-nums tracking-tighter mb-1 font-extrabold ${
                   stage === 'break' ? 'text-emerald-600 dark:text-emerald-400' : 'text-primary'
                 }`}>
                   {formatTime(timeLeft)}
@@ -398,9 +398,9 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({
       {/* Bottom Status Bar */}
       <footer className="relative z-10 px-6 py-4 flex justify-between items-center opacity-60 font-label-sm text-xs text-on-surface">
         <div className="flex items-center gap-4">
-          <span><kbd className="px-1 py-0.5 rounded border border-outline-variant font-mono text-[10px] bg-surface-container">ESC</kbd> Exit</span>
-          <span><kbd className="px-1 py-0.5 rounded border border-outline-variant font-mono text-[10px] bg-surface-container">SPACE</kbd> Pause</span>
-          <span><kbd className="px-1 py-0.5 rounded border border-outline-variant font-mono text-[10px] bg-surface-container">R</kbd> Reset</span>
+          <span><kbd className="px-1 py-0.5 rounded border border-outline-variant font-mono text-xs bg-surface-container">ESC</kbd> Exit</span>
+          <span><kbd className="px-1 py-0.5 rounded border border-outline-variant font-mono text-xs bg-surface-container">SPACE</kbd> Pause</span>
+          <span><kbd className="px-1 py-0.5 rounded border border-outline-variant font-mono text-xs bg-surface-container">R</kbd> Reset</span>
         </div>
         <div>Sakido</div>
       </footer>

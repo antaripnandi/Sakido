@@ -514,18 +514,18 @@ export const CourseDetailModal: React.FC<CourseDetailModalProps> = ({
           </div>
 
           {/* Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800">
-              <div className="text-xs text-secondary font-mono mb-1">Active Tasks</div>
-              <div className="text-3xl font-bold text-blue-600 dark:text-blue-400">{activeTasks.length}</div>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="p-4 rounded-xl bg-surface-container border border-outline-variant">
+              <div className="text-xs text-on-surface-variant font-mono mb-1">Active Tasks</div>
+              <div className="text-3xl font-bold text-tertiary">{activeTasks.length}</div>
             </div>
-            <div className="p-4 rounded-xl bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
-              <div className="text-xs text-secondary font-mono mb-1">Completed</div>
-              <div className="text-3xl font-bold text-green-600 dark:text-green-400">{completedTasks.length}</div>
+            <div className="p-4 rounded-xl bg-surface-container border border-outline-variant">
+              <div className="text-xs text-on-surface-variant font-mono mb-1">Completed</div>
+              <div className="text-3xl font-bold text-primary">{completedTasks.length}</div>
             </div>
-            <div className="p-4 rounded-xl bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800">
-              <div className="text-xs text-secondary font-mono mb-1">Avg Grade</div>
-              <div className="text-3xl font-bold text-purple-600 dark:text-purple-400">
+            <div className="p-4 rounded-xl bg-surface-container border border-outline-variant">
+              <div className="text-xs text-on-surface-variant font-mono mb-1">Avg Grade</div>
+              <div className="text-3xl font-bold text-primary-container">
                 {avgGrade !== null ? `${avgGrade}%` : 'N/A'}
               </div>
             </div>
