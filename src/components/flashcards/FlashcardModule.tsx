@@ -98,7 +98,7 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
       <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in duration-200">
         {/* Header Navigation */}
         <div className="flex items-center justify-between">
-          <button
+          <button type="button"
             onClick={() => {
               setActiveStudyDeckId(null);
               setIsFlipped(false);
@@ -161,7 +161,7 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
 
               {/* Reveal Action Prompt */}
               {!isFlipped && (
-                <button
+                <button type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsFlipped(true);
@@ -180,21 +180,21 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
                   How well did you remember this card?
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <button onClick={() => handleRating(0)} className="p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold text-xs transition-all cursor-pointer active:scale-95 flex flex-col items-center gap-1">
+                  <button type="button" onClick={() => handleRating(0)} className="p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-semibold text-xs transition-all cursor-pointer active:scale-95 flex flex-col items-center gap-1">
                     <span className="font-bold text-sm">Again</span>
                     <span className="text-[10px] opacity-75 font-mono">1 day</span>
                   </button>
-                  <button onClick={() => handleRating(1)} className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-semibold text-xs transition-all cursor-pointer active:scale-95 flex flex-col items-center gap-1">
+                  <button type="button" onClick={() => handleRating(1)} className="p-3.5 rounded-xl border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-semibold text-xs transition-all cursor-pointer active:scale-95 flex flex-col items-center gap-1">
                     <span className="font-bold text-sm">Hard</span>
                     <span className="text-[10px] opacity-75 font-mono">1 day</span>
                   </button>
-                  <button onClick={() => handleRating(2)} className="p-3.5 rounded-xl border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 font-semibold text-xs transition-all cursor-pointer active:scale-95 flex flex-col items-center gap-1">
+                  <button type="button" onClick={() => handleRating(2)} className="p-3.5 rounded-xl border border-blue-500/30 bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 font-semibold text-xs transition-all cursor-pointer active:scale-95 flex flex-col items-center gap-1">
                     <span className="font-bold text-sm">Good</span>
                     <span className="text-[10px] opacity-75 font-mono">
                       {currentStudyCard.repetitions === 0 ? '1 day' : currentStudyCard.repetitions === 1 ? '6 days' : `${Math.round(currentStudyCard.interval * currentStudyCard.easeFactor)} days`}
                     </span>
                   </button>
-                  <button onClick={() => handleRating(3)} className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold text-xs transition-all cursor-pointer active:scale-95 flex flex-col items-center gap-1">
+                  <button type="button" onClick={() => handleRating(3)} className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-semibold text-xs transition-all cursor-pointer active:scale-95 flex flex-col items-center gap-1">
                     <span className="font-bold text-sm">Easy</span>
                     <span className="text-[10px] opacity-75 font-mono">
                       {currentStudyCard.repetitions === 0 ? '1 day' : currentStudyCard.repetitions === 1 ? '6 days' : `${Math.round(currentStudyCard.interval * (currentStudyCard.easeFactor + 0.15))} days`}
@@ -216,7 +216,7 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
                 ? `No cards are due right now. Your next review session is scheduled for ${earliestNext}.`
                 : 'No cards are due for review right now.'}
             </p>
-            <button
+            <button type="button"
               onClick={() => setActiveStudyDeckId(null)}
               className="mt-4 px-6 py-2.5 bg-[#8b5e3c] text-white rounded-xl text-xs font-semibold hover:bg-[#6f4627] transition-all cursor-pointer"
             >
@@ -239,7 +239,7 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
             Spaced repetition memory review powered by the SM-2 algorithm.
           </p>
         </div>
-        <button
+        <button type="button"
           onClick={() => setIsAddCardOpen(true)}
           disabled={courses.length === 0}
           className="flex items-center gap-1.5 px-4 py-2 bg-on-surface text-surface rounded-xl text-xs font-semibold hover:opacity-90 transition-all shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
@@ -252,7 +252,7 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
       {/* Class Filter Tabs */}
       {courses.length > 0 && (
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
-          <button
+          <button type="button"
             onClick={() => setSelectedClassId('all')}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
               selectedClassId === 'all'
@@ -265,7 +265,7 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
           {courses.map((course) => {
             const courseCards = flashcards.filter(c => c.classId === course.id);
             return (
-              <button
+              <button type="button"
                 key={course.id}
                 onClick={() => setSelectedClassId(course.id)}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-2 ${
@@ -326,7 +326,7 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
                     </p>
                   </div>
                   <div className="pt-2 border-t border-outline-variant/30 flex items-center justify-between">
-                    <button
+                    <button type="button"
                       onClick={() => setActiveStudyDeckId(course.id)}
                       disabled={deckCards.length === 0}
                       className="px-4 py-2 bg-[#8b5e3c] text-white rounded-xl text-xs font-semibold hover:bg-[#6f4627] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
@@ -371,7 +371,7 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
                 <div className="flex items-center gap-4 text-secondary font-mono text-[11px] shrink-0">
                   <span>Interval: {card.interval}d</span>
                   <span>Next: {card.nextReviewDate}</span>
-                  <button
+                  <button type="button"
                     onClick={() => onDeleteCard(card.id)}
                     className="p-1 text-rose-500 hover:bg-rose-500/10 rounded transition-colors cursor-pointer"
                     title="Delete Card"
@@ -391,7 +391,7 @@ export const FlashcardModule: React.FC<FlashcardModuleProps> = ({
           <div className="bg-surface-container-lowest border border-outline-variant/60 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-base text-on-surface">Create New Flashcard</h3>
-              <button
+              <button type="button"
                 onClick={() => setIsAddCardOpen(false)}
                 className="text-secondary hover:text-on-surface cursor-pointer"
               >

@@ -780,6 +780,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
   // Track events being edited (locked from 60s poll overwrite)
   const [editingEventIds, setEditingEventIds] = useState<Set<string>>(new Set());
+  const editingEventIdsRef = useRef(editingEventIds);
+  editingEventIdsRef.current = editingEventIds;
 
   // Track deleted Google Calendar IDs to prevent ghost afterimages
   const [deletedGcalIds, setDeletedGcalIds] = useState<Set<string>>(new Set());
@@ -1010,14 +1012,14 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     setGoogleCalendarEvents((previous) => {
       const previousById = new Map(previous.map((event) => [event.id, event]));
       return fetched.map((event: any) =>
-        editingEventIds.has(event.id) ? previousById.get(event.id) || event : event
+        editingEventIdsRef.current.has(event.id) ? previousById.get(event.id) || event : event
       );
     });
 
     // A recurrence POST returns the series master. Once Google expands it, bind
     // each local occurrence to its distinct instance ID for single-event edits.
     setEvents((previous) => previous.map((event) => {
-      if (event.gcalId || !event.gcalRecurringEventId || editingEventIds.has(event.id)) return event;
+      if (event.gcalId || !event.gcalRecurringEventId || editingEventIdsRef.current.has(event.id)) return event;
       const instance = fetched.find((remote: any) =>
         remote.gcalRecurringEventId === event.gcalRecurringEventId &&
         remote.date === event.date &&
@@ -1027,7 +1029,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         ? { ...event, gcalId: instance.gcalId, syncStatus: 'synced' as const }
         : event;
     }));
-  }, [connectors.googleCalendar, calendarMonth, editingEventIds, executeGoogleApi, calendars]);
+  }, [connectors.googleCalendar, calendarMonth, executeGoogleApi, calendars]);
 
   useEffect(() => {
     fetchGoogleEvents();
@@ -2235,7 +2237,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   onClick={() => setSelectedCourse(c)}
                   className="p-5 border border-outline-variant/40 rounded-xl bg-surface-container-low dark:bg-[#251e19] shadow-xs flex flex-col justify-between relative group hover:border-primary-container/60 hover:shadow-md transition-all cursor-pointer"
                 >
-                  <button
+                  <button type="button"
                     onClick={(e) => { e.stopPropagation(); handleDeleteClass(c.id); }}
                     className="absolute top-4 right-4 text-secondary/60 hover:text-error transition-colors p-1"
                     title="Remove course"
@@ -2358,7 +2360,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             </div>
 
             <div className="flex items-center gap-2 bg-surface-container-low p-1.5 rounded-lg border border-outline-variant/40">
-              <button
+              <button type="button"
                 onClick={() => setCalendarMonth(new Date(year, month - 1, 1))}
                 className="p-1 hover:bg-surface-container-high rounded-md transition-colors"
                 title="Previous Month"
@@ -2368,7 +2370,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               <span className="font-display font-semibold text-sm px-2 text-on-surface min-w-[120px] text-center">
                 {monthName}
               </span>
-              <button
+              <button type="button"
                 onClick={() => setCalendarMonth(new Date(year, month + 1, 1))}
                 className="p-1 hover:bg-surface-container-high rounded-md transition-colors"
                 title="Next Month"
@@ -2384,7 +2386,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               <p className="text-sm text-amber-900 dark:text-amber-200">
                 <strong>Calendar management features available.</strong> Re-authorize Google Calendar to create and manage calendars.
               </p>
-              <button
+              <button type="button"
                 onClick={() => handleConnectOAuth('googleCalendar', true)}
                 className="mt-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-container transition-colors text-sm font-medium"
               >
@@ -2504,7 +2506,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             <>
               {/* Week Navigation Header */}
               <div className="flex items-center justify-between mb-4 px-2">
-                <button
+                <button type="button"
                   onClick={() => setSelectedWeekStart(prev => addDays(prev, -7))}
                   className="p-2 hover:bg-surface-container-high rounded-lg transition-colors"
                   aria-label="Previous week"
@@ -2516,7 +2518,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   <div className="text-base font-semibold text-on-surface">
                     {formatDate(selectedWeekStart)} - {formatDate(addDays(selectedWeekStart, 6))}
                   </div>
-                  <button
+                  <button type="button"
                     onClick={() => setSelectedWeekStart(startOfWeek(new Date()))}
                     className="text-xs text-primary hover:text-primary/80 font-medium transition-colors"
                   >
@@ -2524,7 +2526,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   </button>
                 </div>
 
-                <button
+                <button type="button"
                   onClick={() => setSelectedWeekStart(prev => addDays(prev, 7))}
                   className="p-2 hover:bg-surface-container-high rounded-lg transition-colors"
                   aria-label="Next week"
@@ -2591,7 +2593,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   const isSelected = selectedDate === dateStr;
 
                   return (
-                    <button
+                    <button type="button"
                       key={`day-${d}`}
                       onClick={() => {
                         setSelectedDate(dateStr);
@@ -2710,7 +2712,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                         </div>
                       </div>
 
-                      <button
+                      <button type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleDeleteMilestoneEvent(ev.id);
@@ -2815,7 +2817,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               { id: 'pending', label: `Pending (${tasks.filter(t => !t.completed).length})` },
               { id: 'completed', label: `Completed (${tasks.filter(t => t.completed).length})` },
             ].map((f) => (
-              <button
+              <button type="button"
                 key={f.id}
                 onClick={() => setTaskFilter(f.id as any)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all cursor-pointer ${
@@ -2918,7 +2920,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                         {t.grade}%
                       </span>
                     )}
-                    <button
+                    <button type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleDeleteTask(t.id);
@@ -3009,7 +3011,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                  <button
+                  <button type="button"
                     onClick={() => setActiveVideo(w)}
                     className="px-3 py-1.5 rounded-lg bg-[#8b5e3c] hover:bg-[#6f4627] text-white text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                   >
@@ -3024,7 +3026,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   >
                     <ExternalLink className="w-4 h-4" />
                   </a>
-                  <button
+                  <button type="button"
                     onClick={() => handleDeleteWatch(w.id)}
                     className="p-2 rounded-lg text-secondary/60 hover:text-error transition-colors"
                     title="Remove item"
@@ -3167,7 +3169,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
             {/* Active vs Archived View Toggle */}
             <div className="flex items-center gap-1 p-1 rounded-xl bg-surface-container-high dark:bg-[#201915] border border-outline-variant/40 shrink-0 self-start sm:self-auto">
-              <button
+              <button type="button"
                 onClick={() => setNoteTabFilter('active')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                   noteTabFilter === 'active' ? 'bg-[#8b5e3c] text-white font-bold shadow-2xs' : 'text-secondary hover:text-on-surface'
@@ -3175,7 +3177,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               >
                 Notes ({notes.filter((n) => !n.archived).length})
               </button>
-              <button
+              <button type="button"
                 onClick={() => setNoteTabFilter('archived')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1 transition-colors cursor-pointer ${
                   noteTabFilter === 'archived' ? 'bg-[#8b5e3c] text-white font-bold shadow-2xs' : 'text-secondary hover:text-on-surface'
@@ -3290,7 +3292,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             </div>
             {allTags.length > 0 && (
               <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
-                <button
+                <button type="button"
                   onClick={() => setSelectedNoteTag('all')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors whitespace-nowrap cursor-pointer ${
                     selectedNoteTag === 'all'
@@ -3301,7 +3303,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   #all
                 </button>
                 {allTags.map((tag) => (
-                  <button
+                  <button type="button"
                     key={tag}
                     onClick={() => setSelectedNoteTag(tag)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-mono transition-colors whitespace-nowrap cursor-pointer ${
@@ -3333,21 +3335,21 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                       className={`p-5 border ${style.border} ${style.bg} rounded-2xl shadow-xs flex flex-col justify-between relative group hover:shadow-md transition-all cursor-pointer`}
                     >
                       <div className="flex items-center gap-1 absolute top-4 right-4">
-                        <button
+                        <button type="button"
                           onClick={(e) => { e.stopPropagation(); handleTogglePinNote(n.id); }}
                           className="p-1.5 rounded-lg text-primary hover:bg-primary/10 transition-colors cursor-pointer"
                           title="Unpin note"
                         >
                           <Pin className="w-4 h-4 fill-current rotate-45" />
                         </button>
-                        <button
+                        <button type="button"
                           onClick={(e) => { e.stopPropagation(); handleToggleArchiveNote(n.id); }}
                           className="p-1.5 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
                           title={n.archived ? 'Unarchive note' : 'Archive note'}
                         >
                           <Archive className="w-4 h-4" />
                         </button>
-                        <button
+                        <button type="button"
                           onClick={(e) => { e.stopPropagation(); handleDeleteNote(n.id); }}
                           className="p-1.5 rounded-lg text-secondary/60 hover:text-error transition-colors cursor-pointer"
                           title="Delete note"
@@ -3419,21 +3421,21 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                     className={`p-5 border ${style.border} ${style.bg} rounded-2xl shadow-xs flex flex-col justify-between relative group hover:shadow-md transition-all cursor-pointer`}
                   >
                     <div className="flex items-center gap-1 absolute top-4 right-4">
-                      <button
+                      <button type="button"
                         onClick={(e) => { e.stopPropagation(); handleTogglePinNote(n.id); }}
                         className="p-1.5 rounded-lg text-secondary/60 hover:text-primary hover:bg-primary/10 transition-colors cursor-pointer"
                         title="Pin note to top"
                       >
                         <Pin className="w-4 h-4 rotate-45" />
                       </button>
-                      <button
+                      <button type="button"
                         onClick={(e) => { e.stopPropagation(); handleToggleArchiveNote(n.id); }}
                         className="p-1.5 rounded-lg text-secondary/60 hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
                         title={n.archived ? 'Unarchive note' : 'Archive note'}
                       >
                         <Archive className="w-4 h-4" />
                       </button>
-                      <button
+                      <button type="button"
                         onClick={(e) => { e.stopPropagation(); handleDeleteNote(n.id); }}
                         className="p-1.5 rounded-lg text-secondary/60 hover:text-error transition-colors cursor-pointer"
                         title="Delete note"
@@ -3539,7 +3541,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             <span className="font-bold text-primary block mb-0.5">Sync & Service Notice</span>
             {connectorNotice}
           </div>
-          <button
+          <button type="button"
             onClick={() => setConnectorNotice(null)}
             className="p-1 rounded-lg text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors text-xs shrink-0 cursor-pointer"
           >
@@ -3551,14 +3553,14 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       {/* Mobile Header Bar */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 bg-surface/90 backdrop-blur-md border-b border-outline-variant/30 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button
+          <button type="button"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="p-2 rounded-lg bg-surface-container-high text-on-surface"
             aria-label="Toggle Navigation"
           >
             {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-          <button
+          <button type="button"
             onClick={handleGoToLanding}
             className="flex items-center gap-2 text-left cursor-pointer group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-xl p-1 -m-1"
             title="Go to Sakido Home Page"
@@ -3568,7 +3570,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
-          <button
+          <button type="button"
             onClick={handleToggleDark}
             className="p-2 rounded-full border border-outline-variant/40 text-on-surface"
           >
@@ -3589,7 +3591,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         <div className="flex-1 overflow-y-auto py-6 px-3 flex flex-col no-scrollbar">
           {/* Unified Brand & Collapse Header Row */}
           <div className="mb-6 flex items-center justify-between shrink-0 px-2 pb-4 border-b border-outline-variant/20">
-            <button
+            <button type="button"
               onClick={handleGoToLanding}
               className="flex items-center gap-2.5 min-w-0 text-left cursor-pointer group rounded-xl p-1.5 -m-1.5 hover:bg-surface-container/60 transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               title="Go to Sakido Home Page"
@@ -3607,7 +3609,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               )}
             </button>
 
-            <button
+            <button type="button"
               onClick={toggleSidebar}
               className="p-1.5 rounded-lg border border-outline-variant/40 hover:bg-surface-container text-secondary hover:text-on-surface transition-colors cursor-pointer shrink-0"
               title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
@@ -3639,7 +3641,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               const isActive = activeTab === item.name;
               return (
                 <li key={item.name}>
-                  <button
+                  <button type="button"
                     onClick={() => handleSelectTab(item.name)}
                     title={isSidebarCollapsed ? item.name : undefined}
                     className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
@@ -3666,7 +3668,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           )}
           <ul className="space-y-1 mb-6 shrink-0">
             <li>
-              <button
+              <button type="button"
                 onClick={() => handleSelectTab('Connectors')}
                 title={isSidebarCollapsed ? "Connectors" : undefined}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
@@ -3691,7 +3693,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           )}
           <ul className="space-y-1 mb-6 shrink-0">
             <li>
-              <button
+              <button type="button"
                 onClick={() => handleSelectTab('Focus Timer')}
                 title={isSidebarCollapsed ? "Focus Timer" : undefined}
                 className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
@@ -3717,7 +3719,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           <ul className="space-y-1 mb-6 shrink-0">
             {['University & People', 'AI Features'].map((item) => (
               <li key={item}>
-                <button
+                <button type="button"
                   onClick={() => handleSelectTab(item)}
                   title={isSidebarCollapsed ? item : undefined}
                   className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
@@ -3738,7 +3740,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
         {/* Footer User Info */}
         <div className="border-t border-outline-variant/30 px-3 py-3.5 bg-surface-container-low flex items-center justify-between shrink-0 shadow-xs">
-          <button
+          <button type="button"
             onClick={() => setIsProfileModalOpen(true)}
             className="flex items-center gap-2.5 min-w-0 hover:bg-surface-container/80 p-1.5 rounded-xl transition-all cursor-pointer text-left flex-1"
             title={userName}
@@ -3754,7 +3756,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           </button>
 
           {!isSidebarCollapsed && onSignOut && (
-            <button
+            <button type="button"
               onClick={() => setIsLogoutConfirmOpen(true)}
               className="p-2 rounded-lg text-secondary hover:text-error hover:bg-surface-container-high transition-colors cursor-pointer shrink-0 ml-1"
               title="Sign Out"
@@ -3767,7 +3769,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
       {/* Mobile Thumb-Zone Close Button */}
       {isMobileMenuOpen && (
-        <button
+        <button type="button"
           onClick={() => setIsMobileMenuOpen(false)}
           className="lg:hidden fixed bottom-6 right-6 z-50 w-12 h-12 rounded-full bg-primary text-on-primary shadow-xl flex items-center justify-center border border-white/20 active:scale-95 transition-all cursor-pointer"
           aria-label="Close Mobile Menu"
@@ -3796,14 +3798,14 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
             {/* Top Right Header Actions floating inside banner */}
             <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-              <button
+              <button type="button"
                 onClick={handleToggleDark}
                 className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white hover:bg-black/60 transition-all cursor-pointer"
                 title="Toggle Dark Mode"
               >
                 {isDarkMode ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-white" />}
               </button>
-              <button
+              <button type="button"
                 onClick={() => setIsEditingBanner(true)}
                 className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white hover:bg-black/60 transition-all cursor-pointer"
                 title="Edit Banner Cover"
@@ -3917,7 +3919,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   Upload any local image/GIF file, paste a link, or pick from curated aesthetic animated GIFs
                 </p>
               </div>
-              <button
+              <button type="button"
                 onClick={() => setIsEditingBanner(false)}
                 className="text-secondary hover:text-on-surface p-1.5 rounded-lg hover:bg-surface-container-high transition-colors cursor-pointer"
               >
@@ -4044,7 +4046,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   {activeVideo.title}
                 </h3>
               </div>
-              <button
+              <button type="button"
                 onClick={() => setActiveVideo(null)}
                 className="p-2 rounded-lg bg-surface-container-high text-on-surface hover:bg-surface-container transition-colors cursor-pointer"
                 title="Close Video"
@@ -4119,7 +4121,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
           <div className="relative w-full max-w-[672px] bg-surface-container-low border border-outline-variant rounded-2xl p-6 sm:p-10 shadow-2xl flex flex-col gap-8 text-on-surface animate-in fade-in zoom-in-95 duration-200">
             {/* Close Button ('X' top right) */}
-            <button
+            <button type="button"
               onClick={() => setIsProfileModalOpen(false)}
               className="absolute top-6 right-6 p-2 rounded-full text-secondary hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
             >
@@ -4175,7 +4177,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 </div>
 
                 {/* Switch Theme Button */}
-                <button
+                <button type="button"
                   onClick={handleToggleDark}
                   className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-outline-variant font-libre-baskerville text-sm text-on-surface hover:bg-surface-container-high transition-all active:scale-95 cursor-pointer shadow-xs"
                 >
@@ -4204,7 +4206,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                     {/* Header Row */}
                     <div className="flex items-center justify-between">
                       <span className="font-manrope font-semibold text-base text-on-surface">Active Integrations</span>
-                      <button
+                      <button type="button"
                         onClick={() => {
                           setIsProfileModalOpen(false);
                           handleSelectTab('Connectors');
@@ -4220,7 +4222,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                     {hasActive && (
                       <div className="flex flex-wrap items-center gap-3 pt-1 animate-in fade-in slide-in-from-top-1 duration-200">
                         {activeServices.map((item) => (
-                          <button
+                          <button type="button"
                             key={item.key}
                             onClick={() => handleConnectOAuth(item.key)}
                             title="Click to manage connector"
@@ -4240,7 +4242,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             {/* Footer Actions */}
             <div className="flex items-center justify-between pt-6 border-t border-outline-variant/40">
               {/* Sign Out Button */}
-              <button
+              <button type="button"
                 onClick={() => {
                   setIsProfileModalOpen(false);
                   setIsLogoutConfirmOpen(true);
@@ -4252,7 +4254,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               </button>
 
               {/* Done Button */}
-              <button
+              <button type="button"
                 onClick={() => setIsProfileModalOpen(false)}
                 className="px-8 py-2.5 rounded-xl bg-on-surface text-inverse-on-surface hover:opacity-90 font-manrope text-sm font-semibold transition-all cursor-pointer active:scale-95 shadow-md"
               >
@@ -4285,13 +4287,13 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
             {/* Footer Actions */}
             <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-2">
-              <button
+              <button type="button"
                 onClick={() => setIsLogoutConfirmOpen(false)}
                 className="w-full sm:w-auto px-8 py-3 border border-outline-variant text-on-surface font-manrope font-semibold text-base hover:bg-surface-container-highest transition-colors rounded-full cursor-pointer"
               >
                 Cancel
               </button>
-              <button
+              <button type="button"
                 onClick={() => {
                   setIsLogoutConfirmOpen(false);
                   if (onSignOut) onSignOut();
@@ -4319,7 +4321,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                   {activeDayInspector.displayDate}
                 </h2>
               </div>
-              <button
+              <button type="button"
                 onClick={() => setActiveDayInspector(null)}
                 aria-label="Close modal"
                 className="p-2.5 text-secondary hover:text-on-surface hover:bg-surface-container-high rounded-full transition-colors focus:outline-none cursor-pointer"
@@ -4383,7 +4385,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                             </div>
                           </div>
                           {ev.id && (
-                            <button
+                            <button type="button"
                               onClick={() => handleDeleteEvent(ev.id)}
                               className="text-secondary/60 hover:text-error transition-colors p-1.5 rounded-lg hover:bg-error/10 cursor-pointer"
                               title="Delete event"
@@ -4604,7 +4606,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 </h3>
               </div>
 
-              <button
+              <button type="button"
                 onClick={() => setSelectedMilestoneEvent(null)}
                 className="text-secondary hover:text-on-surface p-1 rounded-lg hover:bg-surface-container cursor-pointer"
               >

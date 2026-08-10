@@ -118,9 +118,9 @@ async function withRefreshLock<T>(
     );
   }
 
-  // Fallback: sessionStorage + timestamp for Safari <15.4, older iOS
+  // Fallback: localStorage + timestamp for Safari <15.4, older iOS (sessionStorage is tab-isolated)
   const lockKey = `sakido_lock_${service}`;
-  const lockValue = sessionStorage.getItem(lockKey);
+  const lockValue = localStorage.getItem(lockKey);
   const now = Date.now();
 
   if (lockValue) {
@@ -134,14 +134,14 @@ async function withRefreshLock<T>(
   }
 
   // Acquire lock
-  sessionStorage.setItem(lockKey, now.toString());
+  localStorage.setItem(lockKey, now.toString());
   try {
     return await fn();
   } finally {
     // Release lock only if we still own it (check timestamp to avoid releasing another tab's lock)
-    const currentLock = sessionStorage.getItem(lockKey);
+    const currentLock = localStorage.getItem(lockKey);
     if (currentLock === now.toString()) {
-      sessionStorage.removeItem(lockKey);
+      localStorage.removeItem(lockKey);
     }
   }
 }
