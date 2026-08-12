@@ -334,37 +334,22 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
       {/* CTA Section */}
       <section
         ref={ctaRef}
-        className="relative z-30 bg-black py-28 sm:py-36 px-6 text-center border-t border-zinc-900 transition-opacity duration-700 opacity-0 [.in-view&]:opacity-100"
+        className="relative z-30 min-h-screen bg-black flex flex-col items-center justify-center px-6 py-24 border-t border-zinc-900 text-center transition-opacity duration-700 opacity-0 [.in-view&]:opacity-100"
       >
-        <div className="max-w-3xl mx-auto space-y-8">
-          <span className="text-xs font-mono text-zinc-500 tracking-[0.2em] uppercase block">
-            Ready to simplify your study workflow?
-          </span>
-          <h2 className="font-display text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-tight">
-            Stop juggling five different tabs.
+        <div className="max-w-3xl mx-auto space-y-8 flex flex-col items-center">
+          <h2 className="font-display text-5xl sm:text-7xl md:text-8xl font-extrabold tracking-tight text-white leading-none">
+            Everything school.<br className="hidden sm:inline" /> One app.
           </h2>
-          <p className="text-base sm:text-lg text-zinc-400 max-w-xl mx-auto font-sans leading-relaxed">
-            Sakido brings your schedule, courses, notes, and direct messages together in one quiet workspace.
+          <p className="text-zinc-400 text-base sm:text-xl font-sans max-w-xl mx-auto font-normal leading-relaxed">
+            Notes, calendar, tasks, flashcards, and saved links — all unified in one essentialist academic platform.
           </p>
-
-          <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-4">
-            {currentUser ? (
-              <button
-                onClick={() => {
-                  if (onOpenDashboard) onOpenDashboard();
-                }}
-                className="w-full sm:w-auto px-8 py-3.5 font-bold text-sm bg-white hover:bg-zinc-200 text-black rounded-full transition-all shadow-md cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-              >
-                Go to Workspace →
-              </button>
-            ) : (
-              <button
-                onClick={() => setIsAuthOpen(true)}
-                className="w-full sm:w-auto px-8 py-3.5 font-bold text-sm bg-white hover:bg-zinc-200 text-black rounded-full transition-all shadow-md cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
-              >
-                Get Started Free
-              </button>
-            )}
+          <div className="pt-4 flex justify-center">
+            <button
+              onClick={() => (currentUser && onOpenDashboard ? onOpenDashboard() : setIsAuthOpen(true))}
+              className="px-8 py-3.5 rounded-full bg-white hover:bg-zinc-200 text-black font-bold text-sm transition-all shadow-md cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            >
+              {currentUser ? 'Go to Workspace →' : 'Get Started →'}
+            </button>
           </div>
         </div>
       </section>
