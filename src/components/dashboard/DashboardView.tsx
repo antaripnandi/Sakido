@@ -298,325 +298,150 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [tasks, schedule]);
 
   return (
-    <div className="p-4 sm:p-6 md:p-8 space-y-8 max-w-7xl mx-auto">
-      {/* 1. Summary Strip — Time-Sensitive Metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Metric 1: Tasks Due This Week */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-surface-container-low border border-outline-variant/40 shadow-2xs flex items-center justify-between">
-          <div>
+    <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto bg-surface text-on-surface font-sans">
+      {/* Left Column (Main Content) max-w-[800px] */}
+      <div className="flex-1 flex flex-col gap-6 max-w-full lg:max-w-[800px]">
+        {/* Header */}
+        <header className="space-y-1">
+          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-on-surface tracking-tight">
+            Welcome back, {profile?.name || 'Student'}
+          </h1>
+          <p className="text-secondary dark:text-secondary-fixed-dim text-sm sm:text-base font-normal">
+            Your workspace is ready for focus.
+          </p>
+        </header>
+
+        {/* Stats Row (4 Columns) */}
+        <section className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {/* Due This Week */}
+          <div className="p-4 rounded-2xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#120e0b] shadow-2xs flex flex-col justify-between h-28">
             <span className="text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
               Due This Week
             </span>
-            <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-2xl font-bold text-on-surface">{urgentTasks.length}</span>
-              <span className="text-xs text-secondary font-medium">active items</span>
-            </div>
-            <p className="text-[11px] text-primary font-medium mt-1 flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {dueSoonCount} high priority
-            </p>
-          </div>
-          <div className="w-11 h-11 rounded-xl bg-primary-container/20 flex items-center justify-center text-primary shrink-0">
-            <CheckSquare className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Metric 2: Overdue / Urgent Flags */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-surface-container-low border border-outline-variant/40 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
-              Urgent & Overdue
+            <span className="font-display text-2xl sm:text-3xl font-bold text-on-surface">
+              {urgentTasks.length}
             </span>
-            <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-2xl font-bold text-on-surface">{overdueCount}</span>
-              <span className="text-xs text-secondary font-medium">requires action</span>
-            </div>
-            <p className="text-[11px] text-error font-medium mt-1 flex items-center gap-1">
-              <AlertTriangle className="w-3 h-3" />
-              {overdueCount > 0 ? 'Immediate review needed' : 'All clear for now'}
-            </p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-error-container/20 flex items-center justify-center text-error shrink-0">
-            <AlertTriangle className="w-5 h-5" />
-          </div>
-        </div>
 
-        {/* Metric 3: Focus Minutes Progress */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-surface-container-low border border-outline-variant/40 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
-              Daily Focus Goal
+          {/* Urgent */}
+          <div className="p-4 rounded-2xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#120e0b] shadow-2xs flex flex-col justify-between h-28">
+            <span className="text-[11px] font-bold text-error uppercase tracking-wider font-mono flex items-center gap-1">
+              <AlertTriangle className="w-3.5 h-3.5 text-error" /> Urgent
             </span>
-            <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-2xl font-bold text-on-surface">{completedMinutesToday}</span>
-              <span className="text-xs text-secondary font-medium">/ {dailyGoalMinutes} mins</span>
-            </div>
-            <p className="text-[11px] text-emerald-500 font-medium mt-1 flex items-center gap-1">
-              <TrendingUp className="w-3 h-3" />
-              {progressPercent}% completed
-            </p>
-          </div>
-          <div className="relative w-11 h-11 flex items-center justify-center shrink-0">
-            <svg className="w-full h-full transform -rotate-90">
-              <circle
-                cx="22"
-                cy="22"
-                r="17"
-                stroke="currentColor"
-                strokeWidth="3.5"
-                className="text-surface-container-high"
-                fill="transparent"
-              />
-              <circle
-                cx="22"
-                cy="22"
-                r="17"
-                stroke="currentColor"
-                strokeWidth="3.5"
-                strokeDasharray={2 * Math.PI * 17}
-                strokeDashoffset={2 * Math.PI * 17 * (1 - progressPercent / 100)}
-                strokeLinecap="round"
-                className="text-primary transition-all duration-500"
-                fill="transparent"
-              />
-            </svg>
-            <Timer className="w-4 h-4 text-primary absolute" />
-          </div>
-        </div>
-
-        {/* Metric 4: Streak Count */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-surface-container-low border border-outline-variant/40 shadow-2xs flex items-center justify-between">
-          <div>
-            <span className="text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
-              Study Streak
+            <span className="font-display text-2xl sm:text-3xl font-bold text-on-surface">
+              {overdueCount}
             </span>
-            <div className="flex items-baseline gap-1.5 mt-1">
-              <span className="text-2xl font-bold text-on-surface">{streakDays}</span>
-              <span className="text-xs text-secondary font-medium">days active</span>
-            </div>
-            <p className="text-[11px] text-amber-500 font-medium mt-1 flex items-center gap-1">
-              <Flame className="w-3 h-3 fill-amber-500" />
-              {streakDays > 0 ? 'Keep momentum going' : 'Start your streak today'}
-            </p>
           </div>
-          <div className="w-11 h-11 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500 shrink-0">
-            <Flame className="w-5 h-5" />
+
+          {/* Daily Focus */}
+          <div className="p-4 rounded-2xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#120e0b] shadow-2xs flex flex-col justify-between h-28">
+            <span className="text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
+              Daily Focus
+            </span>
+            <span className="font-display text-2xl sm:text-3xl font-bold text-on-surface flex items-baseline gap-1">
+              {completedMinutesToday}<span className="text-xs text-secondary font-mono">m</span>
+            </span>
           </div>
-        </div>
-      </div>
 
-      {/* Next Upcoming Event - Prominent Display */}
-      {nextUpcoming && (
-        <div className="p-6 rounded-2xl bg-gradient-to-br from-[#8b5e3c]/5 to-[#8b5e3c]/10 border-2 border-[#8b5e3c]/30 shadow-md">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-[#8b5e3c] dark:text-amber-400">
-                  Next Up
-                </span>
-                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                  nextUpcoming.type === 'exam'
-                    ? 'bg-red-500/20 text-red-600 dark:text-red-400'
-                    : nextUpcoming.type === 'task'
-                    ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400'
-                    : 'bg-slate-500/20 text-slate-600 dark:text-slate-400'
-                }`}>
-                  {nextUpcoming.type}
-                </span>
-              </div>
-              <h2 className="text-2xl font-bold text-on-surface mb-1">
-                {nextUpcoming.title}
-              </h2>
-              <p className="text-sm text-secondary font-medium">
-                {nextUpcoming.courseName}
-              </p>
-            </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold text-[#8b5e3c] dark:text-amber-400 font-mono">
-                {formatTimeRemaining(nextUpcoming.msUntil)}
-              </div>
-              <div className="text-xs text-secondary mt-1 font-mono">
-                {nextUpcoming.dateTime.toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  hour: 'numeric',
-                  minute: '2-digit'
-                })}
-              </div>
-            </div>
+          {/* Streak */}
+          <div className="p-4 rounded-2xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#120e0b] shadow-2xs flex flex-col justify-between h-28">
+            <span className="text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
+              Streak
+            </span>
+            <span className="font-display text-2xl sm:text-3xl font-bold text-on-surface flex items-center gap-1">
+              {streakDays} <Flame className="w-4 h-4 text-amber-500 fill-amber-500" />
+            </span>
           </div>
-        </div>
-      )}
+        </section>
 
-      {/* 2. Main Overview Grid: Filterable Unified Hub + Compact Calendar */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Left 8 Cols: Unified Academic Hub */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* Header Controls: Filters & Quick Add */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-outline-variant/30 pb-4">
-            <div>
-              <h2 className="text-lg font-bold text-on-surface tracking-tight flex items-center gap-2">
-                Academic Overview & Tasks
-                <span className="px-2 py-0.5 rounded-full text-xs bg-surface-container-high text-secondary font-mono">
-                  {filteredAcademicItems.length}
-                </span>
-              </h2>
-              <p className="text-xs text-secondary font-medium mt-0.5">
-                Centralized assignments, exams, and class schedules across all courses
-              </p>
-            </div>
+        {/* Tasks Panel */}
+        <section className="flex-1 flex flex-col min-h-0 rounded-2xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#120e0b] overflow-hidden shadow-2xs">
+          {/* Panel Header */}
+          <div className="p-4 border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-low dark:bg-[#1c1613]">
+            <h2 className="font-display text-lg font-bold text-on-surface">
+              Tasks &amp; Assignments ({filteredAcademicItems.length})
+            </h2>
+            <button
+              type="button"
+              onClick={onQuickAddTask}
+              className="bg-primary hover:opacity-90 text-on-primary px-3 py-1.5 rounded-xl font-mono text-xs font-semibold transition-all flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95"
+            >
+              <Plus className="w-3.5 h-3.5" /> Add Item
+            </button>
+          </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+          {/* Filter Pills */}
+          <div className="px-4 py-2 border-b border-outline-variant/20 flex gap-4 bg-surface-container-low/50 overflow-x-auto shrink-0 no-scrollbar">
+            {(['all', 'upcoming', 'due-soon', 'overdue', 'completed'] as StatusFilter[]).map(st => (
               <button
-                onClick={onQuickAddTask}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-outline-variant/40 bg-surface-container hover:bg-surface-container-high text-xs font-semibold text-on-surface transition-all cursor-pointer shadow-2xs"
+                key={st}
+                type="button"
+                onClick={() => setStatusFilter(st)}
+                className={`text-xs font-semibold capitalize tracking-wide pb-1 transition-all cursor-pointer whitespace-nowrap ${
+                  statusFilter === st
+                    ? 'text-primary font-bold border-b-2 border-primary'
+                    : 'text-secondary hover:text-on-surface'
+                }`}
               >
-                <Plus className="w-3.5 h-3.5" />
-                Add Item
+                {st.replace('-', ' ')}
               </button>
-            </div>
+            ))}
           </div>
 
-          {/* Status & Course Filters */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            {/* Status Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-              {(['all', 'upcoming', 'due-soon', 'overdue', 'completed'] as StatusFilter[]).map((st) => (
-                <button
-                  key={st}
-                  onClick={() => setStatusFilter(st)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold capitalize transition-all cursor-pointer whitespace-nowrap ${
-                    statusFilter === st
-                      ? 'bg-primary text-on-primary shadow-2xs'
-                      : 'bg-surface-container-low text-secondary hover:text-on-surface border border-outline-variant/30'
-                  }`}
-                >
-                  {st.replace('-', ' ')}
-                </button>
-              ))}
-            </div>
-
-            {/* Course Dropdown Filter */}
-            <div className="flex items-center gap-2">
-              <Filter className="w-3.5 h-3.5 text-secondary" />
-              <select
-                value={selectedCourse}
-                onChange={(e) => setSelectedCourse(e.target.value)}
-                className="text-xs font-semibold bg-surface-container-low border border-outline-variant/40 text-on-surface rounded-xl px-2.5 py-1.5 cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
-              >
-                <option value="all">All Classes</option>
-                {courses.map((c) => (
-                  <option key={c.id} value={c.code}>{c.code} - {c.name}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Unified List Items */}
-          <div className="space-y-3">
+          {/* Task List */}
+          <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
             {filteredAcademicItems.length === 0 ? (
               <div className="p-8 text-center rounded-2xl border border-dashed border-outline-variant/40 bg-surface-container-low/60 flex flex-col items-center justify-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-secondary shadow-2xs">
-                  <CheckSquare className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-on-surface">
-                    {statusFilter !== 'all' || selectedCourse !== 'all' ? 'No items match filter' : 'No upcoming tasks due'}
-                  </h4>
-                  <p className="text-xs text-secondary mt-1 max-w-xs mx-auto">
-                    {statusFilter !== 'all' || selectedCourse !== 'all'
-                      ? 'Try selecting a different status filter or class.'
-                      : 'Your task list is clear! Add a new assignment to keep track of deadlines.'}
-                  </p>
-                </div>
+                <CheckSquare className="w-6 h-6 text-secondary" />
+                <p className="text-xs text-secondary">No upcoming tasks due</p>
                 <button
                   onClick={onQuickAddTask}
-                  className="mt-1 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold hover:opacity-90 transition-all shadow-2xs cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold hover:opacity-90 shadow-2xs cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  Add Task
+                  + Add Task
                 </button>
               </div>
             ) : (
-              filteredAcademicItems.slice(0, 7).map((item) => {
+              filteredAcademicItems.map(item => {
                 const isTask = item.type === 'task';
                 const taskObj = isTask ? (item.rawObject as Task) : null;
 
                 return (
                   <div
                     key={item.id}
-                    className="p-4 rounded-2xl bg-surface-container-low border border-outline-variant/30 hover:border-outline-variant/70 shadow-2xs transition-all flex items-start gap-3.5 group"
+                    className="p-3.5 rounded-xl border border-outline-variant/30 bg-surface-container-low/40 dark:bg-[#1c1613]/50 hover:border-outline-variant/80 transition-all flex gap-3.5 items-start group shadow-2xs"
                   >
-                    {/* Interactive Checkbox for Tasks */}
                     {isTask && taskObj ? (
-                      <button
-                        onClick={() => onToggleTaskStatus(taskObj.id)}
-                        className={`mt-0.5 w-5 h-5 rounded-lg border flex items-center justify-center transition-all cursor-pointer ${
-                          taskObj.status === 'completed'
-                            ? 'bg-emerald-500 border-emerald-500 text-white'
-                            : 'border-outline-variant/60 hover:border-primary bg-surface-container'
-                        }`}
-                      >
-                        {taskObj.status === 'completed' && <Check className="w-3.5 h-3.5 stroke-[3]" />}
-                      </button>
+                      <input
+                        type="checkbox"
+                        checked={taskObj.status === 'completed'}
+                        onChange={() => onToggleTaskStatus(taskObj.id)}
+                        className="mt-1 rounded border-outline-variant text-primary focus:ring-primary w-4 h-4 cursor-pointer"
+                      />
                     ) : (
-                      <div className="mt-0.5 w-5 h-5 rounded-lg bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
-                        <BookOpen className="w-3.5 h-3.5" />
+                      <div className="mt-1 w-4 h-4 rounded bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
+                        <BookOpen className="w-3 h-3" />
                       </div>
                     )}
-
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span
-                          className="px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wide uppercase font-mono"
-                          style={{
-                            backgroundColor: `${item.courseColor || '#6366f1'}18`,
-                            color: item.courseColor || '#6366f1',
-                          }}
-                        >
-                          {item.courseName}
-                        </span>
-
-                        {/* Status Badges */}
-                        {item.status === 'overdue' && (
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-error-container/40 text-error">
-                            Overdue / Urgent
-                          </span>
-                        )}
-                        {item.status === 'due-soon' && (
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-500/20 text-amber-500">
-                            Due Soon
-                          </span>
-                        )}
-                        {item.status === 'completed' && (
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-500/20 text-emerald-500">
-                            Completed
-                          </span>
-                        )}
-
-                        <span className="text-[11px] text-secondary ml-auto font-medium flex items-center gap-1 font-mono">
-                          <Clock className="w-3 h-3 text-secondary/60" />
+                      <div className="flex justify-between items-start mb-1">
+                        <h3 className={`text-sm font-semibold text-on-surface truncate pr-2 ${item.status === 'completed' ? 'line-through text-secondary' : ''}`}>
+                          {item.title}
+                        </h3>
+                        <span className={`font-mono text-xs shrink-0 ${item.status === 'overdue' ? 'text-error font-bold' : 'text-secondary'}`}>
                           {item.dueDate}
                         </span>
                       </div>
-
-                      <h3 className={`text-sm font-semibold text-on-surface mt-1.5 ${item.status === 'completed' ? 'line-through text-secondary' : ''}`}>
-                        {item.title}
-                      </h3>
-
-                      {/* Direct-to-Task Module Access Button */}
-                      <div className="flex items-center justify-between mt-3 pt-2 border-t border-outline-variant/20 text-[11px] text-secondary">
-                        <span className="capitalize font-mono text-[10px]">
-                          {item.type === 'task' ? 'Assignment' : item.type === 'exam' ? 'Assessment' : 'Lecture'}
-                        </span>
-
-                        <button
-                          onClick={() => onNavigate(isTask ? 'tasks' : 'calendar')}
-                          className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 group-hover:translate-x-0.5 transition-transform cursor-pointer"
-                        >
-                          Open in {isTask ? 'Tasks & Grades' : 'Schedule'}
-                          <ArrowRight className="w-3 h-3" />
-                        </button>
+                      <div className="flex items-center gap-2 font-mono text-xs text-secondary">
+                        <span>{item.courseName}</span>
+                        <span className="w-1 h-1 rounded-full bg-outline-variant" />
+                        {item.status === 'overdue' ? (
+                          <span className="text-error font-semibold flex items-center gap-0.5">
+                            <AlertTriangle className="w-3 h-3" /> High Priority
+                          </span>
+                        ) : (
+                          <span>{item.priority || 'Medium'} Priority</span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -624,141 +449,104 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               })
             )}
           </div>
+        </section>
+      </div>
+
+      {/* Right Column (Sidebar) w-[280px] shrink-0 */}
+      <div className="w-full lg:w-[280px] shrink-0 flex flex-col gap-4">
+        {/* Digital Clock Card */}
+        <div className="rounded-2xl border border-outline-variant/40 p-4 bg-surface-container-lowest dark:bg-[#120e0b] flex items-center justify-between shadow-2xs">
+          <div>
+            <div className="font-display text-xl font-bold text-on-surface mb-0.5">
+              {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </div>
+            <div className="font-mono text-xs text-secondary">
+              {now.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+            </div>
+          </div>
+          <Clock className="w-7 h-7 text-secondary/60" />
         </div>
 
-        {/* Right 4 Cols: Compact Calendar Widget & Class Quick Access */}
-        <div className="lg:col-span-4 space-y-6">
-          {/* Compact Calendar Widget */}
-          <div className="p-5 rounded-2xl bg-surface-container-low border border-outline-variant/40 shadow-2xs">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-sm font-bold text-on-surface flex items-center gap-2">
-                  <CalendarIcon className="w-4 h-4 text-primary" />
-                  Academic Calendar
-                </h3>
-                <p className="text-[11px] text-secondary font-mono">
-                  {now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                </p>
-              </div>
+        {/* Mini Calendar Card */}
+        <div className="rounded-2xl border border-outline-variant/40 p-4 bg-surface-container-lowest dark:bg-[#120e0b] shadow-2xs">
+          <div className="flex justify-between items-center mb-3">
+            <span className="font-mono text-xs font-bold text-on-surface tracking-wider uppercase">
+              {now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </span>
+            <div className="flex gap-1">
               <button
+                type="button"
                 onClick={() => onNavigate('calendar')}
-                className="text-xs font-semibold text-primary hover:underline flex items-center gap-0.5 cursor-pointer"
+                className="p-1 rounded-lg hover:bg-surface-container text-secondary hover:text-on-surface transition-colors cursor-pointer"
               >
-                Full Calendar
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Calendar Grid Header */}
-            <div className="grid grid-cols-7 text-center text-[10px] font-bold text-secondary font-mono mb-2">
-              <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
-            </div>
-
-            {/* Dynamic Calendar Days */}
-            <div className="grid grid-cols-7 gap-1">
-              {currentMonthDays.map((d, index) => {
-                if (d.day === null) {
-                  return <div key={`pad-${index}`} className="h-8" />;
-                }
-                const isSelected = selectedDate === d.day;
-                const isToday = d.day === now.getDate();
-
-                return (
-                  <button
-                    key={`day-${d.day}`}
-                    onClick={() => {
-                      if (d.day !== null) {
-                        setSelectedDate(d.day);
-                        onNavigate('calendar');
-                      }
-                    }}
-                    className={`h-8 rounded-xl flex flex-col items-center justify-center relative text-xs font-medium transition-all cursor-pointer ${
-                      isToday
-                        ? 'bg-primary text-on-primary font-bold shadow-2xs'
-                        : isSelected
-                        ? 'bg-surface-container-high text-on-surface border border-outline-variant/40'
-                        : 'hover:bg-surface-container/60 text-on-surface'
-                    }`}
-                  >
-                    <span>{d.day}</span>
-                    {/* Dots for REAL user tasks / exams */}
-                    <div className="flex items-center gap-0.5 absolute bottom-1">
-                      {d.hasExam && <span className="w-1 h-1 rounded-full bg-error" />}
-                      {d.hasTask && <span className="w-1 h-1 rounded-full bg-amber-400" />}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-outline-variant/20 flex items-center justify-between text-[11px] text-secondary font-mono">
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400" /> Tasks
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-error" /> Exams
-              </span>
-              <button
-                onClick={() => onNavigate('calendar')}
-                className="text-primary hover:underline font-semibold"
-              >
-                View Details →
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          {/* Quick Enrolled Class Roster (Read-Only Direct Links) */}
-          <div className="p-5 rounded-2xl bg-surface-container-low border border-outline-variant/40 shadow-2xs">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-bold text-on-surface">Enrolled Courses</span>
-              <button
-                onClick={() => onNavigate('classes')}
-                className="text-[11px] font-semibold text-primary hover:underline cursor-pointer"
-              >
-                Manage Classes
-              </button>
-            </div>
+          <div className="grid grid-cols-7 gap-1 text-center font-mono text-[10px] text-secondary font-bold mb-1">
+            <div>S</div><div>M</div><div>T</div><div>W</div><div>T</div><div>F</div><div>S</div>
+          </div>
 
-            <div className="space-y-3">
-              {courses.length === 0 ? (
-                <div className="p-5 text-center rounded-xl border border-dashed border-outline-variant/40 bg-surface-container/30 flex flex-col items-center justify-center gap-2.5">
-                  <div className="w-9 h-9 rounded-xl bg-surface-container-high border border-outline-variant/30 flex items-center justify-center text-secondary shadow-2xs">
-                    <BookOpen className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-on-surface">No classes added yet</p>
-                    <p className="text-[11px] text-secondary mt-0.5">Enroll to track grades and assignment deadlines</p>
-                  </div>
-                  <button
-                    onClick={() => onNavigate('classes')}
-                    className="mt-1 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-on-primary text-xs font-semibold hover:opacity-90 transition-all shadow-2xs cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Add Class
-                  </button>
+          <div className="grid grid-cols-7 gap-1 text-center font-mono text-xs">
+            {currentMonthDays.map((d, idx) => {
+              if (d.day === null) return <div key={`pad-${idx}`} className="py-1" />;
+              const isToday = d.day === now.getDate();
+              return (
+                <div
+                  key={`day-${d.day}`}
+                  onClick={() => onNavigate('calendar')}
+                  className={`py-1 rounded-lg cursor-pointer transition-colors relative ${
+                    isToday
+                      ? 'bg-primary text-on-primary font-bold shadow-2xs'
+                      : 'hover:bg-surface-container text-on-surface'
+                  }`}
+                >
+                  {d.day}
+                  {(d.hasTask || d.hasExam) && !isToday && (
+                    <span className="w-1 h-1 rounded-full bg-primary absolute bottom-0.5 left-1/2 -translate-x-1/2" />
+                  )}
                 </div>
-              ) : (
-                courses.slice(0, 4).map((course) => (
-                  <div
-                    key={course.id}
-                    onClick={() => onNavigate('classes')}
-                    className="p-3 rounded-xl bg-surface-container/40 hover:bg-surface-container border border-outline-variant/20 transition-all cursor-pointer flex items-center justify-between group"
-                  >
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-on-surface">{course.code}</span>
-                        <span className="text-[10px] font-mono text-secondary">{course.currentGrade}</span>
-                      </div>
-                      <p className="text-[11px] text-secondary truncate max-w-[160px]">{course.name}</p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-secondary group-hover:translate-x-0.5 transition-transform" />
-                  </div>
-                ))
-              )}
-            </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Enrolled Courses Card */}
+        <div className="rounded-2xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#120e0b] overflow-hidden flex-1 flex flex-col min-h-0 shadow-2xs">
+          <div className="p-4 border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-low dark:bg-[#1c1613] shrink-0">
+            <h2 className="font-display text-sm font-bold text-on-surface">Courses</h2>
+            <button
+              type="button"
+              onClick={() => onNavigate('classes')}
+              className="font-mono text-xs text-secondary hover:text-primary border-b border-transparent hover:border-primary transition-colors cursor-pointer"
+            >
+              Manage
+            </button>
+          </div>
+
+          <div className="p-3 flex flex-col gap-2 overflow-y-auto">
+            {courses.length === 0 ? (
+              <div className="p-4 text-center text-xs text-secondary font-mono">
+                No courses enrolled
+              </div>
+            ) : (
+              courses.slice(0, 4).map(course => (
+                <div
+                  key={course.id}
+                  onClick={() => onNavigate('classes')}
+                  className="p-2.5 rounded-xl border border-outline-variant/30 bg-surface-container-low/30 hover:bg-surface-container/60 cursor-pointer transition-colors"
+                >
+                  <span className="font-bold text-xs text-on-surface block">{course.name}</span>
+                  <span className="font-mono text-[11px] text-secondary">
+                    {course.code} • {course.professor || 'Prof. TBD'}
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 };
