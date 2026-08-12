@@ -9,6 +9,7 @@ import {
   PriorityHigh,
   CheckSquare
 } from 'lucide-react';
+import { StatCard } from '../common/StatCard';
 
 interface TaskItem {
   id: string;
@@ -70,51 +71,10 @@ export const Overview: React.FC = () => {
 
         {/* Stats Row */}
         <section className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {/* Stat 1: Due This Week */}
-          <div className="p-4 rounded-2xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#120e0b] shadow-2xs flex flex-col justify-between h-28">
-            <span className="text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
-              Due This Week
-            </span>
-            <span className="font-sans font-bold text-2xl sm:text-3xl tracking-tight text-on-surface tabular-nums">
-              4
-            </span>
-          </div>
-
-          {/* Stat 2: Urgent */}
-          <div className="p-4 rounded-2xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#120e0b] shadow-2xs flex flex-col justify-between h-28">
-            <span className="text-[11px] font-bold text-error uppercase tracking-wider font-mono flex items-center gap-1.5">
-              <AlertTriangle className="w-3.5 h-3.5 text-error shrink-0" /> Urgent
-            </span>
-            <span className="font-sans font-bold text-2xl sm:text-3xl tracking-tight text-on-surface tabular-nums">
-              1
-            </span>
-          </div>
-
-          {/* Stat 3: Daily Focus */}
-          <div className="p-4 rounded-2xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#120e0b] shadow-2xs flex flex-col justify-between h-28">
-            <span className="text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
-              Daily Focus
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="font-sans font-bold text-2xl sm:text-3xl tracking-tight text-on-surface tabular-nums">
-                120
-              </span>
-              <span className="font-sans text-xs text-secondary font-semibold">mins</span>
-            </div>
-          </div>
-
-          {/* Stat 4: Streak */}
-          <div className="p-4 rounded-2xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#120e0b] shadow-2xs flex flex-col justify-between h-28">
-            <span className="text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
-              Streak
-            </span>
-            <div className="flex items-center gap-1.5">
-              <span className="font-sans font-bold text-2xl sm:text-3xl tracking-tight text-on-surface tabular-nums">
-                5
-              </span>
-              <Flame className="w-5 h-5 text-amber-500 fill-amber-500/20 stroke-[2] shrink-0" />
-            </div>
-          </div>
+          <StatCard label="Due This Week" value={4} />
+          <StatCard label="Urgent" value={1} icon={AlertTriangle} iconClassName="w-3.5 h-3.5 text-error shrink-0" isError />
+          <StatCard label="Daily Focus" value={120} unit="mins" />
+          <StatCard label="Streak" value={5} icon={Flame} iconClassName="w-5 h-5 text-amber-500 fill-amber-500/20 stroke-[2] shrink-0" />
         </section>
 
         {/* Tasks Panel */}

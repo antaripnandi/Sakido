@@ -27,6 +27,7 @@ import {
   Info,
   Sliders,
   Sparkles,
+  Construction,
   GraduationCap,
   Mail,
   Check,
@@ -2156,12 +2157,12 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     if (['University & People', 'AI Features'].includes(activeTab)) {
       return (
         <div className="col-span-12 lg:col-span-8 flex flex-col items-center justify-center min-h-[380px] p-8 border border-dashed border-outline-variant/50 rounded-2xl bg-surface-container-low/40 dark:bg-surface-container-low/10">
-          <Sparkles className="w-10 h-10 text-primary-container mb-3 animate-pulse" />
-          <h2 className="font-display text-2xl font-bold tracking-widest uppercase text-on-surface">
-            Coming Soon
+          <Construction className="w-8 h-8 text-secondary mb-3" />
+          <h2 className="font-sans text-lg font-semibold text-on-surface">
+            {activeTab}
           </h2>
-          <p className="text-secondary dark:text-secondary-fixed-dim text-sm mt-2 text-center max-w-md">
-            The {activeTab} module is undergoing architectural refinement under Sakido&apos;s essentialist design framework.
+          <p className="text-secondary dark:text-secondary-fixed-dim text-xs mt-1 text-center max-w-md font-sans">
+            This section is currently under development.
           </p>
         </div>
       );
@@ -2350,7 +2351,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 <h3 className="font-display text-2xl font-bold text-on-surface">Academic Calendar</h3>
                 {connectors.googleCalendar && (
                   <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-mono font-medium flex items-center gap-1.5 border border-emerald-500/20">
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Live Google Cal Synced
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Live Google Cal Synced
                   </span>
                 )}
               </div>
@@ -3814,8 +3815,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               </button>
             </div>
 
-            <div className="absolute bottom-4 left-6 text-white font-mono text-xs tracking-wider uppercase opacity-80">
-              Sakido Essentialist Portal
+            <div className="absolute bottom-4 left-6 text-white/75 font-mono text-xs tracking-wider uppercase">
+              {now.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
             </div>
           </div>
         </div>
@@ -3827,7 +3828,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               {getGreeting()}, {userName}.
             </h2>
             <p className="text-secondary dark:text-secondary-fixed-dim text-sm mt-1">
-              Welcome back to your unified academic focus environment.
+              Here&apos;s what&apos;s on your plate today.
             </p>
           </div>
 
@@ -4071,17 +4072,14 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
               {/* Profile Details */}
               <div className="flex flex-col text-center sm:text-left gap-1">
-                <h2 className="font-tilt-warp text-xl sm:text-2xl uppercase tracking-tight text-on-surface">
+                <h2 className="font-display text-xl sm:text-2xl font-bold uppercase tracking-tight text-on-surface">
                   {userName}
                 </h2>
-                <p className="font-manrope text-sm text-secondary">
+                <p className="font-sans text-sm text-secondary">
                   {currentUser?.email}
                 </p>
                 <div className="flex items-center justify-center sm:justify-start gap-2 mt-1">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="font-mono text-[11px] uppercase tracking-wider text-secondary">
-                    Active Student Session · Sakido Portal
-                  </span>
+                  <span className="font-mono text-xs text-secondary">Signed in</span>
                 </div>
               </div>
             </div>
@@ -4089,8 +4087,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             {/* Main Content Body */}
             <div className="flex flex-col gap-6">
               {/* Heading 3: PREFERENCES & CONTROLS */}
-              <h3 className="font-marko-one text-xs sm:text-sm uppercase tracking-[0.15em] text-secondary">
-                PREFERENCES & CONTROLS
+              <h3 className="font-mono text-xs uppercase tracking-wider text-secondary">
+                PREFERENCES &amp; CONTROLS
               </h3>
 
               {/* Theme Section Box */}
@@ -4101,15 +4099,15 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                     {isDarkMode ? <Moon className="w-5 h-5 text-amber-400" /> : <Sun className="w-5 h-5 text-amber-600" />}
                   </div>
                   <div className="flex flex-col">
-                    <span className="font-manrope font-semibold text-base text-on-surface">Interface Theme</span>
-                    <span className="font-manrope text-sm text-secondary">{isDarkMode ? 'Dark Mode' : 'Light Mode'}</span>
+                    <span className="font-sans font-semibold text-base text-on-surface">Interface Theme</span>
+                    <span className="font-sans text-sm text-secondary">{isDarkMode ? 'Dark Mode' : 'Light Mode'}</span>
                   </div>
                 </div>
 
                 {/* Switch Theme Button */}
                 <button type="button"
                   onClick={handleToggleDark}
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-outline-variant font-libre-baskerville text-sm text-on-surface hover:bg-surface-container-high transition-all active:scale-95 cursor-pointer shadow-xs"
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl border border-outline-variant text-sm font-sans font-semibold text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer shadow-xs"
                 >
                   Switch Theme
                 </button>

@@ -15,6 +15,7 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
+  Timer,
   Layers,
   MoreVertical,
   ArrowRight,
@@ -526,7 +527,7 @@ export const KanbanBoard: React.FC<KanbanBoardProps> = ({
 
   const columns: Array<{ id: 'todo' | 'doing' | 'done'; label: string; icon: React.ReactNode }> = [
     { id: 'todo', label: 'TODO', icon: <Layers className="w-4 h-4 text-[#8b5e3c]" /> },
-    { id: 'doing', label: 'DOING', icon: <Sparkles className="w-4 h-4 text-amber-500" /> },
+    { id: 'doing', label: 'DOING', icon: <Timer className="w-4 h-4 text-amber-500" /> },
     { id: 'done', label: 'DONE', icon: <Check className="w-4 h-4 text-emerald-500" /> },
   ];
 

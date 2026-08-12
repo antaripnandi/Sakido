@@ -9,17 +9,12 @@ import {
   Check, 
   ChevronRight,
   BookOpen,
-  Sparkles,
-  Zap,
-  TrendingUp,
   AlertTriangle,
   Calendar as CalendarIcon,
-  Filter,
-  ArrowRight,
-  FileText
 } from 'lucide-react';
 import { Task, Course, ScheduleEvent, UserProfile, NavView } from '../../types';
 import { safeCreateDateTime } from '../../lib/dateUtils';
+import { StatCard } from '../common/StatCard';
 
 interface DashboardViewProps {
   profile: UserProfile;
@@ -303,51 +298,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       <div className="flex-1 flex flex-col gap-6 min-w-0">
         {/* Stats Row (4 Columns) */}
         <section className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {/* Due This Week */}
-          <div className="p-4 rounded-2xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#120e0b] shadow-2xs flex flex-col justify-between h-28">
-            <span className="text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
-              Due This Week
-            </span>
-            <span className="font-sans font-bold text-2xl sm:text-3xl tracking-tight text-on-surface tabular-nums">
-              {urgentTasks.length}
-            </span>
-          </div>
-
-          {/* Urgent */}
-          <div className="p-4 rounded-2xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#120e0b] shadow-2xs flex flex-col justify-between h-28">
-            <span className="text-[11px] font-bold text-error uppercase tracking-wider font-mono flex items-center gap-1.5">
-              <AlertTriangle className="w-3.5 h-3.5 text-error shrink-0" /> Urgent
-            </span>
-            <span className="font-sans font-bold text-2xl sm:text-3xl tracking-tight text-on-surface tabular-nums">
-              {overdueCount}
-            </span>
-          </div>
-
-          {/* Daily Focus */}
-          <div className="p-4 rounded-2xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#120e0b] shadow-2xs flex flex-col justify-between h-28">
-            <span className="text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
-              Daily Focus
-            </span>
-            <div className="flex items-baseline gap-1">
-              <span className="font-sans font-bold text-2xl sm:text-3xl tracking-tight text-on-surface tabular-nums">
-                {completedMinutesToday}
-              </span>
-              <span className="font-sans text-xs text-secondary font-semibold">mins</span>
-            </div>
-          </div>
-
-          {/* Streak */}
-          <div className="p-4 rounded-2xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#120e0b] shadow-2xs flex flex-col justify-between h-28">
-            <span className="text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
-              Streak
-            </span>
-            <div className="flex items-center gap-1.5">
-              <span className="font-sans font-bold text-2xl sm:text-3xl tracking-tight text-on-surface tabular-nums">
-                {streakDays}
-              </span>
-              <Flame className="w-5 h-5 text-amber-500 fill-amber-500/20 stroke-[2] shrink-0" />
-            </div>
-          </div>
+          <StatCard label="Due This Week" value={urgentTasks.length} />
+          <StatCard label="Urgent" value={overdueCount} icon={AlertTriangle} iconClassName="w-3.5 h-3.5 text-error shrink-0" isError />
+          <StatCard label="Daily Focus" value={completedMinutesToday} unit="mins" />
+          <StatCard label="Streak" value={streakDays} icon={Flame} iconClassName="w-5 h-5 text-amber-500 fill-amber-500/20 stroke-[2] shrink-0" />
         </section>
 
         {/* Tasks Panel */}
@@ -360,7 +314,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               type="button"
               onClick={onQuickAddTask}
-              className="bg-primary hover:opacity-90 text-on-primary px-3 py-1.5 rounded-xl font-mono text-xs font-semibold transition-all flex items-center gap-1 shadow-2xs cursor-pointer active:scale-95"
+              className="bg-primary hover:bg-[#5a3820] dark:hover:bg-[#d59b72] text-on-primary px-3 py-1.5 rounded-xl font-mono text-xs font-semibold transition-colors flex items-center gap-1 shadow-2xs cursor-pointer active:scale-[0.98]"
             >
               <Plus className="w-3.5 h-3.5" /> Add Item
             </button>
