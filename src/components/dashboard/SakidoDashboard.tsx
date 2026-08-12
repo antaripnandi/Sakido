@@ -3821,89 +3821,21 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         </div>
 
         {/* Greeting Banner & Content Grid */}
-        <div className="px-4 sm:px-8 lg:px-12 py-8 flex-1 flex flex-col">
-          {/* Real Dynamic Greeting (No Hardcoding) */}
-          <div className="mb-8">
-            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-on-surface tracking-tight">
-              {getGreeting()}, {userName}.
-            </h2>
-            <p className="text-secondary dark:text-secondary-fixed-dim text-sm mt-1">
-              Welcome back to your unified academic focus environment.
-            </p>
-          </div>
+        <div className="px-4 sm:px-8 lg:px-12 py-6 flex-1 flex flex-col">
+          {activeTab !== 'Overview' && (
+            <div className="mb-6">
+              <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-on-surface tracking-tight">
+                {getGreeting()}, {userName}.
+              </h2>
+              <p className="text-secondary dark:text-secondary-fixed-dim text-sm mt-1">
+                Welcome back to your unified academic focus environment.
+              </p>
+            </div>
+          )}
 
           {/* Main Dashboard Grid */}
-          <div className="grid grid-cols-12 gap-8 flex-1">
-            {/* Left Column (Clock & Real Date Widget - STRICTLY SCOPED TO OVERVIEW) */}
-            {activeTab === 'Overview' && (
-              <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
-                <div className="p-6 rounded-2xl border border-outline-variant/40 bg-surface-container-low shadow-2xs flex flex-col gap-5">
-                  <div className="flex items-center gap-5">
-                    {/* Sleek Minimalist Analog Clock */}
-                    <div className="relative w-28 h-28 rounded-full border border-outline-variant/50 bg-surface-container-lowest dark:bg-[#1f1915] flex items-center justify-center shrink-0 shadow-inner">
-                      {/* Minimalist 12, 3, 6, 9 Ticks */}
-                      <div className="absolute top-2 w-0.5 h-2 bg-outline-variant/60 rounded-full" />
-                      <div className="absolute bottom-2 w-0.5 h-2 bg-outline-variant/60 rounded-full" />
-                      <div className="absolute left-2 h-0.5 w-2 bg-outline-variant/60 rounded-full" />
-                      <div className="absolute right-2 h-0.5 w-2 bg-outline-variant/60 rounded-full" />
-
-                      {/* Hour Hand */}
-                      <div
-                        className="absolute bottom-1/2 left-1/2 w-1 h-8 bg-on-surface rounded-full origin-bottom transition-transform duration-200"
-                        style={{ transform: `translateX(-50%) rotate(${hourDeg}deg)` }}
-                      />
-
-                      {/* Minute Hand */}
-                      <div
-                        className="absolute bottom-1/2 left-1/2 w-0.5 h-11 bg-primary rounded-full origin-bottom transition-transform duration-200"
-                        style={{ transform: `translateX(-50%) rotate(${minuteDeg}deg)` }}
-                      />
-
-                      {/* Second Hand */}
-                      <div
-                        className="absolute bottom-1/2 left-1/2 w-[1px] h-12 bg-amber-500 rounded-full origin-bottom transition-transform duration-100"
-                        style={{ transform: `translateX(-50%) rotate(${secondDeg}deg)` }}
-                      />
-
-                      {/* Center Dot */}
-                      <div className="w-2.5 h-2.5 rounded-full bg-primary border-2 border-surface-container-lowest z-10" />
-                    </div>
-
-                    {/* Real Date Display */}
-                    <div className="text-left min-w-0">
-                      <p className="font-mono text-[11px] uppercase tracking-widest text-primary font-bold">
-                        {now.toLocaleDateString('en-US', { weekday: 'long' })}
-                      </p>
-                      <p className="font-display font-bold text-xl text-on-surface mt-0.5 tracking-tight truncate">
-                        {now.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
-                      </p>
-                      <p className="font-mono text-xs text-secondary mt-1 tracking-wide">
-                        {now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Real Dynamic Academic Summary */}
-                  <div className="w-full pt-4 border-t border-outline-variant/20 grid grid-cols-2 gap-3 text-center sm:text-left font-mono">
-                    <div>
-                      <span className="text-[10px] uppercase text-secondary font-bold">Active Courses</span>
-                      <p className="font-display font-bold text-xl text-on-surface mt-0.5">{classes.length}</p>
-                    </div>
-                    <div>
-                      <span className="text-[10px] uppercase text-secondary font-bold">Pending Tasks</span>
-                      <p className="font-display font-bold text-xl text-on-surface mt-0.5">
-                        {tasks.filter((t) => t.status !== 'completed' && t.status !== 'submitted').length}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Dynamic Tab Content View */}
-            <div className={`transition-all duration-150 ${activeTab === 'Overview' ? 'col-span-12 lg:col-span-8' : 'col-span-12'}`}>
-              {renderTabContent()}
-            </div>
+          <div className="w-full flex-1">
+            {renderTabContent()}
           </div>
         </div>
       </main>
