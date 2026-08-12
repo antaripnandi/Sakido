@@ -298,19 +298,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   }, [tasks, schedule]);
 
   return (
-    <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto flex flex-col lg:flex-row gap-6 w-full max-w-7xl mx-auto bg-surface text-on-surface font-sans">
-      {/* Left Column (Main Content) max-w-[800px] */}
-      <div className="flex-1 flex flex-col gap-6 max-w-full lg:max-w-[800px]">
-        {/* Header */}
-        <header className="space-y-1">
-          <h1 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-on-surface tracking-tight">
-            Welcome back, {profile?.name || 'Student'}
-          </h1>
-          <p className="text-secondary dark:text-secondary-fixed-dim text-sm sm:text-base font-normal">
-            Your workspace is ready for focus.
-          </p>
-        </header>
-
+    <div className="w-full flex flex-col lg:flex-row gap-6 text-on-surface font-sans">
+      {/* Left Column (Main Content) */}
+      <div className="flex-1 flex flex-col gap-6 min-w-0">
         {/* Stats Row (4 Columns) */}
         <section className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {/* Due This Week */}
@@ -547,6 +537,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 };

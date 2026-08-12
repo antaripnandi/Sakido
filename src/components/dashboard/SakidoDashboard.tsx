@@ -3783,57 +3783,53 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       <main className={`flex-1 flex flex-col min-h-screen pt-16 lg:pt-0 w-full overflow-x-hidden transition-all duration-300 ${
         isSidebarCollapsed ? 'lg:pl-20' : 'lg:pl-64'
       }`}>
-        {/* Banner Hero Section - Fixes Overlap Bug! (Shown on tabs other than Overview) */}
-        {activeTab !== 'Overview' && (
-          <div className="relative w-full px-4 sm:px-8 lg:px-12 pt-6">
-            <div
-              className="relative h-44 sm:h-52 w-full rounded-2xl overflow-hidden border border-outline-variant/40 shadow-xs group bg-surface-container-high dark:bg-[#241d18]"
-              style={{
-                backgroundImage: `url('${bannerImageUrl}')`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-              }}
-            >
-              {/* Dark gradient overlay for readability */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
+        {/* Banner Hero Section - Consistent across all workspace views */}
+        <div className="relative w-full px-4 sm:px-8 lg:px-12 pt-6">
+          <div
+            className="relative h-44 sm:h-52 w-full rounded-2xl overflow-hidden border border-outline-variant/40 shadow-xs group bg-surface-container-high dark:bg-[#241d18]"
+            style={{
+              backgroundImage: `url('${bannerImageUrl}')`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+            }}
+          >
+            {/* Dark gradient overlay for readability */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
 
-              {/* Top Right Header Actions floating inside banner */}
-              <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-                <button type="button"
-                  onClick={handleToggleDark}
-                  className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white hover:bg-black/60 transition-all cursor-pointer"
-                  title="Toggle Dark Mode"
-                >
-                  {isDarkMode ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-white" />}
-                </button>
-                <button type="button"
-                  onClick={() => setIsEditingBanner(true)}
-                  className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white hover:bg-black/60 transition-all cursor-pointer"
-                  title="Edit Banner Cover"
-                >
-                  <Edit3 className="w-4 h-4" />
-                </button>
-              </div>
+            {/* Top Right Header Actions floating inside banner */}
+            <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
+              <button type="button"
+                onClick={handleToggleDark}
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white hover:bg-black/60 transition-all cursor-pointer"
+                title="Toggle Dark Mode"
+              >
+                {isDarkMode ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-white" />}
+              </button>
+              <button type="button"
+                onClick={() => setIsEditingBanner(true)}
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-black/40 backdrop-blur-md border border-white/20 text-white hover:bg-black/60 transition-all cursor-pointer"
+                title="Edit Banner Cover"
+              >
+                <Edit3 className="w-4 h-4" />
+              </button>
+            </div>
 
-              <div className="absolute bottom-4 left-6 text-white font-mono text-xs tracking-wider uppercase opacity-80">
-                Sakido Essentialist Portal
-              </div>
+            <div className="absolute bottom-4 left-6 text-white font-mono text-xs tracking-wider uppercase opacity-80">
+              Sakido Essentialist Portal
             </div>
           </div>
-        )}
+        </div>
 
         {/* Greeting Banner & Content Grid */}
         <div className="px-4 sm:px-8 lg:px-12 py-6 flex-1 flex flex-col">
-          {activeTab !== 'Overview' && (
-            <div className="mb-6">
-              <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-on-surface tracking-tight">
-                {getGreeting()}, {userName}.
-              </h2>
-              <p className="text-secondary dark:text-secondary-fixed-dim text-sm mt-1">
-                Welcome back to your unified academic focus environment.
-              </p>
-            </div>
-          )}
+          <div className="mb-6">
+            <h2 className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold text-on-surface tracking-tight">
+              {getGreeting()}, {userName}.
+            </h2>
+            <p className="text-secondary dark:text-secondary-fixed-dim text-sm mt-1">
+              Welcome back to your unified academic focus environment.
+            </p>
+          </div>
 
           {/* Main Dashboard Grid */}
           <div className="w-full flex-1">
