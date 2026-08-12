@@ -75,17 +75,17 @@ export const Overview: React.FC = () => {
             <span className="text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
               Due This Week
             </span>
-            <span className="font-display text-2xl sm:text-3xl font-bold text-on-surface">
+            <span className="font-sans font-bold text-2xl sm:text-3xl tracking-tight text-on-surface tabular-nums">
               4
             </span>
           </div>
 
           {/* Stat 2: Urgent */}
           <div className="p-4 rounded-2xl border border-outline-variant/40 bg-surface-container-lowest dark:bg-[#120e0b] shadow-2xs flex flex-col justify-between h-28">
-            <span className="text-[11px] font-bold text-error uppercase tracking-wider font-mono flex items-center gap-1">
-              <AlertTriangle className="w-3.5 h-3.5 text-error" /> Urgent
+            <span className="text-[11px] font-bold text-error uppercase tracking-wider font-mono flex items-center gap-1.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-error shrink-0" /> Urgent
             </span>
-            <span className="font-display text-2xl sm:text-3xl font-bold text-on-surface">
+            <span className="font-sans font-bold text-2xl sm:text-3xl tracking-tight text-on-surface tabular-nums">
               1
             </span>
           </div>
@@ -95,9 +95,12 @@ export const Overview: React.FC = () => {
             <span className="text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
               Daily Focus
             </span>
-            <span className="font-display text-2xl sm:text-3xl font-bold text-on-surface flex items-baseline gap-1">
-              120<span className="text-xs text-secondary font-mono">m</span>
-            </span>
+            <div className="flex items-baseline gap-1">
+              <span className="font-sans font-bold text-2xl sm:text-3xl tracking-tight text-on-surface tabular-nums">
+                120
+              </span>
+              <span className="font-sans text-xs text-secondary font-semibold">mins</span>
+            </div>
           </div>
 
           {/* Stat 4: Streak */}
@@ -105,9 +108,12 @@ export const Overview: React.FC = () => {
             <span className="text-[11px] font-bold text-secondary uppercase tracking-wider font-mono">
               Streak
             </span>
-            <span className="font-display text-2xl sm:text-3xl font-bold text-on-surface flex items-center gap-1">
-              5 <Flame className="w-4 h-4 text-amber-500 fill-amber-500" />
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-sans font-bold text-2xl sm:text-3xl tracking-tight text-on-surface tabular-nums">
+                5
+              </span>
+              <Flame className="w-5 h-5 text-amber-500 fill-amber-500/20 stroke-[2] shrink-0" />
+            </div>
           </div>
         </section>
 
