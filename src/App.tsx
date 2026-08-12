@@ -13,6 +13,44 @@ const SakidoDashboard = lazy(() =>
   }))
 );
 
+class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: any }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error('Sakido UI Error caught by boundary:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center p-6 text-center">
+          <h2 className="font-display text-2xl font-bold mb-2">Something went wrong in Workspace</h2>
+          <p className="text-xs text-zinc-400 font-mono mb-4 max-w-md">
+            {this.state.error?.message || 'An unexpected error occurred in the workspace component.'}
+          </p>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false, error: null });
+              window.location.href = '/dashboard';
+            }}
+            className="px-4 py-2 rounded-full bg-white text-black text-xs font-bold hover:bg-zinc-200 cursor-pointer"
+          >
+            Reload Workspace
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function AppContent() {
   const navigate = useNavigate();
   const [currentUser, setCurrentUser] = useState<{
@@ -56,14 +94,9 @@ function AppContent() {
         setCurrentUser(null);
       }
 
-      // Capture provider_refresh_token at the ONLY moment Supabase exposes it —
-      // the SIGNED_IN event fired immediately after the OAuth redirect lands.
-      // getSession() called anywhere later will return null for this field.
-      // Routes to the correct per-service token column based on sakido_pending_connector.
       if (event === 'SIGNED_IN' && session?.provider_refresh_token) {
         const pending = localStorage.getItem('sakido_pending_connector');
 
-        // Map pending service to token column
         const tokenCol =
           pending === 'googleCalendar' ? 'calendar_refresh_token' :
           pending === 'googleDrive'    ? 'drive_refresh_token'    :
@@ -71,18 +104,13 @@ function AppContent() {
           null;
 
         if (!tokenCol) {
-          // Normal sign-in (not a connector flow) — don't touch token columns
           console.log('[auth] SIGNED_IN without pending connector, skipping token write');
           return;
         }
 
-        // Write only the token column — omit flag columns entirely. Postgres
-        // upsert only touches columns in the payload, so existing flags are
-        // preserved on update, and the migration's NOT NULL DEFAULT false
-        // makes a first INSERT safe. verifyOAuthCallback owns the flags.
         supabase.from('google_tokens').upsert({
           user_id: session.user.id,
-          [tokenCol]: session.provider_refresh_token, // write only this service's column
+          [tokenCol]: session.provider_refresh_token,
           updated_at: new Date().toISOString(),
         }, { onConflict: 'user_id' }).then(({ error: upsertError }) => {
           if (upsertError) console.warn('[auth] token upsert failed:', upsertError.message);
@@ -98,7 +126,6 @@ function AppContent() {
     };
   }, []);
 
-  // Handle return URL restoration after OAuth redirect
   useEffect(() => {
     if (!currentUser) return;
 
@@ -116,9 +143,6 @@ function AppContent() {
     if (supabase) {
       await supabase.auth.signOut();
     }
-    // Purge cached Google access tokens + bump the generation guard so a
-    // different user on the same tab can never hit the previous user's cached
-    // token (or an in-flight refresh resolving after this sign-out)
     clearProviderToken();
     invalidateGeneration();
     setCurrentUser(null);
@@ -146,7 +170,7 @@ function AppContent() {
       <Route
         path="/dashboard/*"
         element={
-          currentUser ? (
+          <ErrorBoundary>
             <Suspense
               fallback={
                 <div className="min-h-screen bg-zinc-950 text-zinc-100 flex items-center justify-center font-mono text-xs">
@@ -160,9 +184,7 @@ function AppContent() {
                 onSignOut={handleSignOut}
               />
             </Suspense>
-          ) : (
-            <Navigate to="/" replace />
-          )
+          </ErrorBoundary>
         }
       />
       {/* Legal & Compliance Routes (For Google Console & OAuth) */}
