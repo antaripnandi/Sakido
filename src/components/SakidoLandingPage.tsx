@@ -108,7 +108,7 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
           pin: pinnedRef.current,
           start: 'top top',
           end: 'bottom bottom',
-          scrub: isMobile ? 0.5 : 1.0,
+          scrub: isMobile ? 0.5 : 1.2,
           onUpdate: (self) => {
             const progress = self.progress;
 
@@ -137,8 +137,8 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
               const center = sectionIndex * sectionWidth;
               const t = (progress - center) / sectionWidth;
 
-              const opacity = clamp(1 - Math.abs(t) * 2.5, 0, 1);
-              const translateY = isMobile ? -50 : -50 + t * -60;
+              const opacity = Math.pow(clamp(1 - Math.abs(t) * 2.2, 0, 1), 1.2);
+              const translateY = isMobile ? -50 : -50 + t * -40;
 
               el.style.opacity = String(opacity);
               el.style.transform = `translateY(${translateY}%)`;
@@ -308,18 +308,19 @@ export const SakidoLandingPage: React.FC<SakidoLandingPageProps> = ({ onOpenDash
                   key={item.id}
                   ref={(el) => { calloutRefs.current[i] = el; }}
                   aria-hidden={!isActive}
-                  className={`absolute top-1/2 -translate-y-1/2 w-full px-6 sm:px-16 flex ${isLeft ? 'justify-start' : 'justify-end'
-                    } landing-callout ${isActive ? 'pointer-events-auto' : 'pointer-events-none'}`}
+                  className={`absolute top-1/2 -translate-y-1/2 w-full px-6 sm:px-16 md:px-24 flex ${
+                    isLeft ? 'justify-start' : 'justify-end'
+                  } landing-callout ${isActive ? 'pointer-events-auto' : 'pointer-events-none'}`}
                   style={{ opacity: 0 }}
                 >
-                  <div className="max-w-md bg-zinc-950/80 border border-zinc-800/80 rounded-2xl p-6 sm:p-8 backdrop-blur-md shadow-2xl space-y-3">
-                    <span className="text-xs font-mono text-zinc-400 tracking-wider block">
+                  <div className={`max-w-md sm:max-w-lg space-y-2.5 ${isLeft ? 'text-left' : 'text-left sm:text-right'}`}>
+                    <span className="text-[11px] sm:text-xs font-mono text-zinc-400 tracking-[0.25em] uppercase font-bold block">
                       {item.category}
                     </span>
-                    <h2 className="font-display text-2xl sm:text-3xl font-bold text-white tracking-tight">
+                    <h2 className="font-display text-4xl sm:text-6xl font-extrabold text-white tracking-tight leading-none drop-shadow-xl">
                       {item.title}
                     </h2>
-                    <p className="text-sm sm:text-base text-zinc-300 leading-relaxed font-sans font-light">
+                    <p className="text-sm sm:text-lg text-zinc-200/90 font-sans font-normal leading-relaxed text-balance drop-shadow-md">
                       {item.text}
                     </p>
                   </div>
