@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getProviderToken, setProviderToken, clearProviderToken, getOrRefresh, getGeneration, GoogleService, broadcastTokenUpdate, listenForTokenUpdates } from '../../lib/googleTokenStore';
 import { useMigrateToCalendars, TYPE_TO_CALENDAR_MAP } from '../../hooks/useMigrateToCalendars';
