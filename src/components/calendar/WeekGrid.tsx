@@ -23,6 +23,7 @@ export interface WeekGridProps {
   setLastUsedCalendarId: React.Dispatch<React.SetStateAction<string>>; // Add setLastUsedCalendarId
   onEditingStart?: (eventId: string) => void;
   onEditingEnd?: (eventId: string) => void;
+  daysToShow?: number;
 }
 
 export const WeekGrid: React.FC<WeekGridProps> = ({
@@ -37,7 +38,8 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
   lastUsedCalendarId,
   setLastUsedCalendarId,
   onEditingStart,
-  onEditingEnd
+  onEditingEnd,
+  daysToShow = 7
 }) => {
   const [now, setNow] = useState(new Date());
   const gridRef = useRef<HTMLDivElement>(null);
@@ -65,6 +67,12 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     setEditingIsAllDay,
     editingColor,
     setEditingColor,
+    editingDate,
+    setEditingDate,
+    editingStartTime,
+    setEditingStartTime,
+    editingEndTime,
+    setEditingEndTime,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
@@ -80,7 +88,8 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     getCalendarColor,
     lastUsedCalendarId,
     calendars,
-    setLastUsedCalendarId
+    setLastUsedCalendarId,
+    daysToShow
   );
 
   // Update current time every minute
@@ -94,14 +103,12 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     return `${hour.toString().padStart(2, '0')}:00`;
   });
 
-  // Filter events by visible calendars and current week
+  // Filter events by visible calendars and current week/day range
   const weekStartStr = formatDate(selectedWeekStart);
-  const weekEndStr = formatDate(addDays(selectedWeekStart, 6));
+  const weekEndStr = formatDate(addDays(selectedWeekStart, daysToShow - 1));
   const weekEvents = events.filter(e => {
     const calId = e.calendarId || 'cal-personal';
     if (visibleCalendars.length > 0 && !visibleCalendars.includes(calId)) return false;
-    // Compare the event range against the week range so multi-day events that
-    // start before (or end after) the week are still shown, matching AllDayRow.
     const start = e.date;
     const end = e.endDate || e.date;
     return start <= weekEndStr && end >= weekStartStr;
@@ -145,6 +152,10 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     const event = events.find(e => e.id === editingEventId);
     if (!event) return;
 
+    const finalStartTime = editingStartTime || event.startTime || '09:00';
+    const finalEndTime = editingEndTime || event.endTime || '10:00';
+    const finalDate = editingDate || event.date;
+
     const updatedEvent = {
       ...event,
       title: editingTitle.trim() || 'New Event',
@@ -152,18 +163,17 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
       calendarId: editingCalendarId,
       color: editingColor || getCalendarColor(editingCalendarId),
       isAllDay: editingIsAllDay,
-      // Clear time fields when the event becomes all-day so AllDayRow and the
-      // day-column filter (which excludes isAllDay) both interpret it correctly.
-      startTime: editingIsAllDay ? undefined : event.startTime,
-      endTime: editingIsAllDay ? undefined : event.endTime,
-      time: editingIsAllDay ? undefined : event.time,
+      date: finalDate,
+      startTime: editingIsAllDay ? undefined : finalStartTime,
+      endTime: editingIsAllDay ? undefined : finalEndTime,
+      time: editingIsAllDay ? undefined : `${format12Hour(finalStartTime)} – ${format12Hour(finalEndTime)}`,
       isPending: false, // confirm creation
     };
     onEventUpdate(updatedEvent);
     if (editingEventId) onEditingEnd?.(editingEventId); // Unlock event
     setEditingEventId(null);
     setLastUsedCalendarId(editingCalendarId); // Update last used calendar
-  }, [editingEventId, editingTitle, editingType, editingCalendarId, editingColor, editingIsAllDay, events, onEventUpdate, setEditingEventId, setLastUsedCalendarId, onEditingEnd, getCalendarColor]);
+  }, [editingEventId, editingTitle, editingType, editingCalendarId, editingColor, editingIsAllDay, editingDate, editingStartTime, editingEndTime, events, onEventUpdate, setEditingEventId, setLastUsedCalendarId, onEditingEnd, getCalendarColor]);
 
   const handleCancelEdit = useCallback(() => {
     setEvents(prev => {
@@ -189,6 +199,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
   }, [editingEventId, events, setEvents, onEventDelete, onEditingEnd]);
 
   const handleEditClick = useCallback((id: string, title: string, type: string, calendarId: string, isAllDay: boolean, color?: string) => {
+    const ev = events.find(e => e.id === id);
     onEditingStart?.(id); // Lock event
     setEditingEventId(id);
     setEditingTitle(title);
@@ -196,8 +207,13 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
     setEditingCalendarId(calendarId);
     setEditingIsAllDay(isAllDay);
     setEditingColor(color || '');
+    if (ev) {
+      setEditingDate(ev.date || formatDate(selectedWeekStart));
+      setEditingStartTime(ev.startTime || '09:00');
+      setEditingEndTime(ev.endTime || '10:00');
+    }
     setTimeout(() => editorInputRef.current?.select(), 0);
-  }, [setEditingEventId, setEditingTitle, setEditingType, setEditingCalendarId, setEditingIsAllDay, setEditingColor, onEditingStart]);
+  }, [setEditingEventId, setEditingTitle, setEditingType, setEditingCalendarId, setEditingIsAllDay, setEditingColor, setEditingDate, setEditingStartTime, setEditingEndTime, onEditingStart, events, selectedWeekStart]);
 
   const renderDayColumn = (dayOffset: number) => {
     const columnDate = addDays(selectedWeekStart, dayOffset);
@@ -266,11 +282,11 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
       className="border border-outline-variant/40 rounded-xl bg-surface-container-lowest overflow-hidden"
     >
       {/* Day headers row */}
-      <div className="grid grid-cols-[80px_repeat(7,_1fr)] border-b border-outline-variant/30">
+      <div className={`grid ${daysToShow === 1 ? 'grid-cols-[80px_1fr]' : 'grid-cols-[80px_repeat(7,_1fr)]'} border-b border-outline-variant/30`}>
         {/* Time label column header spacer */}
         <div className="h-[52px] border-r border-outline-variant/30 bg-surface"></div>
         {/* Day headers */}
-        {[0, 1, 2, 3, 4, 5, 6].map(dayOffset => {
+        {Array.from({ length: daysToShow }, (_, i) => i).map(dayOffset => {
           const columnDate = addDays(selectedWeekStart, dayOffset);
           const isToday = isSameDay(columnDate, now);
           return (
@@ -281,7 +297,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
               }`}
             >
               <div className="text-xs text-secondary uppercase font-mono">
-                {columnDate.toLocaleDateString('en-US', { weekday: 'short' })}
+                {columnDate.toLocaleDateString('en-US', { weekday: daysToShow === 1 ? 'long' : 'short' })}
               </div>
               <div className={`text-2xl font-bold ${isToday ? 'text-primary' : 'text-on-surface'}`}>
                 {columnDate.getDate()}
@@ -299,6 +315,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
         visibleCalendars={visibleCalendars}
         onEventUpdate={onEventUpdate}
         onEditClick={handleEditClick}
+        daysToShow={daysToShow}
       />
 
       {/* Scrollable time slots container */}
@@ -306,7 +323,7 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
         <div className="relative">
           <div
             ref={slotsRef}
-            className="grid grid-cols-[80px_repeat(7,_1fr)]"
+            className={`grid ${daysToShow === 1 ? 'grid-cols-[80px_1fr]' : 'grid-cols-[80px_repeat(7,_1fr)]'}`}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
@@ -324,14 +341,14 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
             ))}
           </div>
 
-          {/* 7 day columns */}
-          {[0, 1, 2, 3, 4, 5, 6].map(renderDayColumn)}
+          {/* Day columns */}
+          {Array.from({ length: daysToShow }, (_, i) => i).map(renderDayColumn)}
           </div>
 
           {/* Multi-day timed events layer (single contiguous frame across columns) */}
           {weekEvents.filter(e => !e.isAllDay && e.endDate && e.endDate !== e.date).map(event => {
             const rect = slotsRef.current?.getBoundingClientRect();
-            const columnWidth = rect ? (rect.width - TIME_LABEL_WIDTH) / 7 : 0;
+            const columnWidth = rect ? (rect.width - TIME_LABEL_WIDTH) / daysToShow : 0;
 
             const startIdx = Math.max(0, Math.min(6, diffInDays(parseDate(event.date), selectedWeekStart)));
             const endIdx = Math.max(0, Math.min(6, diffInDays(parseDate(event.endDate), selectedWeekStart)));
@@ -469,10 +486,42 @@ export const WeekGrid: React.FC<WeekGridProps> = ({
                   ))}
                 </div>
 
-                {/* Date & Time Range Info */}
-                <div className="flex items-center gap-2 text-xs text-secondary font-medium py-1">
-                  <Clock className="w-3.5 h-3.5 text-primary flex-shrink-0" />
-                  <span className="truncate">{timeRangeText}</span>
+                {/* Editable Date & Time Controls (Google Calendar style) */}
+                <div className="flex flex-col gap-2 py-1 border-t border-outline-variant/20">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-secondary font-medium flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-primary shrink-0" /> Date
+                    </span>
+                    <input
+                      type="date"
+                      value={editingDate || editingEvent.date || ''}
+                      onChange={(e) => setEditingDate(e.target.value)}
+                      className="text-xs px-2 py-1 rounded-lg bg-surface-container-high border border-outline-variant/30 text-on-surface font-mono focus:outline-none focus:border-primary cursor-pointer"
+                    />
+                  </div>
+
+                  {!editingIsAllDay && (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-secondary font-medium flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-primary opacity-0 shrink-0" /> Time
+                      </span>
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="time"
+                          value={editingStartTime || editingEvent.startTime || '09:00'}
+                          onChange={(e) => setEditingStartTime(e.target.value)}
+                          className="text-xs px-1.5 py-1 rounded-lg bg-surface-container-high border border-outline-variant/30 text-on-surface font-mono focus:outline-none focus:border-primary cursor-pointer"
+                        />
+                        <span className="text-xs text-secondary font-mono">–</span>
+                        <input
+                          type="time"
+                          value={editingEndTime || editingEvent.endTime || '10:00'}
+                          onChange={(e) => setEditingEndTime(e.target.value)}
+                          className="text-xs px-1.5 py-1 rounded-lg bg-surface-container-high border border-outline-variant/30 text-on-surface font-mono focus:outline-none focus:border-primary cursor-pointer"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Color Swatches Palette */}

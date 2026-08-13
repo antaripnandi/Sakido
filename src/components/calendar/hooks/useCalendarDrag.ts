@@ -52,6 +52,7 @@ export const useCalendarDrag = (
   lastUsedCalendarId: string,
   calendars: any[],
   setLastUsedCalendarId: React.Dispatch<React.SetStateAction<string>>,
+  daysToShow: number = 7
 ) => {
   const [draggingNew, setDraggingNew] = useState<DraggingNewState | null>(null);
   const [resizingEvent, setResizingEvent] = useState<ResizingEventState | null>(null);
@@ -62,6 +63,9 @@ export const useCalendarDrag = (
   const [editingCalendarId, setEditingCalendarId] = useState<string>(lastUsedCalendarId);
   const [editingIsAllDay, setEditingIsAllDay] = useState<boolean>(false);
   const [editingColor, setEditingColor] = useState<string>('');
+  const [editingDate, setEditingDate] = useState<string>('');
+  const [editingStartTime, setEditingStartTime] = useState<string>('');
+  const [editingEndTime, setEditingEndTime] = useState<string>('');
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
   const [capturedElement, setCapturedElement] = useState<Element | null>(null);
 
@@ -75,8 +79,8 @@ export const useCalendarDrag = (
 
   const getColumnWidth = useCallback(() => {
     const rect = getGridRect();
-    return rect ? (rect.width - TIME_LABEL_WIDTH) / 7 : 0;
-  }, [getGridRect]);
+    return rect ? (rect.width - TIME_LABEL_WIDTH) / daysToShow : 0;
+  }, [getGridRect, daysToShow]);
 
   const clientXToDayIndex = useCallback((clientX: number) => {
     const rect = getGridRect();
@@ -84,8 +88,8 @@ export const useCalendarDrag = (
     if (!rect || columnWidth === 0) return 0;
 
     const offsetX = clientX - (rect.left + TIME_LABEL_WIDTH);
-    return Math.max(0, Math.min(6, Math.floor(offsetX / columnWidth)));
-  }, [getGridRect, getColumnWidth]);
+    return Math.max(0, Math.min(daysToShow - 1, Math.floor(offsetX / columnWidth)));
+  }, [getGridRect, getColumnWidth, daysToShow]);
 
   const clientYToGridTime = useCallback((clientY: number) => {
     // Measure from the hour-slot grid (below the all-day row).
@@ -264,6 +268,9 @@ export const useCalendarDrag = (
       setEditingType(newEvent.type);
       setEditingCalendarId(newEvent.calendarId);
       setEditingIsAllDay(false);
+      setEditingDate(newEvent.date);
+      setEditingStartTime(startTime);
+      setEditingEndTime(endTime);
     } else if (resizingEvent) {
       const event = events.find(ev => ev.id === resizingEvent.id);
       if (event) {
@@ -375,6 +382,12 @@ export const useCalendarDrag = (
     editingIsAllDay,
     setEditingIsAllDay,
     editingColor,
-    setEditingColor
+    setEditingColor,
+    editingDate,
+    setEditingDate,
+    editingStartTime,
+    setEditingStartTime,
+    editingEndTime,
+    setEditingEndTime,
   };
 };

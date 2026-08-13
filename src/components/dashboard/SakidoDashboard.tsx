@@ -2401,14 +2401,14 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container-low border border-outline-variant/30">
               <button
                 type="button"
-                onClick={() => setCalendarViewMode('month')}
+                onClick={() => setCalendarViewMode('day')}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all cursor-pointer ${
-                  calendarViewMode === 'month'
+                  calendarViewMode === 'day'
                     ? 'bg-[#8b5e3c] text-white shadow-2xs'
                     : 'text-secondary hover:text-on-surface'
                 }`}
               >
-                Month View
+                Day View
               </button>
               <button
                 type="button"
@@ -2420,6 +2420,17 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 }`}
               >
                 Week View
+              </button>
+              <button
+                type="button"
+                onClick={() => setCalendarViewMode('month')}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all cursor-pointer ${
+                  calendarViewMode === 'month'
+                    ? 'bg-[#8b5e3c] text-white shadow-2xs'
+                    : 'text-secondary hover:text-on-surface'
+                }`}
+              >
+                Month View
               </button>
             </div>
 
@@ -2502,7 +2513,70 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             </div>
           </form>
 
-          {calendarViewMode === 'week' ? (
+          {calendarViewMode === 'day' ? (
+            /* Day Grid View */
+            <>
+              {/* Day Navigation Header */}
+              <div className="flex items-center justify-between mb-4 px-2">
+                <button type="button"
+                  onClick={() => setSelectedWeekStart(prev => addDays(prev, -1))}
+                  className="p-2 hover:bg-surface-container-high rounded-lg transition-colors cursor-pointer"
+                  aria-label="Previous day"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+
+                <div className="flex flex-col items-center gap-1">
+                  <div className="text-base font-semibold text-on-surface">
+                    {selectedWeekStart.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                  </div>
+                  <button type="button"
+                    onClick={() => setSelectedWeekStart(new Date())}
+                    className="text-xs text-primary hover:text-primary/80 font-medium transition-colors cursor-pointer"
+                  >
+                    Today
+                  </button>
+                </div>
+
+                <button type="button"
+                  onClick={() => setSelectedWeekStart(prev => addDays(prev, 1))}
+                  className="p-2 hover:bg-surface-container-high rounded-lg transition-colors cursor-pointer"
+                  aria-label="Next day"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+
+              <WeekGrid
+                selectedWeekStart={selectedWeekStart}
+                daysToShow={1}
+                events={allEvents}
+                calendars={calendars}
+                visibleCalendars={visibleCalendars}
+                onEventUpdate={async (event) => {
+                  setEvents(prev => prev.map(e => e.id === event.id ? { ...event, syncStatus: 'pending' } : e));
+                  await syncEventToGoogleCalendar(event);
+                }}
+                onEventCreate={(event) => {
+                  setEvents(prev => [...prev, event]);
+                }}
+                onEventDelete={deleteGoogleCalendarEvent}
+                setEvents={setEvents}
+                lastUsedCalendarId={lastUsedCalendarId}
+                setLastUsedCalendarId={setLastUsedCalendarId}
+                onEditingStart={(eventId) => {
+                  setEditingEventIds(prev => new Set(prev).add(eventId));
+                }}
+                onEditingEnd={(eventId) => {
+                  setEditingEventIds(prev => {
+                    const next = new Set(prev);
+                    next.delete(eventId);
+                    return next;
+                  });
+                }}
+              />
+            </>
+          ) : calendarViewMode === 'week' ? (
             /* Week Grid View */
             <>
               {/* Week Navigation Header */}
@@ -2538,6 +2612,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
 
               <WeekGrid
                 selectedWeekStart={selectedWeekStart}
+                daysToShow={7}
                 events={allEvents}
                 calendars={calendars}
                 visibleCalendars={visibleCalendars}

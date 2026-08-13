@@ -9,6 +9,7 @@ interface AllDayRowProps {
   visibleCalendars: string[];
   onEventUpdate: (event: any) => void;
   onEditClick: (eventId: string, title: string, type: string, calendarId: string, isAllDay: boolean, color?: string) => void;
+  daysToShow?: number;
 }
 
 const clamp = (v: number, min: number, max: number) => Math.max(min, Math.min(max, v));
@@ -19,17 +20,18 @@ export const AllDayRow: React.FC<AllDayRowProps> = ({
   calendars,
   visibleCalendars,
   onEventUpdate,
-  onEditClick
+  onEditClick,
+  daysToShow = 7,
 }) => {
-  // Filter for all-day or multi-day events in the current week
+  // Filter for all-day or multi-day events in the current view
   const weekStartStr = formatDate(selectedWeekStart);
-  const weekEndStr = formatDate(addDays(selectedWeekStart, 6));
+  const weekEndStr = formatDate(addDays(selectedWeekStart, daysToShow - 1));
 
   const allDayEvents = events.filter(e => {
     if (e.isPending && !e.isAllDay) return false;
     if (!visibleCalendars.includes(e.calendarId)) return false;
     if (!e.isAllDay) return false;
-    // Check if event overlaps with the current week
+    // Check if event overlaps with the current view
     const eventStartDate = e.date;
     const eventEndDate = e.endDate || e.date;
     return (eventStartDate <= weekEndStr && eventEndDate >= weekStartStr);
@@ -75,21 +77,15 @@ export const AllDayRow: React.FC<AllDayRowProps> = ({
       </button>
 
       {!collapsed && (
-        <div className="grid grid-cols-[80px_repeat(7,_1fr)] min-h-[40px] max-h-[120px] overflow-y-auto">
+        <div className={`grid ${daysToShow === 1 ? 'grid-cols-[80px_1fr]' : 'grid-cols-[80px_repeat(7,_1fr)]'} min-h-[40px] max-h-[120px] overflow-y-auto`}>
           <div className="w-20 border-r border-outline-variant/30" /> {/* Empty space for time labels column */}
-          {/* Events render in a single overlay that starts AFTER the time-label
-              column, so left/width percentages are measured against the 7
-              columns — not the full grid width (which would shift them left by
-              one column). */}
-          <div className="col-span-7 relative min-h-[40px]">
+          <div className={`${daysToShow === 1 ? 'col-span-1' : 'col-span-7'} relative min-h-[40px]`}>
             {allDayEvents.map(event => {
               const color = event.color || getCalendarColor(event.calendarId);
-              // Local-time day math (parseDate, not new Date(date-only string)
-              // which is UTC and shifts the index west of UTC), clamped to 0-6.
-              const startIndex = clamp(diffInDays(parseDate(event.date), selectedWeekStart), 0, 6);
+              const startIndex = clamp(diffInDays(parseDate(event.date), selectedWeekStart), 0, daysToShow - 1);
               const endIndex = clamp(
                 diffInDays(parseDate(event.endDate || event.date), selectedWeekStart),
-                0, 6
+                0, daysToShow - 1
               );
               const span = endIndex - startIndex + 1;
 
@@ -103,8 +99,8 @@ export const AllDayRow: React.FC<AllDayRowProps> = ({
                   style={{
                     backgroundColor: displayColor,
                     color: '#fff',
-                    left: `${(startIndex / 7) * 100}%`,
-                    width: `${(span / 7) * 100}%`,
+                    left: `${(startIndex / daysToShow) * 100}%`,
+                    width: `${(span / daysToShow) * 100}%`,
                     top: 4,
                     zIndex: 1
                   }}
