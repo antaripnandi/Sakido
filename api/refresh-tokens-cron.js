@@ -37,7 +37,7 @@ export default async function handler(req, res) {
   // 3. Fetch every row that has at least one stored refresh token.
   const { data: rows, error: rowsError } = await supabaseAdmin
     .from('google_tokens')
-    .select('user_id, calendar_refresh_token, drive_refresh_token, gmail_refresh_token, google_calendar_connected, google_drive_connected, gmail_connected');
+    .select('user_id, calendar_refresh_token, drive_refresh_token, gmail_refresh_token, classroom_refresh_token, google_calendar_connected, google_drive_connected, gmail_connected, google_classroom_connected');
 
   if (rowsError) {
     return res.status(500).json({ error: 'Failed to fetch token rows.', detail: rowsError.message });

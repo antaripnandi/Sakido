@@ -64,10 +64,12 @@ import { DashboardView } from './DashboardView';
 import { ConnectorsView } from '../connectors/ConnectorsView';
 import { KanbanBoard } from './KanbanBoard';
 import { ChatView } from '../chat/ChatView';
+import { ClassroomHub } from '../classroom/ClassroomHub';
 
 const TAB_SLUGS: { slug: string; name: string }[] = [
   { slug: 'overview', name: 'Overview' },
   { slug: 'classes', name: 'Classes' },
+  { slug: 'classroom', name: 'Google Classroom' },
   { slug: 'calendar', name: 'Calendar' },
   { slug: 'tasks', name: 'Tasks & Grades' },
   { slug: 'kanban', name: 'Kanban Board' },
@@ -367,7 +369,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     googleCalendar: boolean;
     googleDrive: boolean;
     gmail: boolean;
-  }>('sakido_connectors', { googleCalendar: false, googleDrive: false, gmail: false });
+    googleClassroom: boolean;
+  }>('sakido_connectors', { googleCalendar: false, googleDrive: false, gmail: false, googleClassroom: false });
 
   // Gate: ensures mount sync completes before OAuth callback writes connector state.
   // Prevents the race where mount sync reads stale DB flags and overwrites fresh
@@ -392,7 +395,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
     Promise.resolve(
       supabase
         .from('google_tokens')
-        .select('google_calendar_connected, google_drive_connected, gmail_connected')
+        .select('google_calendar_connected, google_drive_connected, gmail_connected, google_classroom_connected')
         .eq('user_id', currentUser.id)
         .maybeSingle()
         .then(({ data, error }) => {
@@ -405,6 +408,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             googleCalendar: Boolean(data.google_calendar_connected),
             googleDrive: Boolean(data.google_drive_connected),
             gmail: Boolean(data.gmail_connected),
+            googleClassroom: Boolean(data.google_classroom_connected),
           };
           setConnectors(prev => {
             const changed = (Object.keys(fromDB) as (keyof typeof fromDB)[])
@@ -671,9 +675,11 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               const supabase = getSupabaseClient();
               const flagCol = pending === 'googleCalendar' ? 'google_calendar_connected'
                 : pending === 'googleDrive' ? 'google_drive_connected'
+                : pending === 'googleClassroom' ? 'google_classroom_connected'
                 : 'gmail_connected';
               const tokenCol = pending === 'googleCalendar' ? 'calendar_refresh_token'
                 : pending === 'googleDrive' ? 'drive_refresh_token'
+                : pending === 'googleClassroom' ? 'classroom_refresh_token'
                 : 'gmail_refresh_token';
               // Single upsert — write to the correct per-service token column
               supabase?.from('google_tokens').upsert({
@@ -695,6 +701,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               googleCalendar: 'Google Calendar',
               googleDrive: 'Google Drive',
               gmail: 'Gmail Notifications',
+              googleClassroom: 'Google Classroom',
             };
             setConnectorNotice(`Successfully connected ${serviceNames[pending] || pending}! Syncing existing events...`);
 
@@ -1994,7 +2001,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
   };
 
   // OAuth Connector Handler
-  const handleConnectOAuth = async (serviceKey: 'googleCalendar' | 'googleDrive' | 'gmail', isReauthorization: boolean = false) => {
+  const handleConnectOAuth = async (serviceKey: 'googleCalendar' | 'googleDrive' | 'gmail' | 'googleClassroom', isReauthorization: boolean = false) => {
     // If currently connecting, clicking again cancels the pending state immediately
     if (connectingService === serviceKey && !isReauthorization) {
       setConnectingService(null);
@@ -2006,12 +2013,14 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       googleCalendar: 'https://www.googleapis.com/auth/calendar',
       googleDrive: 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.profile',
       gmail: 'https://www.googleapis.com/auth/gmail.readonly',
+      googleClassroom: 'https://www.googleapis.com/auth/classroom.courses.readonly https://www.googleapis.com/auth/classroom.coursework.me https://www.googleapis.com/auth/classroom.announcements.readonly https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly https://www.googleapis.com/auth/classroom.rosters.readonly',
     };
 
     const serviceNames = {
       googleCalendar: 'Google Calendar',
       googleDrive: 'Google Drive & Notes',
       gmail: 'Gmail Notifications',
+      googleClassroom: 'Google Classroom',
     };
 
     // Handle Disconnect Action
@@ -2022,6 +2031,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       // connectors at this point is the state at click time — guaranteed correct for same-tab.
       const flagCol = serviceKey === 'googleCalendar' ? 'google_calendar_connected'
         : serviceKey === 'googleDrive' ? 'google_drive_connected'
+        : serviceKey === 'googleClassroom' ? 'google_classroom_connected'
         : 'gmail_connected';
       const allOff = !Object.values({ ...connectors, [serviceKey]: false }).some(Boolean);
 
@@ -2041,6 +2051,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
           // Some other service is still connected — clear this flag AND this service's token column
           const tokenCol = serviceKey === 'googleCalendar' ? 'calendar_refresh_token'
             : serviceKey === 'googleDrive' ? 'drive_refresh_token'
+            : serviceKey === 'googleClassroom' ? 'classroom_refresh_token'
             : 'gmail_refresh_token';
           supabase.from('google_tokens').update({ [flagCol]: false, [tokenCol]: null, updated_at: new Date().toISOString() })
             .eq('user_id', uid)
@@ -2048,7 +2059,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
         } else {
           // This was the last connected service. Cross-tab safety: verify from DB before deleting.
           supabase.from('google_tokens')
-            .select('google_calendar_connected, google_drive_connected, gmail_connected')
+            .select('google_calendar_connected, google_drive_connected, gmail_connected, google_classroom_connected')
             .eq('user_id', uid)
             .maybeSingle()
             .then(({ data: dbState, error }) => {
@@ -2059,7 +2070,8 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
               const dbAllOff = !dbState || (
                 !dbState.google_calendar_connected &&
                 !dbState.google_drive_connected &&
-                !dbState.gmail_connected
+                !dbState.gmail_connected &&
+                !dbState.google_classroom_connected
               );
               if (dbAllOff) {
                 // DB confirms all flags are false — safe to delete the row
@@ -2071,6 +2083,7 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
                 // Another tab reconnected in the meantime — clear this flag AND this service's token column
                 const tokenCol = serviceKey === 'googleCalendar' ? 'calendar_refresh_token'
                   : serviceKey === 'googleDrive' ? 'drive_refresh_token'
+                  : serviceKey === 'googleClassroom' ? 'classroom_refresh_token'
                   : 'gmail_refresh_token';
                 supabase.from('google_tokens').update({ [flagCol]: false, [tokenCol]: null, updated_at: new Date().toISOString() })
                   .eq('user_id', uid)
@@ -3585,6 +3598,42 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
       );
     }
 
+    if (activeTab === 'Google Classroom' || activeTab === 'Classroom') {
+      return (
+        <div className="col-span-12">
+          <ClassroomHub
+            isConnected={Boolean(connectors.googleClassroom)}
+            onConnectClassroom={() => handleConnectOAuth('googleClassroom')}
+            executeGoogleApi={executeGoogleApi}
+            onImportToTasks={(importedTasks) => {
+              setTasks((prev) => {
+                const existingTitles = new Set(prev.map((t) => t.title.toLowerCase().trim()));
+                const newTasks = importedTasks
+                  .filter((t) => !existingTitles.has(t.title.toLowerCase().trim()))
+                  .map((t) => ({
+                    id: t.id,
+                    title: t.title,
+                    course: t.course,
+                    date: t.date,
+                    time: t.time || '23:59',
+                    completed: t.completed,
+                    priority: t.priority,
+                    grade: t.grade,
+                  }));
+                const updated = [...newTasks, ...prev];
+                try {
+                  localStorage.setItem('sakido_tasks', JSON.stringify(updated));
+                } catch {}
+                return updated;
+              });
+              setConnectorNotice(`Imported ${importedTasks.length} Classroom assignments into Tasks!`);
+            }}
+            onWatchVideo={(video) => setActiveVideo(video)}
+          />
+        </div>
+      );
+    }
+
     if (activeTab === 'Connectors') {
       return (
         <div className="col-span-12 lg:col-span-8 pl-0 lg:pl-8 border-t lg:border-t-0 lg:border-l border-outline-variant/30 pt-6 lg:pt-0">
@@ -3743,6 +3792,29 @@ export const SakidoDashboard: React.FC<SakidoDashboardProps> = ({
             </div>
           )}
           <ul className="space-y-1 mb-6 shrink-0">
+            <li>
+              <button type="button"
+                onClick={() => handleSelectTab('Google Classroom')}
+                title={isSidebarCollapsed ? "Google Classroom" : undefined}
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm font-medium transition-all cursor-pointer ${
+                  isSidebarCollapsed ? 'justify-center px-2' : ''
+                } ${
+                  activeTab === 'Google Classroom'
+                    ? 'text-primary font-bold bg-surface-container border border-primary-container/20 shadow-2xs'
+                    : 'text-secondary hover:text-on-surface hover:bg-surface-container/60'
+                }`}
+              >
+                <GraduationCap className="w-4 h-4 shrink-0" />
+                {!isSidebarCollapsed && (
+                  <div className="flex items-center justify-between flex-1 min-w-0">
+                    <span className="truncate">Google Classroom</span>
+                    {connectors.googleClassroom && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 ml-1.5" />
+                    )}
+                  </div>
+                )}
+              </button>
+            </li>
             <li>
               <button type="button"
                 onClick={() => handleSelectTab('Connectors')}

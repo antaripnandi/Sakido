@@ -4,9 +4,10 @@
 // endpoint and the keepalive cron never drift apart.
 
 export const SERVICE_COLUMNS = {
-  googleCalendar: { tokenCol: 'calendar_refresh_token', flagCol: 'google_calendar_connected' },
-  googleDrive:    { tokenCol: 'drive_refresh_token',    flagCol: 'google_drive_connected' },
-  gmail:          { tokenCol: 'gmail_refresh_token',    flagCol: 'gmail_connected' },
+  googleCalendar:  { tokenCol: 'calendar_refresh_token',  flagCol: 'google_calendar_connected' },
+  googleDrive:     { tokenCol: 'drive_refresh_token',     flagCol: 'google_drive_connected' },
+  gmail:           { tokenCol: 'gmail_refresh_token',     flagCol: 'gmail_connected' },
+  googleClassroom: { tokenCol: 'classroom_refresh_token', flagCol: 'google_classroom_connected' },
 };
 
 export function getTokenCol(service) {

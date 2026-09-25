@@ -4,7 +4,7 @@
  * In-flight Map prevents concurrent refresh calls for the same service from racing.
  */
 
-export type GoogleService = 'googleCalendar' | 'googleDrive' | 'gmail';
+export type GoogleService = 'googleCalendar' | 'googleDrive' | 'gmail' | 'googleClassroom';
 
 const cacheKey = (s: GoogleService) => `sakido_gat_${s}`;
 
@@ -29,7 +29,7 @@ export const setProviderToken = (service: GoogleService, t: string | null, expir
 export const clearProviderToken = (service?: GoogleService): void => {
   if (service) { sessionStorage.removeItem(cacheKey(service)); return; }
   // No service = clear all (e.g. on sign-out or hard disconnect)
-  (['googleCalendar', 'googleDrive', 'gmail'] as GoogleService[])
+  (['googleCalendar', 'googleDrive', 'gmail', 'googleClassroom'] as GoogleService[])
     .forEach(s => sessionStorage.removeItem(cacheKey(s)));
 };
 

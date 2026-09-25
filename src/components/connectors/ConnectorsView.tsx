@@ -16,6 +16,7 @@ export interface ConnectorsState {
   googleCalendar: boolean;
   googleDrive: boolean;
   gmail: boolean;
+  googleClassroom: boolean;
   accountEmail?: string;
   lastSyncedAt?: Record<string, string>;
 }
@@ -24,8 +25,8 @@ interface ConnectorsViewProps {
   connectors: ConnectorsState;
   connectingService: string | null;
   connectorNotice: string | null;
-  onConnect: (serviceKey: 'googleCalendar' | 'googleDrive' | 'gmail') => void;
-  onDisconnect: (serviceKey: 'googleCalendar' | 'googleDrive' | 'gmail') => void;
+  onConnect: (serviceKey: 'googleCalendar' | 'googleDrive' | 'gmail' | 'googleClassroom') => void;
+  onDisconnect: (serviceKey: 'googleCalendar' | 'googleDrive' | 'gmail' | 'googleClassroom') => void;
   onDismissNotice: () => void;
   executeGoogleApi?: <T>(apiCall: (token: string) => Promise<Response>, service?: GoogleService) => Promise<Response | null>;
 }
@@ -40,6 +41,25 @@ const SERVICE_CONFIGS = [
     permissions: [
       'Read lecture timetables and exam dates',
       'Create and update academic deadline events',
+    ],
+  },
+  {
+    key: 'googleClassroom' as const,
+    name: 'Google Classroom',
+    logo: '/logos/google-classroom.svg',
+    description: 'Sync enrolled courses, assignment deadlines, homework grades, lecture materials, and professor stream announcements.',
+    scopes: [
+      'https://www.googleapis.com/auth/classroom.courses.readonly',
+      'https://www.googleapis.com/auth/classroom.coursework.me',
+      'https://www.googleapis.com/auth/classroom.announcements.readonly',
+      'https://www.googleapis.com/auth/classroom.courseworkmaterials.readonly',
+      'https://www.googleapis.com/auth/classroom.rosters.readonly',
+    ],
+    permissions: [
+      'Read enrolled courses, syllabus units, and class rosters',
+      'Sync assignments, due dates, submission states, and grades',
+      'Receive professor stream announcements and lecture attachments',
+      'Turn in completed coursework directly from Sakido',
     ],
   },
   {
@@ -82,11 +102,12 @@ export const ConnectorsView: React.FC<ConnectorsViewProps> = ({
   // Service-specific lightweight API test endpoints matching granted scope
   const SERVICE_TEST_ENDPOINTS: Record<string, string> = {
     googleCalendar: 'https://www.googleapis.com/calendar/v3/users/me/calendarList?maxResults=1',
+    googleClassroom: 'https://classroom.googleapis.com/v1/courses?studentId=me&pageSize=1',
     googleDrive: 'https://www.googleapis.com/drive/v3/files?pageSize=1',
     gmail: 'https://www.googleapis.com/gmail/v1/users/me/profile',
   };
 
-  const handleTestConnection = async (serviceKey: 'googleCalendar' | 'googleDrive' | 'gmail') => {
+  const handleTestConnection = async (serviceKey: 'googleCalendar' | 'googleDrive' | 'gmail' | 'googleClassroom') => {
     if (!executeGoogleApi) return;
     const endpoint = SERVICE_TEST_ENDPOINTS[serviceKey];
     if (!endpoint) return;

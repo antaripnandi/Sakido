@@ -98,9 +98,10 @@ function AppContent() {
         const pending = localStorage.getItem('sakido_pending_connector');
 
         const tokenCol =
-          pending === 'googleCalendar' ? 'calendar_refresh_token' :
-          pending === 'googleDrive'    ? 'drive_refresh_token'    :
-          pending === 'gmail'          ? 'gmail_refresh_token'    :
+          pending === 'googleCalendar'  ? 'calendar_refresh_token'  :
+          pending === 'googleDrive'     ? 'drive_refresh_token'     :
+          pending === 'gmail'           ? 'gmail_refresh_token'     :
+          pending === 'googleClassroom' ? 'classroom_refresh_token' :
           null;
 
         if (!tokenCol) {
